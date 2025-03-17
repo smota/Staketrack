@@ -1,0 +1,205 @@
+/* Sidebar Base Styles */
+.sidebar {
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+  background-color: var(--color-white);
+  border-right: var(--border-width) solid var(--color-gray-200);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--color-gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sidebar Actions */
+.sidebar-actions {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--color-gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* View Toggle */
+.view-toggle {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: var(--border-width) solid var(--color-gray-200);
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.view-toggle button {
+  flex: 1;
+}
+
+/* Stakeholders Container */
+.stakeholders-container {
+  flex-grow: 1;
+  padding: var(--spacing-md) var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.stakeholder-item {
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: var(--border-width) solid var(--color-gray-200);
+  margin-bottom: var(--spacing-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.stakeholder-item:hover {
+  background-color: var(--color-gray-100);
+  transform: translateY(-2px);
+}
+
+.stakeholder-item.selected {
+  border-color: var(--color-primary);
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.stakeholder-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stakeholder-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.stakeholder-indicator.relationship-strong {
+  background-color: var(--color-relationship-strong);
+}
+
+.stakeholder-indicator.relationship-medium {
+  background-color: var(--color-relationship-medium);
+}
+
+.stakeholder-indicator.relationship-weak {
+  background-color: var(--color-relationship-weak);
+}
+
+.stakeholder-item-name {
+  font-weight: var(--font-weight-medium);
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stakeholder-item-metrics {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+}
+
+.stakeholder-item-metric {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xxs);
+}
+
+.stakeholder-item-metric strong {
+  color: var(--color-gray-800);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-gray-500);
+}
+
+.empty-state p {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 991px) {
+  .sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--header-height);
+    width: 100%;
+    z-index: var(--z-index-fixed);
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+  }
+  
+  .sidebar.visible {
+    transform: translateX(0);
+  }
+  
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    box-shadow: var(--shadow-md);
+    z-index: var(--z-index-fixed);
+    border: none;
+    font-size: var(--font-size-xl);
+    cursor: pointer;
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: calc(var(--z-index-fixed) - 1);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition);
+  }
+  
+  .sidebar-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .stakeholder-item-metrics {
+    flex-wrap: wrap;
+  }
+}

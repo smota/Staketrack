@@ -1,0 +1,133 @@
+/* Navbar Base Styles */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--spacing-lg);
+  background-color: var(--color-white);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: var(--z-index-sticky);
+}
+
+/* Navbar Logo */
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.navbar-logo img {
+  height: 36px;
+  width: auto;
+}
+
+.navbar-logo h1 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+  color: var(--color-primary);
+}
+
+/* Navbar Actions */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Maps Dropdown */
+#maps-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+#maps-dropdown {
+  min-width: 200px;
+}
+
+/* User Profile */
+#user-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+#user-email {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-700);
+}
+
+/* Mobile Navigation */
+.navbar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .navbar-logo h1 {
+    font-size: var(--font-size-lg);
+  }
+  
+  .navbar-logo img {
+    height: 30px;
+  }
+  
+  .navbar-actions {
+    gap: var(--spacing-sm);
+  }
+  
+  #maps-dropdown {
+    min-width: 150px;
+    max-width: 150px;
+  }
+  
+  #user-email {
+    display: none;
+  }
+  
+  .navbar-toggle {
+    display: block;
+  }
+  
+  .navbar-mobile {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    background-color: var(--color-white);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    transform: translateY(-100%);
+    transition: transform var(--transition);
+    z-index: var(--z-index-dropdown);
+  }
+  
+  .navbar-mobile.visible {
+    transform: translateY(0);
+  }
+  
+  .navbar-mobile #maps-dropdown-container,
+  .navbar-mobile #user-profile {
+    width: 100%;
+  }
+  
+  .navbar-mobile #maps-dropdown {
+    width: 100%;
+    max-width: none;
+  }
+}

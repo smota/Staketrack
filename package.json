@@ -1,0 +1,42 @@
+{
+  "name": "staketrack",
+  "version": "1.0.0",
+  "description": "StakeTrack application",
+  "main": "index.html",
+  "scripts": {
+    "dev": "dotenv -e .env.development webpack-dev-server --mode development",
+    "build": "dotenv -e .env.production webpack --mode production",
+    "serve": "firebase serve --only hosting",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint js/",
+    "lint:fix": "eslint js/ --fix",
+    "build:dev": "dotenv -e .env.development webpack --mode development",
+    "build:prod": "dotenv -e .env.production webpack --mode production",
+    "firebase:setup": "node scripts/firebase-setup.js",
+    "firebase:deploy": "node scripts/firebase-deploy.js",
+    "deploy:dev": "node scripts/firebase-deploy.js --env=DEV --option=hosting",
+    "deploy:prod": "node scripts/firebase-deploy.js --env=PRD --option=hosting",
+    "deploy:rules:dev": "node scripts/firebase-deploy.js --env=DEV --option=rules",
+    "deploy:rules:prod": "node scripts/firebase-deploy.js --env=PRD --option=rules",
+    "deploy:all:dev": "node scripts/firebase-deploy.js --env=DEV --option=all",
+    "deploy:all:prod": "node scripts/firebase-deploy.js --env=PRD --option=all",
+    "emulators": "firebase emulators:start"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "babel-jest": "^29.7.0",
+    "@babel/preset-env": "^7.23.9",
+    "@testing-library/jest-dom": "^6.4.2"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "moduleNameMapper": {
+      "\\.(css|less|scss)$": "<rootDir>/test/mocks/styleMock.js"
+    },
+    "transform": {
+      "^.+\\.js$": "babel-jest"
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome (Development)",
+      "url": "http://localhost:5000",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Start Dev Server",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      },
+      "env": {
+        "ENVIRONMENT": "DEV"
+      }
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Launch Chrome (Production)",
+      "url": "http://localhost:5000",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Start Prod Server",
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      },
+      "env": {
+        "ENVIRONMENT": "PRD"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Tests",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest",
+      "args": ["--runInBand"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Firebase Emulator",
+      "program": "${workspaceFolder}/node_modules/.bin/firebase",
+      "args": ["emulators:start"],
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev Server + Firebase Emulator",
+      "configurations": ["Firebase Emulator", "Launch Chrome (Development)"]
+    }
+  ]
+} 

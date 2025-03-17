@@ -1,0 +1,23 @@
+{
+  "projects": {
+    "default": "staketrack-dev",
+    "development": "staketrack-dev",
+    "production": "staketrack-prod"
+  },
+  "targets": {
+    "staketrack-dev": {
+      "hosting": {
+        "development": [
+          "staketrack-dev"
+        ]
+      }
+    },
+    "staketrack-prod": {
+      "hosting": {
+        "production": [
+          "staketrack-prod"
+        ]
+      }
+    }
+  }
+} 

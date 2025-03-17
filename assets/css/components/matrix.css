@@ -1,0 +1,199 @@
+/* Matrix Container */
+.matrix-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-md);
+}
+
+.matrix-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.matrix-header h3 {
+  margin: 0;
+}
+
+/* Matrix Grid */
+.matrix {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "q1 q4"
+    "q2 q3";
+  gap: 2px;
+  background-color: var(--color-gray-400);
+  border: 1px solid var(--color-gray-400);
+  border-radius: var(--border-radius);
+  flex-grow: 1;
+  min-height: 500px;
+}
+
+.quadrant {
+  background-color: var(--color-white);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+}
+
+/* Quadrants */
+.q1 {
+  grid-area: q1;
+  background-color: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.q2 {
+  grid-area: q2;
+  background-color: rgba(var(--color-info-rgb), 0.05);
+}
+
+.q3 {
+  grid-area: q3;
+  background-color: rgba(var(--color-secondary-rgb), 0.05);
+}
+
+.q4 {
+  grid-area: q4;
+  background-color: rgba(var(--color-accent-rgb), 0.05);
+}
+
+.quadrant h4 {
+  margin: 0 0 var(--spacing-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.quadrant p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+}
+
+/* Axis Labels */
+.x-axis {
+  position: absolute;
+  bottom: var(--spacing-xxs);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+}
+
+.y-axis {
+  position: absolute;
+  top: 50%;
+  left: var(--spacing-xxs);
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+  color: var(--color-gray-700);
+  font-size: var(--font-size-sm);
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: var(--spacing-xxs) var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+}
+
+/* Matrix Plots */
+.matrix-plots {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.stakeholder-plot {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  z-index: 1;
+}
+
+.stakeholder-plot:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: var(--shadow-md);
+  z-index: 2;
+}
+
+/* Relationship Quality Colors */
+.relationship-strong {
+  background-color: var(--color-relationship-strong);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.relationship-medium {
+  background-color: var(--color-relationship-medium);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.relationship-weak {
+  background-color: var(--color-relationship-weak);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Plot tooltip */
+.plot-tooltip {
+  position: absolute;
+  background-color: var(--color-gray-800);
+  color: var(--color-white);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  max-width: 200px;
+  z-index: var(--z-index-tooltip);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.plot-tooltip.visible {
+  opacity: 1;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .matrix {
+    min-height: 350px;
+  }
+  
+  .stakeholder-plot {
+    width: 28px;
+    height: 28px;
+    font-size: var(--font-size-xs);
+  }
+  
+  .quadrant {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* For better visibility, RGB variants of theme colors */
+:root {
+  --color-primary-rgb: 58, 110, 165;
+  --color-info-rgb: 23, 162, 184;
+  --color-secondary-rgb: 108, 117, 125;
+  --color-accent-rgb: 40, 167, 69;
+}

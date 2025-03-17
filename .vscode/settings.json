@@ -1,0 +1,29 @@
+{
+  "eslint.validate": ["javascript", "javascriptreact"],
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "javascript.format.enable": false,
+  "prettier.disableLanguages": ["javascript"],
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.firebase": true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": false
+  },
+  "jest.enableInlineErrorMessages": true,
+  "jest.showCoverageOnLoad": false,
+  "javascript.preferences.importModuleSpecifier": "relative",
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#1E88E5",
+    "titleBar.activeForeground": "#FFFFFF",
+    "activityBar.background": "#1976D2",
+    "activityBar.foreground": "#FFFFFF"
+  },
+  "window.title": "${dirty}${activeEditorShort}${separator}StakeTrack${separator}${rootName}"
+} 

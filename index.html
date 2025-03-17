@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StakeTrack - Stakeholder Management</title>
+    <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/reset.css">
+    <link rel="stylesheet" href="assets/css/theme.css">
+    <link rel="stylesheet" href="assets/css/layout.css">
+    <link rel="stylesheet" href="assets/css/utilities.css">
+    <link rel="stylesheet" href="assets/css/components/button.css">
+    <link rel="stylesheet" href="assets/css/components/card.css">
+    <link rel="stylesheet" href="assets/css/components/form.css">
+    <link rel="stylesheet" href="assets/css/components/matrix.css">
+    <link rel="stylesheet" href="assets/css/components/modal.css">
+    <link rel="stylesheet" href="assets/css/components/navbar.css">
+    <link rel="stylesheet" href="assets/css/components/sidebar.css">
+    <link rel="stylesheet" href="assets/css/components/tooltip.css">
+</head>
+<body>
+    <header id="app-header">
+        <nav class="navbar">
+            <div class="navbar-logo">
+                <img src="assets/images/logo.svg" alt="StakeTrack Logo">
+                <h1>StakeTrack</h1>
+            </div>
+            <div class="navbar-actions">
+                <div id="maps-dropdown-container" class="hidden">
+                    <select id="maps-dropdown" aria-label="Select Stakeholder Map">
+                        <option value="">Select a map...</option>
+                    </select>
+                    <button id="create-map-btn" class="btn btn-primary">New Map</button>
+                </div>
+                <div id="auth-container">
+                    <button id="login-btn" class="btn btn-secondary">Sign In</button>
+                    <div id="user-profile" class="hidden">
+                        <span id="user-email"></span>
+                        <button id="logout-btn" class="btn btn-text">Sign Out</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main id="app-container">
+        <div id="auth-view" class="view">
+            <div class="auth-container">
+                <h2>Sign in to StakeTrack</h2>
+                <p>Sign in to save your stakeholder maps to the cloud</p>
+                <div class="auth-providers">
+                    <button id="google-auth-btn" class="btn btn-provider">
+                        <span class="provider-icon">G</span>
+                        <span>Continue with Google</span>
+                    </button>
+                    <button id="microsoft-auth-btn" class="btn btn-provider">
+                        <span class="provider-icon">M</span>
+                        <span>Continue with Microsoft</span>
+                    </button>
+                </div>
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+                <form id="email-auth-form">
+                    <div class="form-group">
+                        <label for="auth-email">Email</label>
+                        <input type="email" id="auth-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password">Password</label>
+                        <input type="password" id="auth-password" required>
+                    </div>
+                    <button type="submit" id="email-auth-btn" class="btn btn-primary">Sign In</button>
+                </form>
+                <p class="auth-toggle">
+                    <span id="auth-toggle-text">Don't have an account?</span>
+                    <button id="auth-toggle-btn" class="btn btn-text">Sign Up</button>
+                </p>
+                <button id="skip-auth-btn" class="btn btn-text">Continue without signing in</button>
+            </div>
+        </div>
+
+        <div id="dashboard-view" class="view hidden">
+            <div class="welcome-container">
+                <h2>Welcome to StakeTrack</h2>
+                <p>Get started by creating a new stakeholder map or select an existing one.</p>
+                <button id="dashboard-create-map-btn" class="btn btn-primary">Create New Map</button>
+                <div id="saved-maps-container" class="hidden">
+                    <h3>Your Maps</h3>
+                    <div id="saved-maps-list" class="maps-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="map-view" class="view hidden">
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <h2 id="current-map-name">Stakeholder Map</h2>
+                    <button id="edit-map-btn" class="btn btn-icon" aria-label="Edit Map Details">
+                        <span class="icon">✏️</span>
+                    </button>
+                </div>
+                <div class="sidebar-actions">
+                    <button id="add-stakeholder-btn" class="btn btn-primary">Add Stakeholder</button>
+                    <button id="export-map-btn" class="btn btn-secondary">Export</button>
+                    <button id="import-map-btn" class="btn btn-secondary">Import</button>
+                    <button id="map-advice-btn" class="btn btn-accent">Get Best Next Action</button>
+                </div>
+                <div class="view-toggle">
+                    <button id="matrix-view-btn" class="btn btn-toggle active">Matrix View</button>
+                    <button id="list-view-btn" class="btn btn-toggle">List View</button>
+                </div>
+                <div id="stakeholders-list" class="stakeholders-container"></div>
+            </aside>
+
+            <section id="content-area" class="main-content">
+                <div id="matrix-container" class="matrix-view-container">
+                    <div class="matrix-header">
+                        <h3>Stakeholder Influence-Impact Matrix</h3>
+                    </div>
+                    <div id="matrix" class="matrix">
+                        <div class="quadrant q1">
+                            <h4>Key Players</h4>
+                            <p>High Impact / High Influence</p>
+                        </div>
+                        <div class="quadrant q2">
+                            <h4>Meet Their Needs</h4>
+                            <p>High Impact / Low Influence</p>
+                        </div>
+                        <div class="quadrant q3">
+                            <h4>Show Consideration</h4>
+                            <p>Low Impact / Low Influence</p>
+                        </div>
+                        <div class="quadrant q4">
+                            <h4>Keep Satisfied</h4>
+                            <p>Low Impact / High Influence</p>
+                        </div>
+                        <div class="x-axis">Low Influence → High Influence</div>
+                        <div class="y-axis">Low Impact → High Impact</div>
+                        <div id="matrix-plots" class="matrix-plots"></div>
+                    </div>
+                </div>
+
+                <div id="list-container" class="list-view-container hidden">
+                    <div class="list-header">
+                        <h3>Stakeholders List</h3>
+                        <div class="list-filters">
+                            <select id="category-filter" aria-label="Filter by Category">
+                                <option value="">All Categories</option>
+                            </select>
+                            <select id="sort-by" aria-label="Sort Stakeholders">
+                                <option value="name">Name (A-Z)</option>
+                                <option value="influence">Influence (High-Low)</option>
+                                <option value="impact">Impact (High-Low)</option>
+                                <option value="relationship">Relationship (Strong-Weak)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="stakeholders-table-container">
+                        <table id="stakeholders-table" class="stakeholders-table">
+                            <thead>
+                                <tr>
+                                    <th>Name/Role</th>
+                                    <th>Influence</th>
+                                    <th>Impact</th>
+                                    <th>Relationship</th>
+                                    <th>Category</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stakeholders-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-container" class="modal-container hidden">
+        <div id="modal" class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button id="modal-close" class="btn btn-icon" aria-label="Close Modal">
+                    <span class="icon">✕</span>
+                </button>
+            </div>
+            <div id="modal-content" class="modal-content"></div>
+        </div>
+    </div>
+
+    <div id="tooltip" class="tooltip hidden"></div>
+
+    <!-- Templates -->
+    <template id="stakeholder-form-template">
+        <form id="stakeholder-form">
+            <div class="form-group">
+                <label for="stakeholder-name">Name/Role <span class="required">*</span></label>
+                <input type="text" id="stakeholder-name" required 
+                       data-tooltip="Enter the stakeholder's name and their role (e.g., 'John Smith - VP of Operations')">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="stakeholder-influence">Influence (1-10) <span class="required">*</span></label>
+                    <input type="number" id="stakeholder-influence" min="1" max="10" required
+                           data-tooltip="How much power does this stakeholder have in making decisions? (1=very little, 10=extremely high)">
+                </div>
+                <div class="form-group">
+                    <label for="stakeholder-impact">Impact (1-10) <span class="required">*</span></label>
+                    <input type="number" id="stakeholder-impact" min="1" max="10" required
+                           data-tooltip="How much is this stakeholder affected by your initiative? (1=very little, 10=extremely high)">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-relationship">Relationship Quality (1-10) <span class="required">*</span></label>
+                <input type="number" id="stakeholder-relationship" min="1" max="10" required
+                       data-tooltip="How strong is your relationship with this stakeholder? (1=very weak, 10=extremely strong)">
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-category">Category</label>
+                <select id="stakeholder-category"
+                        data-tooltip="Select a category that best describes this stakeholder's role or position">
+                    <option value="executive">Executive</option>
+                    <option value="manager">Manager</option>
+                    <option value="team-member">Team Member</option>
+                    <option value="customer">Customer</option>
+                    <option value="partner">Partner</option>
+                    <option value="regulator">Regulator</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-interests">Primary Interests</label>
+                <textarea id="stakeholder-interests"
+                          data-tooltip="What matters most to this stakeholder? What are their priorities, goals, and concerns?"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-contribution">Potential Contribution</label>
+                <textarea id="stakeholder-contribution"
+                          data-tooltip="How can this stakeholder help your initiative succeed? What unique skills, resources, or influence can they bring?"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-risk">Risk if Disengaged</label>
+                <textarea id="stakeholder-risk"
+                          data-tooltip="What could happen if this stakeholder becomes disengaged or opposes your initiative?"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-communication">Communication Style Preferences</label>
+                <textarea id="stakeholder-communication"
+                          data-tooltip="How does this stakeholder prefer to communicate? (e.g., detailed emails, brief calls, formal meetings, informal chats)"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-strategy">Engagement Strategy</label>
+                <textarea id="stakeholder-strategy"
+                          data-tooltip="Your approach to engaging with this stakeholder. How will you build/maintain the relationship?"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="stakeholder-measurement">Measurement Approach</label>
+                <textarea id="stakeholder-measurement"
+                          data-tooltip="How will you measure the effectiveness of your engagement with this stakeholder?"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" id="cancel-stakeholder-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </template>
+
+    <template id="map-form-template">
+        <form id="map-form">
+            <div class="form-group">
+                <label for="map-name">Map Name <span class="required">*</span></label>
+                <input type="text" id="map-name" required
+                       data-tooltip="Give your stakeholder map a descriptive name (e.g., 'Project Alpha Stakeholders')">
+            </div>
+            <div class="form-group">
+                <label for="map-description">Description</label>
+                <textarea id="map-description"
+                          data-tooltip="Provide context about this stakeholder map. What project, initiative, or department is it for?"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="button" id="cancel-map-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </template>
+
+    <template id="interaction-log-template">
+        <div class="interaction-log-container">
+            <h3>Interaction Log for <span id="interaction-stakeholder-name"></span></h3>
+            <div class="interaction-form">
+                <textarea id="new-interaction" placeholder="Record a new interaction..."></textarea>
+                <button id="add-interaction-btn" class="btn btn-primary">Add Entry</button>
+            </div>
+            <div id="interactions-list" class="interactions-list"></div>
+        </div>
+    </template>
+
+    <template id="map-advice-template">
+        <div class="advice-container">
+            <h3>Next Best Action Recommendations</h3>
+            <div id="advice-loading" class="loading-indicator">
+                <span>Generating recommendations...</span>
+            </div>
+            <div id="advice-content" class="advice-content hidden"></div>
+        </div>
+    </template>
+
+    <template id="stakeholder-advice-template">
+        <div class="advice-container">
+            <h3>Engagement Advice for <span id="advice-stakeholder-name"></span></h3>
+            <div id="stakeholder-advice-loading" class="loading-indicator">
+                <span>Generating advice...</span>
+            </div>
+            <div id="stakeholder-advice-content" class="advice-content hidden"></div>
+        </div>
+    </template>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-analytics-compat.js"></script>
+
+    <!-- JS Modules -->
+    <script src="firebase/firebaseConfig.js"></script>
+    <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
