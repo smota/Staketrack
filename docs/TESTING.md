@@ -37,6 +37,50 @@ npm test -- -t "auth"
 npm test -- tests/app.test.js
 ```
 
+## Continuous Integration
+
+StakeTrack includes GitHub Actions workflows that automatically run tests on each push and pull request:
+
+### GitHub Actions Test Workflow
+
+The test workflow is defined in `.github/workflows/test.yml` and:
+
+- Runs on every push to `main` and `development` branches
+- Runs on every pull request to `main` and `development` branches
+- Can be manually triggered with environment selection
+- Tests both development and production environments in parallel
+- Uploads test coverage to Codecov
+
+#### Test Workflow Configuration
+
+The test workflow:
+
+1. Checks out the repository code
+2. Sets up Node.js environment
+3. Installs dependencies
+4. Creates environment-specific configuration files
+5. Runs tests for both development and production configurations
+6. Uploads coverage reports with environment-specific flags
+
+#### Manually Triggering Tests
+
+To manually trigger the test workflow:
+
+1. Go to your GitHub repository
+2. Click on "Actions" tab
+3. Select "Test" workflow
+4. Click "Run workflow"
+5. Choose the environment (DEV or PRD)
+6. Click "Run workflow"
+
+### Environment Validation
+
+The `env-validate.yml` workflow validates environment configurations for both development and production:
+
+- Validates environment variables
+- Checks Firebase configuration files
+- Ensures proper targets are set up for each environment
+
 ## Test Structure
 
 StakeTrack tests are organized into the following categories:
@@ -171,9 +215,13 @@ The coverage report shows:
 - Branch coverage: Percentage of code branches (if/else, etc.) executed during tests
 - Statement coverage: Percentage of code statements executed during tests
 
-## Continuous Integration
+### Coverage in CI
 
-StakeTrack includes CI configurations in `.github/workflows` that run tests automatically on each push and pull request to ensure code quality.
+The GitHub Actions workflow uploads coverage reports to Codecov:
+
+- Each environment (development/production) has its own coverage report
+- Coverage reports are tagged with environment flags for filtering
+- Pull requests display coverage changes and comparisons
 
 ## Best Practices
 
@@ -186,6 +234,7 @@ When writing tests for StakeTrack, follow these best practices:
 5. **Keep Tests Fast**: Tests should run quickly to provide immediate feedback
 6. **Test Edge Cases**: Include tests for boundary conditions and error handling
 7. **Maintain Test Independence**: Tests should not depend on other tests or their order
+8. **Keep CI Green**: Always keep the CI test workflow passing on main and development branches
 
 ## Troubleshooting
 

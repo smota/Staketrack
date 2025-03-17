@@ -43,6 +43,43 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 ANTHROPIC_API_ENDPOINT=https://api.anthropic.com/v1/messages
 ```
 
+### Environment Validation
+
+StakeTrack includes an automated environment validation workflow in GitHub Actions (`env-validate.yml`) that checks:
+
+- Required environment variables are present
+- Firebase configuration files are valid
+- Hosting targets are properly configured
+
+This workflow runs automatically when:
+- Environment files (.env.*) are changed
+- Firebase configuration files are modified
+- Can be manually triggered from GitHub Actions
+
+If the validation fails, it indicates that your environment configuration needs attention before deployment.
+
+## GitHub Actions Secrets
+
+For CI/CD workflows to function properly, add the following secrets to your GitHub repository:
+
+```
+FIREBASE_TOKEN              # Firebase CI token
+FIREBASE_PROJECT_ID         # Firebase project ID (dev or prod depending on environment)
+FIREBASE_API_KEY            # Firebase API key
+FIREBASE_AUTH_DOMAIN        # Firebase auth domain
+FIREBASE_STORAGE_BUCKET     # Firebase storage bucket
+FIREBASE_MESSAGING_SENDER_ID # Firebase messaging sender ID
+FIREBASE_APP_ID             # Firebase app ID
+FIREBASE_MEASUREMENT_ID     # Firebase measurement ID
+ANTHROPIC_API_KEY           # Anthropic API key
+ANTHROPIC_API_ENDPOINT      # Anthropic API endpoint
+```
+
+To add these secrets:
+1. Go to your GitHub repository
+2. Click on "Settings" → "Secrets and variables" → "Actions"
+3. Click "New repository secret" and add each secret
+
 ## Firebase Configuration
 
 ### Firebase Projects Configuration

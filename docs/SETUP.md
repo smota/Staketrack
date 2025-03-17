@@ -73,6 +73,64 @@ StakeTrack uses Anthropic's Claude API for AI-powered recommendations:
      ```
    - Update `.env.production` with the same API key for production
 
+## GitHub Actions Setup
+
+StakeTrack uses GitHub Actions for CI/CD. To set up GitHub Actions:
+
+1. **Create GitHub Repository**:
+   - Create a new GitHub repository or use an existing one
+   - Push your StakeTrack code to the repository
+
+2. **Configure GitHub Secrets**:
+   
+   Add the following secrets to your GitHub repository:
+   
+   - Go to your GitHub repository
+   - Click on "Settings" → "Secrets and variables" → "Actions"
+   - Click "New repository secret" and add each of these secrets:
+
+   ```
+   FIREBASE_TOKEN              # Firebase CI token from 'firebase login:ci'
+   FIREBASE_PROJECT_ID         # Firebase project ID (dev or prod depending on environment)
+   FIREBASE_API_KEY            # Firebase API key
+   FIREBASE_AUTH_DOMAIN        # Firebase auth domain
+   FIREBASE_STORAGE_BUCKET     # Firebase storage bucket
+   FIREBASE_MESSAGING_SENDER_ID # Firebase messaging sender ID
+   FIREBASE_APP_ID             # Firebase app ID
+   FIREBASE_MEASUREMENT_ID     # Firebase measurement ID
+   ANTHROPIC_API_KEY           # Anthropic API key
+   ANTHROPIC_API_ENDPOINT      # Anthropic API endpoint
+   ```
+
+3. **Generate Firebase Token**:
+   
+   For CI/CD deployments, you need a Firebase CI token:
+   
+   ```bash
+   firebase login:ci
+   ```
+   
+   Use the generated token as the `FIREBASE_TOKEN` secret in GitHub.
+
+4. **Create Environment Settings**:
+   
+   Create separate environment settings for development and production:
+   
+   - Go to your GitHub repository
+   - Click on "Settings" → "Environments"
+   - Create "development" and "production" environments
+   - Add environment-specific secrets if needed
+
+5. **First Workflow Run**:
+   
+   The workflows will run automatically when you push to your repository. You can also run them manually:
+   
+   - Go to the "Actions" tab in your repository
+   - Select the workflow you want to run
+   - Click "Run workflow"
+   - Select the branch and options
+   - Click "Run workflow" again
+
 ## Other Dependencies
 
 Install all project dependencies:
@@ -94,3 +152,5 @@ npm run dev & npm run emulators
 ```
 
 You should be able to access the application at `http://localhost:5000` with all services running locally. 
+
+To verify GitHub Actions is set up correctly, make a small change and push it to your repository. The test workflow should run automatically. 

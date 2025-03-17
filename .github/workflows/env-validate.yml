@@ -1,0 +1,173 @@
+name: Environment Validation
+
+on:
+  push:
+    branches: [ main, development ]
+    paths:
+      - '.env.*'
+      - 'firebase.json'
+      - '.firebaserc'
+  pull_request:
+    branches: [ main, development ]
+    paths:
+      - '.env.*'
+      - 'firebase.json'
+      - '.firebaserc'
+  workflow_dispatch:
+
+jobs:
+  validate_dev:
+    name: Validate Development Environment
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Validate Development Environment Variables
+        run: |
+          if [ ! -f .env.development ]; then
+            echo "Creating .env.development file for validation"
+            cp .env.example .env.development || echo "ENVIRONMENT=DEV" > .env.development
+          fi
+          
+          node -e "
+            const fs = require('fs');
+            const dotenv = require('dotenv');
+            const path = '.env.development';
+            const result = dotenv.config({ path });
+            
+            if (result.error) {
+              console.error('Error loading environment file:', result.error);
+              process.exit(1);
+            }
+            
+            const requiredVars = [
+              'ENVIRONMENT',
+              'FIREBASE_API_KEY',
+              'FIREBASE_AUTH_DOMAIN',
+              'FIREBASE_PROJECT_ID',
+              'FIREBASE_STORAGE_BUCKET',
+              'FIREBASE_MESSAGING_SENDER_ID',
+              'FIREBASE_APP_ID',
+              'FIREBASE_MEASUREMENT_ID',
+            ];
+            
+            const missing = requiredVars.filter(v => !process.env[v]);
+            
+            if (missing.length > 0) {
+              console.error('Missing required environment variables in ' + path + ':', missing.join(', '));
+              console.log('Available vars:', Object.keys(process.env).filter(k => k.startsWith('FIREBASE_')).join(', '));
+              process.exit(1);
+            }
+            
+            console.log('Development environment validation successful!');
+          "
+      
+      - name: Validate Firebase Configuration
+        run: |
+          if [ -f firebase.json ]; then
+            echo "Validating firebase.json"
+            cat firebase.json | jq empty || (echo "Invalid firebase.json format" && exit 1)
+            
+            # Check for development target
+            if ! cat firebase.json | jq -e '.hosting | if type=="array" then map(select(.target=="development")) | length > 0 else .target=="development" end' > /dev/null; then
+              echo "Warning: Development target not found in firebase.json"
+            fi
+          else
+            echo "firebase.json not found. Skipping validation."
+          fi
+          
+          if [ -f .firebaserc ]; then
+            echo "Validating .firebaserc"
+            cat .firebaserc | jq empty || (echo "Invalid .firebaserc format" && exit 1)
+          else
+            echo ".firebaserc not found. Skipping validation."
+          fi
+          
+  validate_prod:
+    name: Validate Production Environment
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Validate Production Environment Variables
+        run: |
+          if [ ! -f .env.production ]; then
+            echo "Creating .env.production file for validation"
+            cp .env.example .env.production || echo "ENVIRONMENT=PRD" > .env.production
+          fi
+          
+          node -e "
+            const fs = require('fs');
+            const dotenv = require('dotenv');
+            const path = '.env.production';
+            const result = dotenv.config({ path });
+            
+            if (result.error) {
+              console.error('Error loading environment file:', result.error);
+              process.exit(1);
+            }
+            
+            const requiredVars = [
+              'ENVIRONMENT',
+              'FIREBASE_API_KEY',
+              'FIREBASE_AUTH_DOMAIN',
+              'FIREBASE_PROJECT_ID',
+              'FIREBASE_STORAGE_BUCKET',
+              'FIREBASE_MESSAGING_SENDER_ID',
+              'FIREBASE_APP_ID',
+              'FIREBASE_MEASUREMENT_ID',
+            ];
+            
+            const missing = requiredVars.filter(v => !process.env[v]);
+            
+            if (missing.length > 0) {
+              console.error('Missing required environment variables in ' + path + ':', missing.join(', '));
+              console.log('Available vars:', Object.keys(process.env).filter(k => k.startsWith('FIREBASE_')).join(', '));
+              process.exit(1);
+            }
+            
+            console.log('Production environment validation successful!');
+          "
+      
+      - name: Validate Firebase Configuration
+        run: |
+          if [ -f firebase.json ]; then
+            echo "Validating firebase.json"
+            cat firebase.json | jq empty || (echo "Invalid firebase.json format" && exit 1)
+            
+            # Check for production target
+            if ! cat firebase.json | jq -e '.hosting | if type=="array" then map(select(.target=="production")) | length > 0 else .target=="production" end' > /dev/null; then
+              echo "Warning: Production target not found in firebase.json"
+            fi
+          else
+            echo "firebase.json not found. Skipping validation."
+          fi
+          
+          if [ -f .firebaserc ]; then
+            echo "Validating .firebaserc"
+            cat .firebaserc | jq empty || (echo "Invalid .firebaserc format" && exit 1)
+          else
+            echo ".firebaserc not found. Skipping validation."
+          fi 
