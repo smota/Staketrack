@@ -30,6 +30,7 @@ StakeTrack comes with comprehensive documentation:
 - [Run and Debug Guide](docs/RUN_DEBUG.md) - How to run and debug the application during development
 - [Testing Guide](docs/TESTING.md) - Instructions for running tests and writing new ones
 - [Specifications](docs/spec/README.md) - Detailed functional specifications in EPIC → FEATURE → STORY format
+- [Test Specifications](docs/spec/tests/README.md) - Detailed test specifications aligned with EPICs and user stories
 
 ## Getting Started
 
