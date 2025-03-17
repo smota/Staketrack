@@ -4,6 +4,9 @@
  */
 import { env } from '../js/utils/environmentLoader.js';
 
+// Import Firebase
+import firebase from 'firebase';
+
 // Firebase configuration based on environment
 const firebaseConfig = {
   apiKey: env.FIREBASE_API_KEY,
@@ -15,25 +18,23 @@ const firebaseConfig = {
   measurementId: env.FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-
 // Initialize Firebase components based on environment
-const app = initializeApp(firebaseConfig);
-const analytics = env.ENVIRONMENT === 'PRD' ? getAnalytics(app) : null;
-const firestore = getFirestore(app);
-const auth = getAuth(app);
+let app;
+// Check if any Firebase apps have been initialized already
+if (!firebase.apps.length) {
+  app = firebase.initializeApp(firebaseConfig);
+} else {
+  app = firebase.app();
+}
+
+const analytics = env.ENVIRONMENT === 'PRD' ? firebase.analytics() : null;
+const firestore = firebase.firestore();
+const auth = firebase.auth();
 
 // Enable Firestore emulator for development if needed
 if (env.ENVIRONMENT === 'DEV' && env.USE_EMULATORS === 'true') {
-  const { connectFirestoreEmulator } = require('firebase/firestore');
-  connectFirestoreEmulator(firestore, 'localhost', 8080);
-  
-  const { connectAuthEmulator } = require('firebase/auth');
-  connectAuthEmulator(auth, 'http://localhost:9099');
+  firestore.useEmulator('localhost', 8080);
+  auth.useEmulator('http://localhost:9099');
 }
 
 export { app, analytics, firestore, auth };

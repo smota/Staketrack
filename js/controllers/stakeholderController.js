@@ -1,7 +1,7 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
+import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
  * Stakeholder Controller - Manages stakeholder-related operations
@@ -13,23 +13,23 @@ export class StakeholderController {
     this.modalContent = document.getElementById('modal-content');
     this.modalContainer = document.getElementById('modal-container');
     this.modalClose = document.getElementById('modal-close');
-    
+
     this.stakeholderFormTemplate = document.getElementById('stakeholder-form-template');
     this.interactionLogTemplate = document.getElementById('interaction-log-template');
     this.stakeholderAdviceTemplate = document.getElementById('stakeholder-advice-template');
-    
+
     this.currentStakeholderId = null;
-    
+
     this._initEventListeners();
   }
-  
+
   /**
    * Initialize the controller
    */
   init() {
     // Additional initialization if needed
   }
-  
+
   /**
    * Initialize event listeners
    * @private
@@ -38,27 +38,27 @@ export class StakeholderController {
     // Add stakeholder button
     document.getElementById('add-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm();
-      
+
       analytics.logEvent('add_stakeholder_clicked');
     });
-    
+
     // Modal close button
     this.modalClose.addEventListener('click', () => {
       this.hideModal();
     });
-    
+
     // Close modal when clicking outside
     this.modalContainer.addEventListener('click', (e) => {
       if (e.target === this.modalContainer) {
         this.hideModal();
       }
     });
-    
+
     // Show stakeholder details
     EventBus.on('stakeholder:show-details', (stakeholderId) => {
       this.showStakeholderDetails(stakeholderId);
     });
-    
+
     // ESC key to close modal
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.modalContainer.classList.contains('hidden')) {
@@ -66,7 +66,7 @@ export class StakeholderController {
       }
     });
   }
-  
+
   /**
    * Show the stakeholder form modal
    * @param {string} [stakeholderId] - Stakeholder ID to edit, or null for new stakeholder
@@ -74,17 +74,17 @@ export class StakeholderController {
   showStakeholderForm(stakeholderId = null) {
     const isEdit = !!stakeholderId;
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitle.textContent = isEdit ? 'Edit Stakeholder' : 'Add Stakeholder';
-    
+
     // Clone the form template
     const formContent = this.stakeholderFormTemplate.content.cloneNode(true);
     this.modalContent.innerHTML = '';
     this.modalContent.appendChild(formContent);
-    
+
     const form = document.getElementById('stakeholder-form');
-    
+
     // If editing, populate form with stakeholder data
     if (isEdit) {
       const stakeholder = dataService.getStakeholderById(stakeholderId);
@@ -102,27 +102,27 @@ export class StakeholderController {
         document.getElementById('stakeholder-measurement').value = stakeholder.measurement || '';
       }
     }
-    
+
     // Form submit handler
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       this._handleStakeholderFormSubmit(form, isEdit);
     });
-    
+
     // Cancel button handler
     document.getElementById('cancel-stakeholder-btn').addEventListener('click', () => {
       this.hideModal();
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
-    analytics.logEvent('stakeholder_form_opened', { 
+    analytics.logEvent('stakeholder_form_opened', {
       action: isEdit ? 'edit' : 'add'
     });
   }
-  
+
   /**
    * Handle stakeholder form submission
    * @param {HTMLFormElement} form - Form element
@@ -145,11 +145,11 @@ export class StakeholderController {
         strategy: document.getElementById('stakeholder-strategy').value,
         measurement: document.getElementById('stakeholder-measurement').value
       };
-      
+
       if (isEdit) {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.currentStakeholderId, formData);
-        
+
         analytics.logEvent('stakeholder_updated', {
           stakeholder_id: this.currentStakeholderId
         });
@@ -159,15 +159,15 @@ export class StakeholderController {
         if (!currentMap) {
           throw new Error('No map selected');
         }
-        
+
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
-        
+
         analytics.logEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });
       }
-      
+
       // Hide modal
       this.hideModal();
     } catch (error) {
@@ -175,7 +175,7 @@ export class StakeholderController {
       alert(`Error saving stakeholder: ${error.message}`);
     }
   }
-  
+
   /**
    * Show stakeholder details
    * @param {string} stakeholderId - Stakeholder ID
@@ -186,16 +186,16 @@ export class StakeholderController {
       console.error(`Stakeholder not found: ${stakeholderId}`);
       return;
     }
-    
+
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitle.textContent = stakeholder.name;
-    
+
     // Create details content
     const detailsContent = document.createElement('div');
     detailsContent.className = 'stakeholder-details';
-    
+
     // Add details HTML
     detailsContent.innerHTML = `
       <div class="stakeholder-info">
@@ -235,38 +235,38 @@ export class StakeholderController {
         </div>
       </div>
     `;
-    
+
     // Clear modal content and add details
     this.modalContent.innerHTML = '';
     this.modalContent.appendChild(detailsContent);
-    
+
     // Add event listeners for action buttons
     document.getElementById('edit-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm(stakeholderId);
     });
-    
+
     document.getElementById('delete-stakeholder-btn').addEventListener('click', () => {
       this._confirmDeleteStakeholder(stakeholderId);
     });
-    
+
     document.getElementById('log-interaction-btn').addEventListener('click', () => {
       this.showInteractionLog(stakeholderId);
     });
-    
+
     document.getElementById('get-advice-btn').addEventListener('click', () => {
       this.getStakeholderAdvice(stakeholderId);
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
     analytics.logEvent('stakeholder_details_viewed', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
   }
-  
+
   /**
    * Create a detail section HTML
    * @param {string} title - Section title
@@ -276,7 +276,7 @@ export class StakeholderController {
    */
   _createDetailSection(title, content) {
     if (!content) return '';
-    
+
     return `
       <div class="detail-section">
         <h4>${title}</h4>
@@ -284,7 +284,7 @@ export class StakeholderController {
       </div>
     `;
   }
-  
+
   /**
    * Format category for display
    * @param {string} category - Category slug
@@ -293,12 +293,12 @@ export class StakeholderController {
    */
   _formatCategory(category) {
     if (!category) return 'Other';
-    
+
     return category
       .replace(/-/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
   }
-  
+
   /**
    * Confirm and delete a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -307,12 +307,12 @@ export class StakeholderController {
   _confirmDeleteStakeholder(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     if (confirm(`Are you sure you want to delete "${stakeholder.name}"? This action cannot be undone.`)) {
       dataService.deleteStakeholder(stakeholderId)
         .then(() => {
           this.hideModal();
-          
+
           analytics.logEvent('stakeholder_deleted', {
             stakeholder_id: stakeholderId
           });
@@ -323,7 +323,7 @@ export class StakeholderController {
         });
     }
   }
-  
+
   /**
    * Show interaction log for a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -331,28 +331,28 @@ export class StakeholderController {
   showInteractionLog(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitle.textContent = `Interaction Log - ${stakeholder.name}`;
-    
+
     // Clone the interaction log template
     const logContent = this.interactionLogTemplate.content.cloneNode(true);
     this.modalContent.innerHTML = '';
     this.modalContent.appendChild(logContent);
-    
+
     // Set stakeholder name
     document.getElementById('interaction-stakeholder-name').textContent = stakeholder.name;
-    
+
     // Populate interactions list
     this._renderInteractionsList(stakeholder);
-    
+
     // Add event listener for adding new interaction
     document.getElementById('add-interaction-btn').addEventListener('click', () => {
       this._addNewInteraction(stakeholderId);
     });
-    
+
     // Enter key in textarea to submit
     document.getElementById('new-interaction').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.ctrlKey) {
@@ -360,17 +360,17 @@ export class StakeholderController {
         this._addNewInteraction(stakeholderId);
       }
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
     analytics.logEvent('interaction_log_opened', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
   }
-  
+
   /**
    * Render the interactions list for a stakeholder
    * @param {Stakeholder} stakeholder - Stakeholder object
@@ -379,30 +379,30 @@ export class StakeholderController {
   _renderInteractionsList(stakeholder) {
     const interactionsList = document.getElementById('interactions-list');
     interactionsList.innerHTML = '';
-    
+
     const interactions = stakeholder.getLatestInteractions();
-    
+
     if (interactions.length === 0) {
       interactionsList.innerHTML = '<p class="empty-state">No interactions recorded yet.</p>';
       return;
     }
-    
+
     interactions.forEach(interaction => {
       const entryElement = document.createElement('div');
       entryElement.className = 'interaction-entry';
-      
+
       const date = new Date(interaction.date);
       const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-      
+
       entryElement.innerHTML = `
         <div class="interaction-date">${formattedDate}</div>
         <p class="interaction-text">${interaction.text}</p>
       `;
-      
+
       interactionsList.appendChild(entryElement);
     });
   }
-  
+
   /**
    * Add a new interaction for a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -411,19 +411,19 @@ export class StakeholderController {
   async _addNewInteraction(stakeholderId) {
     const textArea = document.getElementById('new-interaction');
     const text = textArea.value.trim();
-    
+
     if (!text) return;
-    
+
     try {
       await dataService.addInteraction(stakeholderId, text);
-      
+
       // Clear textarea
       textArea.value = '';
-      
+
       // Re-render interactions list
       const stakeholder = dataService.getStakeholderById(stakeholderId);
       this._renderInteractionsList(stakeholder);
-      
+
       // Track analytics
       analytics.logEvent('interaction_added', {
         stakeholder_id: stakeholderId
@@ -433,7 +433,7 @@ export class StakeholderController {
       alert(`Error adding interaction: ${error.message}`);
     }
   }
-  
+
   /**
    * Get AI-powered engagement advice for a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -441,37 +441,37 @@ export class StakeholderController {
   async getStakeholderAdvice(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     // Set modal title
     this.modalTitle.textContent = `Engagement Advice for ${stakeholder.name}`;
-    
+
     // Clone the advice template
     const adviceContent = this.stakeholderAdviceTemplate.content.cloneNode(true);
     this.modalContent.innerHTML = '';
     this.modalContent.appendChild(adviceContent);
-    
+
     // Set stakeholder name
     document.getElementById('advice-stakeholder-name').textContent = stakeholder.name;
-    
+
     // Show loading state
     document.getElementById('stakeholder-advice-loading').classList.remove('hidden');
     document.getElementById('stakeholder-advice-content').classList.add('hidden');
-    
+
     // Show modal
     this.showModal();
-    
+
     try {
       // Get advice from LLM service
       const advice = await llmService.getStakeholderAdvice(stakeholder);
-      
+
       // Hide loading, show content
       document.getElementById('stakeholder-advice-loading').classList.add('hidden');
       document.getElementById('stakeholder-advice-content').classList.remove('hidden');
-      
+
       // Set advice content with markdown formatting
       const adviceContent = document.getElementById('stakeholder-advice-content');
       adviceContent.innerHTML = this._markdownToHtml(advice);
-      
+
       // Track analytics
       analytics.logEvent('stakeholder_advice_generated', {
         stakeholder_id: stakeholderId,
@@ -479,7 +479,7 @@ export class StakeholderController {
       });
     } catch (error) {
       console.error('Error getting stakeholder advice:', error);
-      
+
       // Hide loading, show error
       document.getElementById('stakeholder-advice-loading').classList.add('hidden');
       document.getElementById('stakeholder-advice-content').classList.remove('hidden');
@@ -490,7 +490,7 @@ export class StakeholderController {
           <p>Please check your API key settings and try again.</p>
         </div>
       `;
-      
+
       // Track error
       analytics.logEvent('stakeholder_advice_error', {
         stakeholder_id: stakeholderId,
@@ -498,7 +498,7 @@ export class StakeholderController {
       });
     }
   }
-  
+
   /**
    * Convert markdown to HTML
    * @param {string} markdown - Markdown text
@@ -507,14 +507,14 @@ export class StakeholderController {
    */
   _markdownToHtml(markdown) {
     if (!markdown) return '';
-    
+
     // Convert headers
     let html = markdown
       .replace(/^# (.*$)/gm, '<h2>$1</h2>')
       .replace(/^## (.*$)/gm, '<h3>$1</h3>')
       .replace(/^### (.*$)/gm, '<h4>$1</h4>')
       .replace(/^#### (.*$)/gm, '<h5>$1</h5>');
-    
+
     // Convert lists
     html = html
       .replace(/^\s*\n\* (.*)/gm, '<ul>\n<li>$1</li>')
@@ -527,20 +527,20 @@ export class StakeholderController {
       .replace(/<\/ol>\s*\n<ol>/g, '')
       .replace(/<\/li>\s*\n<\/ul>/g, '</li></ul>')
       .replace(/<\/li>\s*\n<\/ol>/g, '</li></ol>');
-    
+
     // Convert bold and italic
     html = html
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
       .replace(/\_(.*?)\_/g, '<em>$1</em>');
-    
+
     // Convert line breaks
     html = html.replace(/\n/g, '<br>');
-    
+
     return html;
   }
-  
+
   /**
    * Show the modal
    */
@@ -550,7 +550,7 @@ export class StakeholderController {
       this.modalContainer.classList.add('visible');
     }, 10);
   }
-  
+
   /**
    * Hide the modal
    */

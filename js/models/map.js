@@ -53,12 +53,12 @@ export class StakeholderMap {
   removeStakeholder(stakeholderId) {
     const initialLength = this.stakeholders.length;
     this.stakeholders = this.stakeholders.filter(s => s.id !== stakeholderId);
-    
+
     if (this.stakeholders.length !== initialLength) {
       this.updated = new Date().toISOString();
       return true;
     }
-    
+
     return false;
   }
 
@@ -82,14 +82,14 @@ export class StakeholderMap {
       q3: [],
       q4: []
     };
-    
+
     this.stakeholders.forEach(stakeholder => {
       const quadrant = stakeholder.getQuadrant();
       if (quadrant) {
         result[`q${quadrant}`].push(stakeholder);
       }
     });
-    
+
     return result;
   }
 
@@ -99,7 +99,7 @@ export class StakeholderMap {
    */
   getStakeholdersByCategory() {
     const result = {};
-    
+
     this.stakeholders.forEach(stakeholder => {
       const category = stakeholder.category || 'other';
       if (!result[category]) {
@@ -107,7 +107,7 @@ export class StakeholderMap {
       }
       result[category].push(stakeholder);
     });
-    
+
     return result;
   }
 
@@ -119,7 +119,7 @@ export class StakeholderMap {
     const stakeholdersCount = this.stakeholders.length;
     const byQuadrant = this.getStakeholdersByQuadrant();
     const byCategory = this.getStakeholdersByCategory();
-    
+
     // Calculate average relationship quality
     let totalRelationship = 0;
     let relationshipCount = 0;
@@ -129,25 +129,25 @@ export class StakeholderMap {
         relationshipCount++;
       }
     });
-    
-    const avgRelationship = relationshipCount > 0 
-      ? (totalRelationship / relationshipCount).toFixed(1) 
+
+    const avgRelationship = relationshipCount > 0
+      ? (totalRelationship / relationshipCount).toFixed(1)
       : 0;
-    
+
     // Count stakeholders by relationship quality
     const relationshipCounts = {
       strong: 0,
       medium: 0,
       weak: 0
     };
-    
+
     this.stakeholders.forEach(stakeholder => {
       const quality = stakeholder.getRelationshipQuality();
       if (quality) {
         relationshipCounts[quality]++;
       }
     });
-    
+
     return {
       stakeholdersCount,
       quadrantCounts: {
@@ -164,7 +164,7 @@ export class StakeholderMap {
       relationshipCounts
     };
   }
-  
+
   /**
    * Generates an LLM-friendly context for map-level operations
    * @param {number} interactionLimit - Number of interactions to include per stakeholder
@@ -172,7 +172,7 @@ export class StakeholderMap {
    */
   toLLMContext(interactionLimit = 3) {
     const stats = this.getStatistics();
-    
+
     let context = `STAKEHOLDER MAP: ${this.name}\n`;
     if (this.description) context += `Description: ${this.description}\n`;
     context += `\nSTATISTICS:\n`;
@@ -182,22 +182,22 @@ export class StakeholderMap {
     context += `- Meet Their Needs (Q2): ${stats.quadrantCounts.q2}\n`;
     context += `- Show Consideration (Q3): ${stats.quadrantCounts.q3}\n`;
     context += `- Keep Satisfied (Q4): ${stats.quadrantCounts.q4}\n\n`;
-    
+
     context += `STAKEHOLDERS:\n\n`;
-    
+
     // Sort stakeholders by quadrant priority (Q1, Q4, Q2, Q3)
     const sortedStakeholders = [...this.stakeholders].sort((a, b) => {
       const quadrantPriority = { 1: 0, 4: 1, 2: 2, 3: 3 };
       const aQuadrant = a.getQuadrant() || 3;
       const bQuadrant = b.getQuadrant() || 3;
-      
+
       return quadrantPriority[aQuadrant] - quadrantPriority[bQuadrant];
     });
-    
+
     sortedStakeholders.forEach(stakeholder => {
       context += stakeholder.toLLMContext(interactionLimit) + '\n---\n\n';
     });
-    
+
     return context;
   }
 
@@ -224,3 +224,4 @@ export class StakeholderMap {
   static fromObject(data) {
     return new StakeholderMap(data);
   }
+}

@@ -76,34 +76,36 @@ function executeCommand(command, silent = false) {
  */
 function deployToFirebase(environment, option) {
   console.log(`\n🚀 Starting deployment to ${environment} environment`);
-  
+
   // Set Firebase project
   executeCommand(`firebase use ${environment}`);
-  
+
   // Build application
-  const buildCmd = environment === ENVIRONMENTS.DEV ? 
-    'npm run build:dev' : 
+  const buildCmd = environment === ENVIRONMENTS.DEV ?
+    'npm run build:dev' :
     'npm run build:prod';
-  
+
   console.log('\n📦 Building application...');
   executeCommand(buildCmd);
-  
+
   // Determine deployment command
   let deployCmd = 'firebase deploy';
-  
+
   if (option !== DEPLOYMENT_OPTIONS.ALL) {
     deployCmd += ` --only ${option}`;
   }
-  
-  // Add target for hosting
+
+  // Add target for hosting if needed
   if (option === DEPLOYMENT_OPTIONS.HOSTING || option === DEPLOYMENT_OPTIONS.ALL) {
-    deployCmd += ` --hosting ${environment}`;
+    // Map environment to target
+    const target = environment === ENVIRONMENTS.DEV ? 'development' : 'production';
+    deployCmd += ` --only hosting:${target}`;
   }
-  
+
   // Execute deployment
   console.log(`\n🔥 Deploying to Firebase (${environment})...`);
   executeCommand(deployCmd);
-  
+
   console.log(`\n✅ Deployment to ${environment} completed successfully!`);
 }
 
@@ -116,7 +118,7 @@ function confirmDeployment() {
     rl.close();
     return;
   }
-  
+
   rl.question(`\n⚠️ Are you sure you want to deploy to ${environment} environment? (y/n) `, (answer) => {
     if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
       deployToFirebase(environment, option);

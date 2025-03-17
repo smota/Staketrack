@@ -1,4 +1,4 @@
-import { auth, firestore, analytics } from '../../../firebase/firebaseConfig.js';
+import { auth, firestore, analytics } from '../../firebase/firebaseConfig.js';
 import { EventBus } from '../utils/eventBus.js';
 
 /**
@@ -8,11 +8,11 @@ export class AuthService {
   constructor() {
     this.currentUser = null;
     this.initialized = false;
-    
+
     // Initialize authentication state
     this._initAuth();
   }
-  
+
   /**
    * Initialize the authentication state listener
    * @private
@@ -21,7 +21,7 @@ export class AuthService {
     auth.onAuthStateChanged(user => {
       this.currentUser = user;
       this.initialized = true;
-      
+
       // Notify the application of auth state change
       if (user) {
         EventBus.emit('auth:login', user);
@@ -30,12 +30,12 @@ export class AuthService {
       } else {
         EventBus.emit('auth:logout');
       }
-      
+
       // Emit initialized event once
       EventBus.emit('auth:initialized', user);
     });
   }
-  
+
   /**
    * Get the current authenticated user
    * @returns {Object|null} - Firebase user object or null if not authenticated
@@ -43,7 +43,7 @@ export class AuthService {
   getCurrentUser() {
     return this.currentUser;
   }
-  
+
   /**
    * Check if a user is authenticated
    * @returns {boolean} - True if user is authenticated, false otherwise
@@ -51,7 +51,7 @@ export class AuthService {
   isAuthenticated() {
     return !!this.currentUser;
   }
-  
+
   /**
    * Sign in with email and password
    * @param {string} email - User email
@@ -68,7 +68,7 @@ export class AuthService {
       throw error;
     }
   }
-  
+
   /**
    * Create a new account with email and password
    * @param {string} email - User email
@@ -79,17 +79,17 @@ export class AuthService {
     try {
       const result = await auth.createUserWithEmailAndPassword(email, password);
       analytics.logEvent('sign_up', { method: 'email' });
-      
+
       // Create user document in Firestore
       await this._createUserDocument(result.user);
-      
+
       return result.user;
     } catch (error) {
       console.error('Create account error:', error);
       throw error;
     }
   }
-  
+
   /**
    * Sign in with Google provider
    * @returns {Promise} - Authentication promise
@@ -99,17 +99,17 @@ export class AuthService {
       const provider = new firebase.auth.GoogleAuthProvider();
       const result = await auth.signInWithPopup(provider);
       analytics.logEvent('login_method', { method: 'google' });
-      
+
       // Create user document if it doesn't exist
       await this._createUserDocument(result.user);
-      
+
       return result.user;
     } catch (error) {
       console.error('Google sign in error:', error);
       throw error;
     }
   }
-  
+
   /**
    * Sign in with Microsoft provider
    * @returns {Promise} - Authentication promise
@@ -119,17 +119,17 @@ export class AuthService {
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
       const result = await auth.signInWithPopup(provider);
       analytics.logEvent('login_method', { method: 'microsoft' });
-      
+
       // Create user document if it doesn't exist
       await this._createUserDocument(result.user);
-      
+
       return result.user;
     } catch (error) {
       console.error('Microsoft sign in error:', error);
       throw error;
     }
   }
-  
+
   /**
    * Sign out the current user
    * @returns {Promise} - Sign out promise
@@ -143,7 +143,7 @@ export class AuthService {
       throw error;
     }
   }
-  
+
   /**
    * Create a user document in Firestore if it doesn't exist
    * @param {Object} user - Firebase user object
@@ -154,7 +154,7 @@ export class AuthService {
     try {
       // Check if user document already exists
       const userDoc = await firestore.collection('users').doc(user.uid).get();
-      
+
       if (!userDoc.exists) {
         // Create new user document
         await firestore.collection('users').doc(user.uid).set({
@@ -175,7 +175,7 @@ export class AuthService {
       throw error;
     }
   }
-  
+
   /**
    * Wait for the authentication to be initialized
    * @returns {Promise} - Promise that resolves when auth is initialized
