@@ -1,7 +1,7 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
-import { analytics } from '../../firebase/firebaseConfig.js';
+// import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
  * Stakeholder Controller - Manages stakeholder-related operations
@@ -19,6 +19,9 @@ export class StakeholderController {
     this.stakeholderAdviceTemplate = document.getElementById('stakeholder-advice-template');
 
     this.currentStakeholderId = null;
+
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
 
     this._initEventListeners();
   }
@@ -39,7 +42,7 @@ export class StakeholderController {
     document.getElementById('add-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm();
 
-      analytics.logEvent('add_stakeholder_clicked');
+      this.analytics.logEvent('add_stakeholder_clicked');
     });
 
     // Modal close button
@@ -118,7 +121,7 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    analytics.logEvent('stakeholder_form_opened', {
+    this.analytics.logEvent('stakeholder_form_opened', {
       action: isEdit ? 'edit' : 'add'
     });
   }
@@ -150,7 +153,7 @@ export class StakeholderController {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.currentStakeholderId, formData);
 
-        analytics.logEvent('stakeholder_updated', {
+        this.analytics.logEvent('stakeholder_updated', {
           stakeholder_id: this.currentStakeholderId
         });
       } else {
@@ -162,7 +165,7 @@ export class StakeholderController {
 
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
 
-        analytics.logEvent('stakeholder_added', {
+        this.analytics.logEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });
@@ -261,7 +264,7 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    analytics.logEvent('stakeholder_details_viewed', {
+    this.analytics.logEvent('stakeholder_details_viewed', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
@@ -313,7 +316,7 @@ export class StakeholderController {
         .then(() => {
           this.hideModal();
 
-          analytics.logEvent('stakeholder_deleted', {
+          this.analytics.logEvent('stakeholder_deleted', {
             stakeholder_id: stakeholderId
           });
         })
@@ -365,7 +368,7 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    analytics.logEvent('interaction_log_opened', {
+    this.analytics.logEvent('interaction_log_opened', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
@@ -425,7 +428,7 @@ export class StakeholderController {
       this._renderInteractionsList(stakeholder);
 
       // Track analytics
-      analytics.logEvent('interaction_added', {
+      this.analytics.logEvent('interaction_added', {
         stakeholder_id: stakeholderId
       });
     } catch (error) {
@@ -473,7 +476,7 @@ export class StakeholderController {
       adviceContent.innerHTML = this._markdownToHtml(advice);
 
       // Track analytics
-      analytics.logEvent('stakeholder_advice_generated', {
+      this.analytics.logEvent('stakeholder_advice_generated', {
         stakeholder_id: stakeholderId,
         stakeholder_name: stakeholder.name
       });
@@ -492,7 +495,7 @@ export class StakeholderController {
       `;
 
       // Track error
-      analytics.logEvent('stakeholder_advice_error', {
+      this.analytics.logEvent('stakeholder_advice_error', {
         stakeholder_id: stakeholderId,
         error_message: error.message
       });

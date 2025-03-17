@@ -2,7 +2,19 @@
  * Firebase configuration
  * Replace with your own Firebase project configuration
  */
-import { env } from '../js/utils/environmentLoader.js';
+
+// Get environment variables from window object
+const env = window.ENV || {
+  ENVIRONMENT: 'DEV',
+  FIREBASE_API_KEY: '',
+  FIREBASE_AUTH_DOMAIN: '',
+  FIREBASE_PROJECT_ID: '',
+  FIREBASE_STORAGE_BUCKET: '',
+  FIREBASE_MESSAGING_SENDER_ID: '',
+  FIREBASE_APP_ID: '',
+  FIREBASE_MEASUREMENT_ID: '',
+  USE_EMULATORS: 'false'
+};
 
 // Import Firebase
 import firebase from 'firebase';
@@ -21,7 +33,7 @@ const firebaseConfig = {
 // Initialize Firebase components based on environment
 let app;
 // Check if any Firebase apps have been initialized already
-if (!firebase.apps.length) {
+if (!firebase.apps?.length) {
   app = firebase.initializeApp(firebaseConfig);
 } else {
   app = firebase.app();
@@ -37,10 +49,14 @@ if (env.ENVIRONMENT === 'DEV' && env.USE_EMULATORS === 'true') {
   auth.useEmulator('http://localhost:9099');
 }
 
-export { app, analytics, firestore, auth };
+// Make Firebase components available globally
+window.firebaseApp = app;
+window.firebaseAuth = auth;
+window.firebaseFirestore = firestore;
+window.firebaseAnalytics = analytics;
 
 // Export configuration for debugging purposes
-export const currentConfig = {
+window.firebaseConfig = {
   environment: env.ENVIRONMENT,
   projectId: firebaseConfig.projectId
 };

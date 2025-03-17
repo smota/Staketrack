@@ -1,6 +1,6 @@
 import { EventBus } from '../utils/eventBus.js';
 import authService from '../services/authService.js';
-import { analytics } from '../../firebase/firebaseConfig.js';
+// import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
  * Authentication Controller - Manages authentication UI and interactions
@@ -36,7 +36,7 @@ export class AuthController {
     // Form submit
     this.authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      await this._handleEmailAuth();
+      await this._handleEmailAuth(e);
     });
 
     // Toggle sign in/sign up
@@ -78,48 +78,57 @@ export class AuthController {
    * Handle email authentication
    * @private
    */
-  async _handleEmailAuth() {
-    const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
+  async _handleEmailAuth(event) {
+    event.preventDefault();
 
-    if (!email || !password) {
-      alert('Please enter email and password.');
-      return;
-    }
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
+
+    // Disable form submission
+    const submitButton = this.authForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = this.isSignUp ? 'Signing up...' : 'Signing in...';
 
     try {
-      // Show loading state
-      this.emailAuthBtn.disabled = true;
-      this.emailAuthBtn.textContent = this.isSignUp ? 'Creating Account...' : 'Signing In...';
+      // Get form values
+      const email = this.authForm.querySelector('#auth-email').value;
+      const password = this.authForm.querySelector('#auth-password').value;
 
       if (this.isSignUp) {
         // Create account
         await authService.createUserWithEmailPassword(email, password);
 
-        analytics.logEvent('sign_up', { method: 'email' });
+        if (analytics) {
+          analytics.logEvent('sign_up', { method: 'email' });
+        }
       } else {
         // Sign in
         await authService.signInWithEmailPassword(email, password);
 
-        analytics.logEvent('login', { method: 'email' });
+        if (analytics) {
+          analytics.logEvent('login', { method: 'email' });
+        }
       }
 
       // Reset form
       this.authForm.reset();
-
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Email authentication error:', error);
+
+      // Show error to user
       alert(`Authentication error: ${error.message}`);
 
-      analytics.logEvent('auth_error', {
-        method: 'email',
-        error_message: error.message,
-        is_signup: this.isSignUp
-      });
+      if (analytics) {
+        analytics.logEvent('auth_error', {
+          method: 'email',
+          error_message: error.message,
+          is_signup: this.isSignUp
+        });
+      }
     } finally {
       // Reset button state
-      this.emailAuthBtn.disabled = false;
-      this.emailAuthBtn.textContent = this.isSignUp ? 'Sign Up' : 'Sign In';
+      submitButton.disabled = false;
+      submitButton.textContent = this.isSignUp ? 'Sign Up' : 'Sign In';
     }
   }
 
@@ -128,26 +137,34 @@ export class AuthController {
    * @private
    */
   async _handleGoogleAuth() {
-    try {
-      // Show loading state
-      this.googleAuthBtn.disabled = true;
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
 
+    // Disable button
+    this.googleAuthBtn.disabled = true;
+
+    try {
+      // Sign in with Google
       await authService.signInWithGoogle();
 
-      analytics.logEvent('login', { method: 'google' });
+      if (analytics) {
+        analytics.logEvent('login', { method: 'google' });
+      }
     } catch (error) {
       console.error('Google authentication error:', error);
 
-      // Only show alert if it's not a user cancel
+      // Handle user cancellation vs. error
       if (error.code !== 'auth/cancelled-popup-request' &&
         error.code !== 'auth/popup-closed-by-user') {
         alert(`Google authentication error: ${error.message}`);
       }
 
-      analytics.logEvent('auth_error', {
-        method: 'google',
-        error_message: error.message
-      });
+      if (analytics) {
+        analytics.logEvent('auth_error', {
+          method: 'google',
+          error_message: error.message
+        });
+      }
     } finally {
       // Reset button state
       this.googleAuthBtn.disabled = false;
@@ -159,26 +176,34 @@ export class AuthController {
    * @private
    */
   async _handleMicrosoftAuth() {
-    try {
-      // Show loading state
-      this.microsoftAuthBtn.disabled = true;
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
 
+    // Disable button
+    this.microsoftAuthBtn.disabled = true;
+
+    try {
+      // Sign in with Microsoft
       await authService.signInWithMicrosoft();
 
-      analytics.logEvent('login', { method: 'microsoft' });
+      if (analytics) {
+        analytics.logEvent('login', { method: 'microsoft' });
+      }
     } catch (error) {
       console.error('Microsoft authentication error:', error);
 
-      // Only show alert if it's not a user cancel
+      // Handle user cancellation vs. error
       if (error.code !== 'auth/cancelled-popup-request' &&
         error.code !== 'auth/popup-closed-by-user') {
         alert(`Microsoft authentication error: ${error.message}`);
       }
 
-      analytics.logEvent('auth_error', {
-        method: 'microsoft',
-        error_message: error.message
-      });
+      if (analytics) {
+        analytics.logEvent('auth_error', {
+          method: 'microsoft',
+          error_message: error.message
+        });
+      }
     } finally {
       // Reset button state
       this.microsoftAuthBtn.disabled = false;

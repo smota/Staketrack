@@ -4,7 +4,8 @@ import mapController from './controllers/mapController.js';
 import stakeholderController from './controllers/stakeholderController.js';
 import tooltipService from './services/tooltipService.js';
 import telemetryService from './services/telemetryService.js';
-import { analytics } from '../firebase/firebaseConfig.js';
+// Import from global variables instead
+// import { analytics } from '../firebase/firebaseConfig.js';
 import { config } from './config.js';
 import { env } from './utils/environmentLoader.js';
 
@@ -27,6 +28,9 @@ class StakeTrackApp {
   async init() {
     try {
       console.log(`Initializing StakeTrack application in ${env.ENVIRONMENT} environment...`);
+
+      // Access analytics from window
+      const analytics = window.firebaseAnalytics;
 
       // Initialize OpenTelemetry
       telemetryService.init();

@@ -1,7 +1,7 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
-import { analytics } from '../../firebase/firebaseConfig.js';
+// import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
  * Map Controller - Manages map-related operations
@@ -17,6 +17,9 @@ export class MapController {
     this.mapAdviceTemplate = document.getElementById('map-advice-template');
 
     this.currentMapId = null;
+
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
 
     this._initEventListeners();
   }
@@ -125,7 +128,7 @@ export class MapController {
     this.showModal();
 
     // Track analytics
-    analytics.logEvent('map_form_opened', {
+    this.analytics.logEvent('map_form_opened', {
       action: isEdit ? 'edit' : 'create'
     });
   }
@@ -148,14 +151,14 @@ export class MapController {
         // Update existing map
         await dataService.updateMap(this.currentMapId, formData);
 
-        analytics.logEvent('map_updated', {
+        this.analytics.logEvent('map_updated', {
           map_id: this.currentMapId
         });
       } else {
         // Create new map
         const map = await dataService.createMap(formData);
 
-        analytics.logEvent('map_created', {
+        this.analytics.logEvent('map_created', {
           map_id: map.id
         });
       }
@@ -208,7 +211,7 @@ export class MapController {
     this.showModal();
 
     // Track analytics
-    analytics.logEvent('import_form_opened');
+    this.analytics.logEvent('import_form_opened');
   }
 
   /**
@@ -237,7 +240,7 @@ export class MapController {
         this.hideModal();
 
         // Track analytics
-        analytics.logEvent('map_imported', {
+        this.analytics.logEvent('map_imported', {
           file_name: file.name,
           file_size: file.size
         });
@@ -288,7 +291,7 @@ export class MapController {
       }, 100);
 
       // Track analytics
-      analytics.logEvent('map_exported', {
+      this.analytics.logEvent('map_exported', {
         map_id: currentMap.id,
         stakeholders_count: currentMap.stakeholders.length
       });
@@ -342,7 +345,7 @@ export class MapController {
       adviceContent.innerHTML = this._markdownToHtml(recommendations);
 
       // Track analytics
-      analytics.logEvent('map_recommendations_generated', {
+      this.analytics.logEvent('map_recommendations_generated', {
         map_id: currentMap.id,
         stakeholders_count: currentMap.stakeholders.length
       });
@@ -361,7 +364,7 @@ export class MapController {
       `;
 
       // Track error
-      analytics.logEvent('map_recommendations_error', {
+      this.analytics.logEvent('map_recommendations_error', {
         map_id: currentMap.id,
         error_message: error.message
       });

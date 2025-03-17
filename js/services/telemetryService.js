@@ -1,4 +1,4 @@
-import { auth } from '../../firebase/firebaseConfig.js';
+// import { auth } from '../../firebase/firebaseConfig.js';
 
 // OpenTelemetry imports
 import {
@@ -41,8 +41,16 @@ const LogLevel = {
   FATAL: 'FATAL'
 };
 
-class TelemetryService {
+export class TelemetryService {
   constructor() {
+    this.initialized = false;
+    this.tracerProvider = null;
+    this.meterProvider = null;
+    this.loggerProvider = null;
+
+    // Get Firebase auth from window
+    this.auth = window.firebaseAuth;
+
     this.tracer = null;
     this.meter = null;
     this.logger = null;
@@ -198,10 +206,10 @@ class TelemetryService {
     return this.tracer.startActiveSpan(name, async (span) => {
       try {
         // Add user context if authenticated
-        if (auth.currentUser) {
+        if (this.auth.currentUser) {
           span.setAttributes({
-            'user.id': auth.currentUser.uid,
-            'user.email': auth.currentUser.email,
+            'user.id': this.auth.currentUser.uid,
+            'user.email': this.auth.currentUser.email,
           });
         }
 
@@ -258,9 +266,9 @@ class TelemetryService {
   log(level, message, attributes = {}) {
     // Add user context if authenticated
     const logAttributes = { ...attributes };
-    if (auth.currentUser) {
-      logAttributes.userId = auth.currentUser.uid;
-      logAttributes.userEmail = auth.currentUser.email;
+    if (this.auth.currentUser) {
+      logAttributes.userId = this.auth.currentUser.uid;
+      logAttributes.userEmail = this.auth.currentUser.email;
     }
 
     this.logger.emit({

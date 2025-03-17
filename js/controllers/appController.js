@@ -1,7 +1,7 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import authService from '../services/authService.js';
-import { analytics } from '../../firebase/firebaseConfig.js';
+// import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
  * Application Controller - Main application coordinator
@@ -47,12 +47,15 @@ export class AppController {
    * @private
    */
   _initAnalytics() {
-    // Track app initialization
-    analytics.logEvent('app_initialized');
+    // Access analytics from window
+    const analytics = window.firebaseAnalytics;
+    if (analytics) {
+      analytics.logEvent('app_initialized');
 
-    // Track user authentication status
-    if (authService.isAuthenticated()) {
-      analytics.setUserId(authService.getCurrentUser().uid);
+      // Set user ID if authenticated
+      if (authService.isAuthenticated()) {
+        analytics.setUserId(authService.getCurrentUser().uid);
+      }
     }
   }
 
@@ -119,9 +122,12 @@ export class AppController {
   }
 
   /**
-   * Skip authentication and continue as anonymous user
+   * Skip authentication and proceed as guest
    */
   skipAuth() {
+    // Access analytics from window
+    const analytics = window.firebaseAnalytics;
+
     this._updateAuthUI(null);
 
     // Check if there are any maps
@@ -139,7 +145,10 @@ export class AppController {
       this.showView('dashboard');
     }
 
-    analytics.logEvent('skip_auth');
+    // Log skip auth event
+    if (analytics) {
+      analytics.logEvent('skip_auth');
+    }
   }
 
   /**
@@ -263,10 +272,13 @@ export class AppController {
   }
 
   /**
-   * Show a specific view
-   * @param {string} viewName - Name of the view to show ('auth', 'dashboard', 'map')
+   * Show a specific view and hide others
+   * @param {string} viewName - The name of the view to show
    */
   showView(viewName) {
+    // Access analytics from window
+    const analytics = window.firebaseAnalytics;
+
     // Hide all views
     Object.values(this.views).forEach(view => {
       view.classList.add('hidden');
@@ -278,7 +290,9 @@ export class AppController {
       this.currentView = viewName;
 
       // Track view change
-      analytics.logEvent('view_change', { view: viewName });
+      if (analytics) {
+        analytics.logEvent('view_change', { view: viewName });
+      }
 
       // Emit event for view change
       EventBus.emit('view:changed', viewName);

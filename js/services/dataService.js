@@ -1,4 +1,4 @@
-import { firestore } from '../../firebase/firebaseConfig.js';
+// import { firestore } from '../../firebase/firebaseConfig.js';
 import { Stakeholder } from '../models/stakeholder.js';
 import { StakeholderMap } from '../models/map.js';
 import { EventBus } from '../utils/eventBus.js';
@@ -13,6 +13,9 @@ export class DataService {
     this.currentMapId = null;
     this.maps = new Map(); // Map ID -> StakeholderMap instance
     this._initSync();
+
+    // Get Firebase Firestore from window
+    this.firestore = window.firebaseFirestore;
   }
 
   /**
@@ -125,7 +128,7 @@ export class DataService {
    */
   async _fetchCloudMaps(userId) {
     try {
-      const snapshot = await firestore.collection('maps')
+      const snapshot = await this.firestore.collection('maps')
         .where('ownerId', '==', userId)
         .get();
 
@@ -144,7 +147,7 @@ export class DataService {
    */
   async _fetchCloudStakeholders(mapId) {
     try {
-      const snapshot = await firestore.collection('stakeholders')
+      const snapshot = await this.firestore.collection('stakeholders')
         .where('mapId', '==', mapId)
         .get();
 
@@ -166,7 +169,7 @@ export class DataService {
 
     try {
       const mapData = map.toObject();
-      await firestore.collection('maps').doc(map.id).set(mapData);
+      await this.firestore.collection('maps').doc(map.id).set(mapData);
     } catch (error) {
       console.error('Error saving map to cloud:', error);
       throw error;
@@ -184,7 +187,7 @@ export class DataService {
 
     try {
       const stakeholderData = stakeholder.toObject();
-      await firestore.collection('stakeholders').doc(stakeholder.id).set(stakeholderData);
+      await this.firestore.collection('stakeholders').doc(stakeholder.id).set(stakeholderData);
     } catch (error) {
       console.error('Error saving stakeholder to cloud:', error);
       throw error;
@@ -202,14 +205,14 @@ export class DataService {
 
     try {
       // Delete map document
-      await firestore.collection('maps').doc(mapId).delete();
+      await this.firestore.collection('maps').doc(mapId).delete();
 
       // Delete all stakeholders for this map
-      const stakeholdersSnapshot = await firestore.collection('stakeholders')
+      const stakeholdersSnapshot = await this.firestore.collection('stakeholders')
         .where('mapId', '==', mapId)
         .get();
 
-      const batch = firestore.batch();
+      const batch = this.firestore.batch();
       stakeholdersSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
@@ -231,7 +234,7 @@ export class DataService {
     if (!authService.isAuthenticated()) return;
 
     try {
-      await firestore.collection('stakeholders').doc(stakeholderId).delete();
+      await this.firestore.collection('stakeholders').doc(stakeholderId).delete();
     } catch (error) {
       console.error('Error deleting stakeholder from cloud:', error);
       throw error;

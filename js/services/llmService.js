@@ -1,4 +1,4 @@
-import { analytics } from '../../firebase/firebaseConfig.js';
+// import { analytics } from '../../firebase/firebaseConfig.js';
 import { promptBuilder } from '../utils/promptBuilder.js';
 
 /**
@@ -9,6 +9,9 @@ export class LLMService {
     this.apiKey = apiKey;
     this.apiEndpoint = 'https://api.anthropic.com/v1/messages';
     this.model = 'claude-3-opus-20240229'; // Default model
+
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
   }
 
   /**
@@ -27,7 +30,7 @@ export class LLMService {
   async getStakeholderAdvice(stakeholder) {
     try {
       // Track analytics
-      analytics.logEvent('get_stakeholder_advice', {
+      this.analytics.logEvent('get_stakeholder_advice', {
         stakeholder_id: stakeholder.id,
         stakeholder_category: stakeholder.category
       });
@@ -53,7 +56,7 @@ export class LLMService {
   async getMapRecommendations(map) {
     try {
       // Track analytics
-      analytics.logEvent('get_map_recommendations', {
+      this.analytics.logEvent('get_map_recommendations', {
         map_id: map.id,
         stakeholders_count: map.stakeholders.length
       });

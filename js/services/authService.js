@@ -1,4 +1,5 @@
-import { auth, firestore, analytics } from '../../firebase/firebaseConfig.js';
+// Update to use global Firebase variables
+// import { auth, firestore, analytics } from '../../firebase/firebaseConfig.js';
 import { EventBus } from '../utils/eventBus.js';
 
 /**
@@ -9,6 +10,11 @@ export class AuthService {
     this.currentUser = null;
     this.initialized = false;
 
+    // Get Firebase objects from window
+    this.auth = window.firebaseAuth;
+    this.firestore = window.firebaseFirestore;
+    this.analytics = window.firebaseAnalytics;
+
     // Initialize authentication state
     this._initAuth();
   }
@@ -18,15 +24,15 @@ export class AuthService {
    * @private
    */
   _initAuth() {
-    auth.onAuthStateChanged(user => {
+    this.auth.onAuthStateChanged(user => {
       this.currentUser = user;
       this.initialized = true;
 
       // Notify the application of auth state change
       if (user) {
         EventBus.emit('auth:login', user);
-        analytics.setUserId(user.uid);
-        analytics.logEvent('login');
+        this.analytics.setUserId(user.uid);
+        this.analytics.logEvent('login');
       } else {
         EventBus.emit('auth:logout');
       }
@@ -60,8 +66,8 @@ export class AuthService {
    */
   async signInWithEmailPassword(email, password) {
     try {
-      const result = await auth.signInWithEmailAndPassword(email, password);
-      analytics.logEvent('login_method', { method: 'email' });
+      const result = await this.auth.signInWithEmailAndPassword(email, password);
+      this.analytics.logEvent('login_method', { method: 'email' });
       return result.user;
     } catch (error) {
       console.error('Email sign in error:', error);
@@ -77,8 +83,8 @@ export class AuthService {
    */
   async createUserWithEmailPassword(email, password) {
     try {
-      const result = await auth.createUserWithEmailAndPassword(email, password);
-      analytics.logEvent('sign_up', { method: 'email' });
+      const result = await this.auth.createUserWithEmailAndPassword(email, password);
+      this.analytics.logEvent('sign_up', { method: 'email' });
 
       // Create user document in Firestore
       await this._createUserDocument(result.user);
@@ -97,8 +103,8 @@ export class AuthService {
   async signInWithGoogle() {
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      const result = await auth.signInWithPopup(provider);
-      analytics.logEvent('login_method', { method: 'google' });
+      const result = await this.auth.signInWithPopup(provider);
+      this.analytics.logEvent('login_method', { method: 'google' });
 
       // Create user document if it doesn't exist
       await this._createUserDocument(result.user);
@@ -117,8 +123,8 @@ export class AuthService {
   async signInWithMicrosoft() {
     try {
       const provider = new firebase.auth.OAuthProvider('microsoft.com');
-      const result = await auth.signInWithPopup(provider);
-      analytics.logEvent('login_method', { method: 'microsoft' });
+      const result = await this.auth.signInWithPopup(provider);
+      this.analytics.logEvent('login_method', { method: 'microsoft' });
 
       // Create user document if it doesn't exist
       await this._createUserDocument(result.user);
@@ -136,8 +142,8 @@ export class AuthService {
    */
   async signOut() {
     try {
-      analytics.logEvent('logout');
-      return await auth.signOut();
+      this.analytics.logEvent('logout');
+      return await this.auth.signOut();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
@@ -153,11 +159,11 @@ export class AuthService {
   async _createUserDocument(user) {
     try {
       // Check if user document already exists
-      const userDoc = await firestore.collection('users').doc(user.uid).get();
+      const userDoc = await this.firestore.collection('users').doc(user.uid).get();
 
       if (!userDoc.exists) {
         // Create new user document
-        await firestore.collection('users').doc(user.uid).set({
+        await this.firestore.collection('users').doc(user.uid).set({
           email: user.email,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
@@ -166,7 +172,7 @@ export class AuthService {
         });
       } else {
         // Update last login timestamp
-        await firestore.collection('users').doc(user.uid).update({
+        await this.firestore.collection('users').doc(user.uid).update({
           lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
       }
