@@ -1,4 +1,4 @@
-import { analytics } from '../../../firebase/firebaseConfig.js';
+// import { analytics } from '../../../firebase/firebaseConfig.js';
 import authService from './authService.js';
 
 /**
@@ -10,7 +10,7 @@ class AnalyticsService {
     this.anonymousId = this._generateAnonymousId();
     this._initFromLocalStorage();
   }
-  
+
   /**
    * Initialize from local storage settings
    * @private
@@ -25,7 +25,7 @@ class AnalyticsService {
       console.warn('Error accessing local storage for analytics preferences:', e);
     }
   }
-  
+
   /**
    * Generate an anonymous ID for unauthenticated users
    * @returns {string} - Anonymous ID
@@ -36,7 +36,7 @@ class AnalyticsService {
       // Try to get stored anonymous ID
       const storedId = localStorage.getItem('staketrack_anonymous_id');
       if (storedId) return storedId;
-      
+
       // Generate new ID
       const newId = 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
       localStorage.setItem('staketrack_anonymous_id', newId);
@@ -46,7 +46,7 @@ class AnalyticsService {
       return 'anon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
   }
-  
+
   /**
    * Enable analytics tracking
    */
@@ -58,7 +58,7 @@ class AnalyticsService {
       console.warn('Error saving analytics preference to local storage:', e);
     }
   }
-  
+
   /**
    * Disable analytics tracking
    */
@@ -70,7 +70,7 @@ class AnalyticsService {
       console.warn('Error saving analytics preference to local storage:', e);
     }
   }
-  
+
   /**
    * Check if analytics is enabled
    * @returns {boolean} - Whether analytics is enabled
@@ -78,33 +78,45 @@ class AnalyticsService {
   isEnabled() {
     return this.enabled;
   }
-  
+
   /**
    * Set user ID for analytics
    * @param {string} userId - User ID
    */
   setUserId(userId) {
     if (!this.enabled) return;
-    analytics.setUserId(userId);
+
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.setUserId === 'function') {
+      analytics.setUserId(userId);
+    }
   }
-  
+
   /**
    * Clear user ID for analytics
    */
   clearUserId() {
     if (!this.enabled) return;
-    analytics.setUserId(null);
+
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.setUserId === 'function') {
+      analytics.setUserId(null);
+    }
   }
-  
+
   /**
    * Set user properties for analytics
    * @param {Object} properties - User properties
    */
   setUserProperties(properties) {
     if (!this.enabled) return;
-    analytics.setUserProperties(properties);
+
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.setUserProperties === 'function') {
+      analytics.setUserProperties(properties);
+    }
   }
-  
+
   /**
    * Track application event
    * @param {string} eventName - Event name
@@ -112,23 +124,26 @@ class AnalyticsService {
    */
   trackEvent(eventName, params = {}) {
     if (!this.enabled) return;
-    
+
     // Add user ID if available
     const enhancedParams = { ...params };
-    
+
     if (authService.isAuthenticated()) {
       enhancedParams.user_id = authService.getCurrentUser().uid;
     } else {
       enhancedParams.anonymous_id = this.anonymousId;
     }
-    
+
     // Add timestamp
     enhancedParams.timestamp = Date.now();
-    
-    // Log event
-    analytics.logEvent(eventName, enhancedParams);
+
+    // Get analytics from window and log event
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.logEvent === 'function') {
+      analytics.logEvent(eventName, enhancedParams);
+    }
   }
-  
+
   /**
    * Track page view
    * @param {string} pageName - Page name
@@ -136,13 +151,13 @@ class AnalyticsService {
    */
   trackPageView(pageName, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent('page_view', {
       page_name: pageName,
       ...params
     });
   }
-  
+
   /**
    * Track stakeholder action
    * @param {string} action - Action name (e.g., 'create', 'update', 'delete')
@@ -151,13 +166,13 @@ class AnalyticsService {
    */
   trackStakeholderAction(action, stakeholderId, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent(`stakeholder_${action}`, {
       stakeholder_id: stakeholderId,
       ...params
     });
   }
-  
+
   /**
    * Track map action
    * @param {string} action - Action name (e.g., 'create', 'update', 'delete')
@@ -166,13 +181,13 @@ class AnalyticsService {
    */
   trackMapAction(action, mapId, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent(`map_${action}`, {
       map_id: mapId,
       ...params
     });
   }
-  
+
   /**
    * Track LLM request
    * @param {string} requestType - Request type (e.g., 'stakeholder_advice', 'map_recommendations')
@@ -180,13 +195,13 @@ class AnalyticsService {
    */
   trackLLMRequest(requestType, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent('llm_request', {
       request_type: requestType,
       ...params
     });
   }
-  
+
   /**
    * Track error event
    * @param {string} errorType - Error type
@@ -195,14 +210,14 @@ class AnalyticsService {
    */
   trackError(errorType, errorMessage, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent('error', {
       error_type: errorType,
       error_message: errorMessage,
       ...params
     });
   }
-  
+
   /**
    * Track feature usage
    * @param {string} featureName - Feature name
@@ -210,7 +225,7 @@ class AnalyticsService {
    */
   trackFeatureUsage(featureName, params = {}) {
     if (!this.enabled) return;
-    
+
     this.trackEvent('feature_usage', {
       feature_name: featureName,
       ...params

@@ -17,15 +17,48 @@ export class AuthController {
     this.skipAuthBtn = document.getElementById('skip-auth-btn');
 
     this.isSignUp = false;
-
-    this._initEventListeners();
   }
 
   /**
    * Initialize the controller
    */
   init() {
-    // Additional initialization if needed
+    this._initEventListeners();
+
+    // Subscribe to auth events from the EventBus
+    EventBus.on('auth:login', this._handleLoginSuccess.bind(this));
+    EventBus.on('auth:logout', this._handleLogout.bind(this));
+    EventBus.on('auth:error', this._handleAuthError.bind(this));
+
+    // Check if Firebase is properly configured
+    this._checkFirebaseConfig();
+  }
+
+  /**
+   * Check if Firebase is properly configured and show warning if not
+   * @private
+   */
+  _checkFirebaseConfig() {
+    // Check if window.firebaseConfig exists and has isConfigured property
+    if (window.firebaseConfig && window.firebaseConfig.isConfigured === false) {
+      console.warn('Firebase is not properly configured. Some authentication features may not work.');
+
+      // Add a warning message to the auth view
+      const warningDiv = document.createElement('div');
+      warningDiv.className = 'auth-warning';
+      warningDiv.style.color = '#f44336';
+      warningDiv.style.padding = '10px';
+      warningDiv.style.marginBottom = '15px';
+      warningDiv.style.backgroundColor = '#ffebee';
+      warningDiv.style.borderRadius = '4px';
+      warningDiv.textContent = 'Firebase authentication is not configured. You can still use the app without signing in.';
+
+      // Insert at the top of the auth container
+      const authContainer = this.authView.querySelector('.auth-container');
+      if (authContainer) {
+        authContainer.insertBefore(warningDiv, authContainer.firstChild);
+      }
+    }
   }
 
   /**
@@ -33,29 +66,140 @@ export class AuthController {
    * @private
    */
   _initEventListeners() {
-    // Form submit
-    this.authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await this._handleEmailAuth(e);
-    });
+    // Form submit - Use event delegation to avoid conflicts with authView
+    if (this.authForm) {
+      this.authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this._handleEmailAuth(e);
+      });
+    }
 
     // Toggle sign in/sign up
-    this.authToggleBtn.addEventListener('click', () => {
-      this.isSignUp = !this.isSignUp;
-      this._updateAuthFormState();
-    });
+    if (this.authToggleBtn) {
+      this.authToggleBtn.addEventListener('click', () => {
+        this.isSignUp = !this.isSignUp;
+        this._updateAuthFormState();
+      });
+    }
 
     // Google sign in
-    this.googleAuthBtn.addEventListener('click', async () => {
-      await this._handleGoogleAuth();
-    });
+    if (this.googleAuthBtn) {
+      this.googleAuthBtn.addEventListener('click', async () => {
+        await this._handleGoogleAuth();
+      });
+    }
 
     // Microsoft sign in
-    this.microsoftAuthBtn.addEventListener('click', async () => {
-      await this._handleMicrosoftAuth();
-    });
+    if (this.microsoftAuthBtn) {
+      this.microsoftAuthBtn.addEventListener('click', async () => {
+        await this._handleMicrosoftAuth();
+      });
+    }
 
-    // Skip auth button handler is already in app controller
+    // Skip auth button
+    if (this.skipAuthBtn) {
+      this.skipAuthBtn.addEventListener('click', () => {
+        this._handleSkipAuth();
+      });
+    }
+  }
+
+  /**
+   * Handle skip authentication action
+   * @private
+   */
+  _handleSkipAuth() {
+    console.log('Skip auth button clicked');
+
+    // Hide auth view
+    if (this.authView) {
+      this.authView.classList.add('hidden');
+    }
+
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.logEvent === 'function') {
+      analytics.logEvent('auth_skip');
+    }
+
+    // Emit auth skip event
+    EventBus.emit('auth:skip');
+
+    // Add direct access to appController as a fallback
+    try {
+      // Import it dynamically to avoid circular dependency
+      import('../controllers/appController.js').then(module => {
+        const appController = module.default;
+        if (appController && typeof appController.skipAuth === 'function') {
+          console.log('Calling appController.skipAuth() directly');
+          appController.skipAuth();
+        }
+      }).catch(err => {
+        console.error('Error importing appController:', err);
+      });
+    } catch (error) {
+      console.error('Error in skip auth fallback:', error);
+    }
+
+    console.log('Continue without signing in completed');
+  }
+
+  /**
+   * Handle login success event
+   * @param {Object} user - The authenticated user
+   * @private
+   */
+  _handleLoginSuccess(user) {
+    // Hide auth view
+    if (this.authView) {
+      this.authView.classList.add('hidden');
+    }
+
+    // Reset form
+    if (this.authForm) {
+      this.authForm.reset();
+    }
+
+    console.log('User logged in successfully:', user.email);
+  }
+
+  /**
+   * Handle logout event
+   * @private
+   */
+  _handleLogout() {
+    console.log('User logged out');
+  }
+
+  /**
+   * Handle authentication error
+   * @param {Object} error - The error object
+   * @private
+   */
+  _handleAuthError(error) {
+    console.error('Authentication error:', error);
+
+    // More user-friendly error message
+    let errorMessage = 'Authentication failed. Please try again.';
+
+    if (error.code === 'auth/invalid-api-key') {
+      errorMessage = 'Firebase configuration error. Please contact the administrator.';
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'Network error. Please check your internet connection.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    alert(`Authentication error: ${errorMessage}`);
+
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
+    if (analytics && typeof analytics.logEvent === 'function') {
+      analytics.logEvent('auth_error', {
+        error_code: error.code || 'unknown',
+        error_message: error.message || 'Unknown error'
+      });
+    }
   }
 
   /**
@@ -98,14 +242,14 @@ export class AuthController {
         // Create account
         await authService.createUserWithEmailPassword(email, password);
 
-        if (analytics) {
+        if (analytics && typeof analytics.logEvent === 'function') {
           analytics.logEvent('sign_up', { method: 'email' });
         }
       } else {
         // Sign in
         await authService.signInWithEmailPassword(email, password);
 
-        if (analytics) {
+        if (analytics && typeof analytics.logEvent === 'function') {
           analytics.logEvent('login', { method: 'email' });
         }
       }
@@ -115,16 +259,38 @@ export class AuthController {
     } catch (error) {
       console.error('Email authentication error:', error);
 
-      // Show error to user
-      alert(`Authentication error: ${error.message}`);
+      // Format a user-friendly error message
+      let errorMessage = 'Authentication failed. Please try again.';
 
-      if (analytics) {
+      // Map common Firebase error codes to user-friendly messages
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Email is already in use. Please sign in or use a different email.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address. Please check and try again.';
+      } else if (error.code === 'auth/invalid-api-key') {
+        errorMessage = 'Firebase configuration error. Please contact the administrator.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // Show error to user
+      alert(`Authentication error: ${errorMessage}`);
+
+      if (analytics && typeof analytics.logEvent === 'function') {
         analytics.logEvent('auth_error', {
           method: 'email',
-          error_message: error.message,
+          error_code: error.code || 'unknown',
+          error_message: error.message || 'Unknown error',
           is_signup: this.isSignUp
         });
       }
+
+      // Emit auth error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
       submitButton.disabled = false;
@@ -147,7 +313,7 @@ export class AuthController {
       // Sign in with Google
       await authService.signInWithGoogle();
 
-      if (analytics) {
+      if (analytics && typeof analytics.logEvent === 'function') {
         analytics.logEvent('login', { method: 'google' });
       }
     } catch (error) {
@@ -156,15 +322,31 @@ export class AuthController {
       // Handle user cancellation vs. error
       if (error.code !== 'auth/cancelled-popup-request' &&
         error.code !== 'auth/popup-closed-by-user') {
-        alert(`Google authentication error: ${error.message}`);
+
+        // Format a user-friendly error message
+        let errorMessage = 'Google authentication failed.';
+
+        if (error.code === 'auth/invalid-api-key') {
+          errorMessage = 'Firebase configuration error. Please contact the administrator.';
+        } else if (error.code === 'auth/network-request-failed') {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        alert(`Google authentication error: ${errorMessage}`);
       }
 
-      if (analytics) {
+      if (analytics && typeof analytics.logEvent === 'function') {
         analytics.logEvent('auth_error', {
           method: 'google',
-          error_message: error.message
+          error_code: error.code || 'unknown',
+          error_message: error.message || 'Unknown error'
         });
       }
+
+      // Emit auth error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
       this.googleAuthBtn.disabled = false;
@@ -186,7 +368,7 @@ export class AuthController {
       // Sign in with Microsoft
       await authService.signInWithMicrosoft();
 
-      if (analytics) {
+      if (analytics && typeof analytics.logEvent === 'function') {
         analytics.logEvent('login', { method: 'microsoft' });
       }
     } catch (error) {
@@ -195,15 +377,31 @@ export class AuthController {
       // Handle user cancellation vs. error
       if (error.code !== 'auth/cancelled-popup-request' &&
         error.code !== 'auth/popup-closed-by-user') {
-        alert(`Microsoft authentication error: ${error.message}`);
+
+        // Format a user-friendly error message
+        let errorMessage = 'Microsoft authentication failed.';
+
+        if (error.code === 'auth/invalid-api-key') {
+          errorMessage = 'Firebase configuration error. Please contact the administrator.';
+        } else if (error.code === 'auth/network-request-failed') {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+
+        alert(`Microsoft authentication error: ${errorMessage}`);
       }
 
-      if (analytics) {
+      if (analytics && typeof analytics.logEvent === 'function') {
         analytics.logEvent('auth_error', {
           method: 'microsoft',
-          error_message: error.message
+          error_code: error.code || 'unknown',
+          error_message: error.message || 'Unknown error'
         });
       }
+
+      // Emit auth error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
       this.microsoftAuthBtn.disabled = false;

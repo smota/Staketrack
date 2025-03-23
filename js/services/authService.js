@@ -9,14 +9,28 @@ export class AuthService {
   constructor() {
     this.currentUser = null;
     this.initialized = false;
+    this.initializationError = null;
 
     // Get Firebase objects from window
     this.auth = window.firebaseAuth;
     this.firestore = window.firebaseFirestore;
     this.analytics = window.firebaseAnalytics;
 
-    // Initialize authentication state
-    this._initAuth();
+    // Check if Firebase is configured properly
+    if (!this.auth || !this.firestore) {
+      this.initializationError = new Error('Firebase services not available');
+      console.warn('Firebase services are not properly initialized:', this.initializationError);
+      // Mark as initialized to prevent waiting indefinitely
+      this.initialized = true;
+      // Emit initialized event
+      setTimeout(() => {
+        EventBus.emit('auth:initialized', null);
+        EventBus.emit('auth:error', this.initializationError);
+      }, 0);
+    } else {
+      // Initialize authentication state
+      this._initAuth();
+    }
   }
 
   /**
@@ -24,22 +38,38 @@ export class AuthService {
    * @private
    */
   _initAuth() {
-    this.auth.onAuthStateChanged(user => {
-      this.currentUser = user;
+    try {
+      this.auth.onAuthStateChanged(user => {
+        this.currentUser = user;
+        this.initialized = true;
+
+        // Notify the application of auth state change
+        if (user) {
+          EventBus.emit('auth:login', user);
+          if (this.analytics && typeof this.analytics.logEvent === 'function') {
+            this.analytics.setUserId(user.uid);
+            this.analytics.logEvent('login');
+          }
+        } else {
+          EventBus.emit('auth:logout');
+        }
+
+        // Emit initialized event once
+        EventBus.emit('auth:initialized', user);
+      }, error => {
+        console.error('Auth state change error:', error);
+        this.initialized = true;
+        this.initializationError = error;
+        EventBus.emit('auth:error', error);
+        EventBus.emit('auth:initialized', null);
+      });
+    } catch (error) {
+      console.error('Failed to initialize auth state listener:', error);
       this.initialized = true;
-
-      // Notify the application of auth state change
-      if (user) {
-        EventBus.emit('auth:login', user);
-        this.analytics.setUserId(user.uid);
-        this.analytics.logEvent('login');
-      } else {
-        EventBus.emit('auth:logout');
-      }
-
-      // Emit initialized event once
-      EventBus.emit('auth:initialized', user);
-    });
+      this.initializationError = error;
+      EventBus.emit('auth:error', error);
+      EventBus.emit('auth:initialized', null);
+    }
   }
 
   /**
@@ -65,9 +95,17 @@ export class AuthService {
    * @returns {Promise} - Authentication promise
    */
   async signInWithEmailPassword(email, password) {
+    if (!this.auth) {
+      const error = new Error('Firebase authentication is not available');
+      error.code = 'auth/service-unavailable';
+      throw error;
+    }
+
     try {
       const result = await this.auth.signInWithEmailAndPassword(email, password);
-      this.analytics.logEvent('login_method', { method: 'email' });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('login_method', { method: 'email' });
+      }
       return result.user;
     } catch (error) {
       console.error('Email sign in error:', error);
@@ -82,12 +120,22 @@ export class AuthService {
    * @returns {Promise} - Authentication promise
    */
   async createUserWithEmailPassword(email, password) {
+    if (!this.auth) {
+      const error = new Error('Firebase authentication is not available');
+      error.code = 'auth/service-unavailable';
+      throw error;
+    }
+
     try {
       const result = await this.auth.createUserWithEmailAndPassword(email, password);
-      this.analytics.logEvent('sign_up', { method: 'email' });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('sign_up', { method: 'email' });
+      }
 
-      // Create user document in Firestore
-      await this._createUserDocument(result.user);
+      // Create user document in Firestore if available
+      if (this.firestore && result.user) {
+        await this._createUserDocument(result.user);
+      }
 
       return result.user;
     } catch (error) {
@@ -101,13 +149,23 @@ export class AuthService {
    * @returns {Promise} - Authentication promise
    */
   async signInWithGoogle() {
+    if (!this.auth || !window.firebase || !window.firebase.auth) {
+      const error = new Error('Firebase authentication is not available');
+      error.code = 'auth/service-unavailable';
+      throw error;
+    }
+
     try {
-      const provider = new firebase.auth.GoogleAuthProvider();
+      const provider = new window.firebase.auth.GoogleAuthProvider();
       const result = await this.auth.signInWithPopup(provider);
-      this.analytics.logEvent('login_method', { method: 'google' });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('login_method', { method: 'google' });
+      }
 
       // Create user document if it doesn't exist
-      await this._createUserDocument(result.user);
+      if (this.firestore && result.user) {
+        await this._createUserDocument(result.user);
+      }
 
       return result.user;
     } catch (error) {
@@ -121,13 +179,23 @@ export class AuthService {
    * @returns {Promise} - Authentication promise
    */
   async signInWithMicrosoft() {
+    if (!this.auth || !window.firebase || !window.firebase.auth) {
+      const error = new Error('Firebase authentication is not available');
+      error.code = 'auth/service-unavailable';
+      throw error;
+    }
+
     try {
-      const provider = new firebase.auth.OAuthProvider('microsoft.com');
+      const provider = new window.firebase.auth.OAuthProvider('microsoft.com');
       const result = await this.auth.signInWithPopup(provider);
-      this.analytics.logEvent('login_method', { method: 'microsoft' });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('login_method', { method: 'microsoft' });
+      }
 
       // Create user document if it doesn't exist
-      await this._createUserDocument(result.user);
+      if (this.firestore && result.user) {
+        await this._createUserDocument(result.user);
+      }
 
       return result.user;
     } catch (error) {
@@ -141,8 +209,14 @@ export class AuthService {
    * @returns {Promise} - Sign out promise
    */
   async signOut() {
+    if (!this.auth) {
+      return Promise.resolve();
+    }
+
     try {
-      this.analytics.logEvent('logout');
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('logout');
+      }
       return await this.auth.signOut();
     } catch (error) {
       console.error('Sign out error:', error);
@@ -157,6 +231,11 @@ export class AuthService {
    * @private
    */
   async _createUserDocument(user) {
+    if (!this.firestore || !window.firebase || !window.firebase.firestore) {
+      console.warn('Firestore is not available, skipping user document creation');
+      return Promise.resolve();
+    }
+
     try {
       // Check if user document already exists
       const userDoc = await this.firestore.collection('users').doc(user.uid).get();
@@ -167,18 +246,19 @@ export class AuthService {
           email: user.email,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
+          lastLogin: window.firebase.firestore.FieldValue.serverTimestamp()
         });
       } else {
         // Update last login timestamp
         await this.firestore.collection('users').doc(user.uid).update({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          lastLogin: window.firebase.firestore.FieldValue.serverTimestamp()
         });
       }
     } catch (error) {
       console.error('Create user document error:', error);
-      throw error;
+      // Don't throw the error to prevent authentication from failing
+      // just because the user document couldn't be created
     }
   }
 
@@ -195,6 +275,18 @@ export class AuthService {
           unsubscribe();
           resolve(user);
         });
+
+        // Add a timeout to prevent waiting indefinitely
+        setTimeout(() => {
+          if (!this.initialized) {
+            console.warn('Authentication initialization timed out');
+            this.initialized = true;
+            this.initializationError = new Error('Authentication initialization timed out');
+            unsubscribe();
+            resolve(null);
+            EventBus.emit('auth:error', this.initializationError);
+          }
+        }, 5000); // 5 seconds timeout
       }
     });
   }

@@ -57,15 +57,31 @@ jobs:
           echo "FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development
           echo "FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> .env.development
           echo "FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}" >> .env.development
+          echo "USE_EMULATORS=false" >> .env.development
           echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env.development
           echo "ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.development
         
+      - name: Setup Firebase tools
+        run: npm install -g firebase-tools
+      
+      - name: Authenticate with Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase use development --token $FIREBASE_TOKEN
+      
+      - name: Initialize Firebase Functions
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npm run firebase:init-functions:dev -- --no-confirm
+      
+      - name: Update Firebase Functions Configuration
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npm run firebase:update-config:dev -- --no-confirm
+      
       - name: Build for development
         run: npm run build:dev
       
-      - name: Setup Firebase tools
-        run: npm install -g firebase-tools
-        
       - name: Deploy to Firebase
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
@@ -110,15 +126,31 @@ jobs:
           echo "FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production
           echo "FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> .env.production
           echo "FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}" >> .env.production
+          echo "USE_EMULATORS=false" >> .env.production
           echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env.production
           echo "ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.production
         
+      - name: Setup Firebase tools
+        run: npm install -g firebase-tools
+      
+      - name: Authenticate with Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase use production --token $FIREBASE_TOKEN
+
+      - name: Initialize Firebase Functions
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npm run firebase:init-functions:prod -- --no-confirm
+
+      - name: Update Firebase Functions Configuration
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: npm run firebase:update-config:prod -- --no-confirm
+      
       - name: Build for production
         run: npm run build:prod
       
-      - name: Setup Firebase tools
-        run: npm install -g firebase-tools
-        
       - name: Deploy to Firebase
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

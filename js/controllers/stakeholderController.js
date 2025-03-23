@@ -42,7 +42,9 @@ export class StakeholderController {
     document.getElementById('add-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm();
 
-      this.analytics.logEvent('add_stakeholder_clicked');
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('add_stakeholder_clicked');
+      }
     });
 
     // Modal close button
@@ -121,9 +123,11 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    this.analytics.logEvent('stakeholder_form_opened', {
-      action: isEdit ? 'edit' : 'add'
-    });
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('stakeholder_form_opened', {
+        action: isEdit ? 'edit' : 'add'
+      });
+    }
   }
 
   /**
@@ -153,9 +157,11 @@ export class StakeholderController {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.currentStakeholderId, formData);
 
-        this.analytics.logEvent('stakeholder_updated', {
-          stakeholder_id: this.currentStakeholderId
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('stakeholder_updated', {
+            stakeholder_id: this.currentStakeholderId
+          });
+        }
       } else {
         // Add new stakeholder
         const currentMap = dataService.getCurrentMap();
@@ -165,10 +171,12 @@ export class StakeholderController {
 
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
 
-        this.analytics.logEvent('stakeholder_added', {
-          stakeholder_id: stakeholder.id,
-          map_id: currentMap.id
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('stakeholder_added', {
+            stakeholder_id: stakeholder.id,
+            map_id: currentMap.id
+          });
+        }
       }
 
       // Hide modal
@@ -264,10 +272,12 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    this.analytics.logEvent('stakeholder_details_viewed', {
-      stakeholder_id: stakeholderId,
-      stakeholder_name: stakeholder.name
-    });
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('stakeholder_details_viewed', {
+        stakeholder_id: stakeholderId,
+        stakeholder_name: stakeholder.name
+      });
+    }
   }
 
   /**
@@ -316,9 +326,11 @@ export class StakeholderController {
         .then(() => {
           this.hideModal();
 
-          this.analytics.logEvent('stakeholder_deleted', {
-            stakeholder_id: stakeholderId
-          });
+          if (this.analytics && typeof this.analytics.logEvent === 'function') {
+            this.analytics.logEvent('stakeholder_deleted', {
+              stakeholder_id: stakeholderId
+            });
+          }
         })
         .catch(error => {
           console.error('Error deleting stakeholder:', error);
@@ -368,10 +380,12 @@ export class StakeholderController {
     this.showModal();
 
     // Track analytics
-    this.analytics.logEvent('interaction_log_opened', {
-      stakeholder_id: stakeholderId,
-      stakeholder_name: stakeholder.name
-    });
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('interaction_log_opened', {
+        stakeholder_id: stakeholderId,
+        stakeholder_name: stakeholder.name
+      });
+    }
   }
 
   /**
@@ -428,9 +442,11 @@ export class StakeholderController {
       this._renderInteractionsList(stakeholder);
 
       // Track analytics
-      this.analytics.logEvent('interaction_added', {
-        stakeholder_id: stakeholderId
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('interaction_added', {
+          stakeholder_id: stakeholderId
+        });
+      }
     } catch (error) {
       console.error('Error adding interaction:', error);
       alert(`Error adding interaction: ${error.message}`);
@@ -476,10 +492,12 @@ export class StakeholderController {
       adviceContent.innerHTML = this._markdownToHtml(advice);
 
       // Track analytics
-      this.analytics.logEvent('stakeholder_advice_generated', {
-        stakeholder_id: stakeholderId,
-        stakeholder_name: stakeholder.name
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_advice_generated', {
+          stakeholder_id: stakeholderId,
+          stakeholder_name: stakeholder.name
+        });
+      }
     } catch (error) {
       console.error('Error getting stakeholder advice:', error);
 
@@ -495,10 +513,12 @@ export class StakeholderController {
       `;
 
       // Track error
-      this.analytics.logEvent('stakeholder_advice_error', {
-        stakeholder_id: stakeholderId,
-        error_message: error.message
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_advice_error', {
+          stakeholder_id: stakeholderId,
+          error_message: error.message
+        });
+      }
     }
   }
 

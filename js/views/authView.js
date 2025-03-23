@@ -15,58 +15,92 @@ class AuthView {
     this.googleAuthBtn = document.getElementById('google-auth-btn');
     this.microsoftAuthBtn = document.getElementById('microsoft-auth-btn');
     this.skipAuthBtn = document.getElementById('skip-auth-btn');
-    
+    this.emailAuthBtn = document.getElementById('email-auth-btn');
+
     this.isSignUp = false;
-    
+
     this._initEventListeners();
+
+    // Debug log to verify initialization
+    console.log('AuthView initialized');
   }
-  
+
   /**
    * Initialize event listeners
    * @private
    */
   _initEventListeners() {
     // Form submit
-    this.authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await this._handleEmailAuth();
-    });
-    
-    // Toggle sign in/sign up
-    this.authToggleBtn.addEventListener('click', () => {
-      this.isSignUp = !this.isSignUp;
-      this._updateAuthFormState();
-      
-      analytics.trackEvent('auth_toggle', {
-        mode: this.isSignUp ? 'signup' : 'signin'
+    if (this.authForm) {
+      this.authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this._handleEmailAuth();
       });
-    });
-    
+    }
+
+    // Toggle sign in/sign up
+    if (this.authToggleBtn) {
+      this.authToggleBtn.addEventListener('click', () => {
+        this.isSignUp = !this.isSignUp;
+        this._updateAuthFormState();
+
+        // Get analytics from window
+        const analytics = window.firebaseAnalytics;
+        if (analytics) {
+          analytics.trackEvent('auth_toggle', {
+            mode: this.isSignUp ? 'signup' : 'signin'
+          });
+        }
+      });
+    }
+
     // Google sign in
-    this.googleAuthBtn.addEventListener('click', async () => {
-      await this._handleGoogleAuth();
-    });
-    
+    if (this.googleAuthBtn) {
+      this.googleAuthBtn.addEventListener('click', async () => {
+        await this._handleGoogleAuth();
+      });
+    }
+
     // Microsoft sign in
-    this.microsoftAuthBtn.addEventListener('click', async () => {
-      await this._handleMicrosoftAuth();
-    });
-    
+    if (this.microsoftAuthBtn) {
+      this.microsoftAuthBtn.addEventListener('click', async () => {
+        await this._handleMicrosoftAuth();
+      });
+    }
+
     // Skip auth button
-    this.skipAuthBtn.addEventListener('click', () => {
-      this._handleSkipAuth();
-    });
-    
+    if (this.skipAuthBtn) {
+      this.skipAuthBtn.addEventListener('click', () => {
+        this._handleSkipAuth();
+      });
+    }
+
     // Field validation
-    document.getElementById('auth-email').addEventListener('blur', () => {
-      formValidation.validateEmail('auth-email', 'Please enter a valid email address');
-    });
-    
-    document.getElementById('auth-password').addEventListener('blur', () => {
-      formValidation.validateMinLength('auth-password', 6, 'Password must be at least 6 characters');
-    });
+    const emailField = document.getElementById('auth-email');
+    if (emailField) {
+      emailField.addEventListener('blur', () => {
+        formValidation.validateEmail('auth-email', 'Please enter a valid email address');
+      });
+
+      // Also clear validation on input
+      emailField.addEventListener('input', () => {
+        formValidation.clearValidationErrors(this.authForm);
+      });
+    }
+
+    const passwordField = document.getElementById('auth-password');
+    if (passwordField) {
+      passwordField.addEventListener('blur', () => {
+        formValidation.validateMinLength('auth-password', 6, 'Password must be at least 6 characters');
+      });
+
+      // Also clear validation on input
+      passwordField.addEventListener('input', () => {
+        formValidation.clearValidationErrors(this.authForm);
+      });
+    }
   }
-  
+
   /**
    * Update authentication form state (sign in/sign up)
    * @private
@@ -75,14 +109,18 @@ class AuthView {
     if (this.isSignUp) {
       this.authToggleText.textContent = 'Already have an account?';
       this.authToggleBtn.textContent = 'Sign In';
-      document.getElementById('email-auth-btn').textContent = 'Sign Up';
+      if (this.emailAuthBtn) {
+        this.emailAuthBtn.textContent = 'Sign Up';
+      }
     } else {
       this.authToggleText.textContent = "Don't have an account?";
       this.authToggleBtn.textContent = 'Sign Up';
-      document.getElementById('email-auth-btn').textContent = 'Sign In';
+      if (this.emailAuthBtn) {
+        this.emailAuthBtn.textContent = 'Sign In';
+      }
     }
   }
-  
+
   /**
    * Handle email authentication
    * @private
@@ -95,50 +133,69 @@ class AuthView {
       () => formValidation.validateRequired('auth-password', 'Password is required'),
       () => formValidation.validateMinLength('auth-password', 6, 'Password must be at least 6 characters')
     ]);
-    
+
     if (!isValid) return;
-    
+
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-    
+
     try {
       // Show loading state
       const authBtn = document.getElementById('email-auth-btn');
-      authBtn.disabled = true;
-      authBtn.textContent = this.isSignUp ? 'Creating Account...' : 'Signing In...';
-      
+      if (authBtn) {
+        authBtn.disabled = true;
+        authBtn.textContent = this.isSignUp ? 'Creating Account...' : 'Signing In...';
+      }
+
       if (this.isSignUp) {
         // Create account
         await authService.createUserWithEmailPassword(email, password);
-        
-        analytics.trackEvent('auth_signup', { method: 'email' });
+
+        // Get analytics from window
+        const analytics = window.firebaseAnalytics;
+        if (analytics) {
+          analytics.trackEvent('auth_signup', { method: 'email' });
+        }
       } else {
         // Sign in
         await authService.signInWithEmailPassword(email, password);
-        
-        analytics.trackEvent('auth_signin', { method: 'email' });
+
+        // Get analytics from window
+        const analytics = window.firebaseAnalytics;
+        if (analytics) {
+          analytics.trackEvent('auth_signin', { method: 'email' });
+        }
       }
-      
+
       // Reset form
       this.authForm.reset();
-      
+
     } catch (error) {
       console.error('Authentication error:', error);
       alert(`Authentication error: ${error.message}`);
-      
-      analytics.trackEvent('auth_error', { 
-        method: 'email',
-        error_message: error.message,
-        is_signup: this.isSignUp
-      });
+
+      // Get analytics from window
+      const analytics = window.firebaseAnalytics;
+      if (analytics) {
+        analytics.trackEvent('auth_error', {
+          method: 'email',
+          error_message: error.message,
+          is_signup: this.isSignUp
+        });
+      }
+
+      // Emit error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
       const authBtn = document.getElementById('email-auth-btn');
-      authBtn.disabled = false;
-      authBtn.textContent = this.isSignUp ? 'Sign Up' : 'Sign In';
+      if (authBtn) {
+        authBtn.disabled = false;
+        authBtn.textContent = this.isSignUp ? 'Sign Up' : 'Sign In';
+      }
     }
   }
-  
+
   /**
    * Handle Google authentication
    * @private
@@ -146,30 +203,45 @@ class AuthView {
   async _handleGoogleAuth() {
     try {
       // Show loading state
-      this.googleAuthBtn.disabled = true;
-      
+      if (this.googleAuthBtn) {
+        this.googleAuthBtn.disabled = true;
+      }
+
       await authService.signInWithGoogle();
-      
-      analytics.trackEvent('auth_signin', { method: 'google' });
+
+      // Get analytics from window
+      const analytics = window.firebaseAnalytics;
+      if (analytics) {
+        analytics.trackEvent('auth_signin', { method: 'google' });
+      }
     } catch (error) {
       console.error('Google authentication error:', error);
-      
+
       // Only show alert if it's not a user cancel
-      if (error.code !== 'auth/cancelled-popup-request' && 
-          error.code !== 'auth/popup-closed-by-user') {
+      if (error.code !== 'auth/cancelled-popup-request' &&
+        error.code !== 'auth/popup-closed-by-user') {
         alert(`Google authentication error: ${error.message}`);
       }
-      
-      analytics.trackEvent('auth_error', { 
-        method: 'google',
-        error_message: error.message
-      });
+
+      // Get analytics from window
+      const analytics = window.firebaseAnalytics;
+      if (analytics) {
+        analytics.trackEvent('auth_error', {
+          method: 'google',
+          error_message: error.message
+        });
+      }
+
+      // Emit error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
-      this.googleAuthBtn.disabled = false;
+      if (this.googleAuthBtn) {
+        this.googleAuthBtn.disabled = false;
+      }
     }
   }
-  
+
   /**
    * Handle Microsoft authentication
    * @private
@@ -177,54 +249,81 @@ class AuthView {
   async _handleMicrosoftAuth() {
     try {
       // Show loading state
-      this.microsoftAuthBtn.disabled = true;
-      
+      if (this.microsoftAuthBtn) {
+        this.microsoftAuthBtn.disabled = true;
+      }
+
       await authService.signInWithMicrosoft();
-      
-      analytics.trackEvent('auth_signin', { method: 'microsoft' });
+
+      // Get analytics from window
+      const analytics = window.firebaseAnalytics;
+      if (analytics) {
+        analytics.trackEvent('auth_signin', { method: 'microsoft' });
+      }
     } catch (error) {
       console.error('Microsoft authentication error:', error);
-      
+
       // Only show alert if it's not a user cancel
-      if (error.code !== 'auth/cancelled-popup-request' && 
-          error.code !== 'auth/popup-closed-by-user') {
+      if (error.code !== 'auth/cancelled-popup-request' &&
+        error.code !== 'auth/popup-closed-by-user') {
         alert(`Microsoft authentication error: ${error.message}`);
       }
-      
-      analytics.trackEvent('auth_error', { 
-        method: 'microsoft',
-        error_message: error.message
-      });
+
+      // Get analytics from window
+      const analytics = window.firebaseAnalytics;
+      if (analytics) {
+        analytics.trackEvent('auth_error', {
+          method: 'microsoft',
+          error_message: error.message
+        });
+      }
+
+      // Emit error event
+      EventBus.emit('auth:error', error);
     } finally {
       // Reset button state
-      this.microsoftAuthBtn.disabled = false;
+      if (this.microsoftAuthBtn) {
+        this.microsoftAuthBtn.disabled = false;
+      }
     }
   }
-  
+
   /**
    * Handle skip authentication
    * @private
    */
   _handleSkipAuth() {
     EventBus.emit('auth:skip');
-    
-    analytics.trackEvent('auth_skip');
+
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
+    if (analytics) {
+      analytics.trackEvent('auth_skip');
+    }
   }
-  
+
   /**
    * Show the authentication view
    */
   show() {
-    this.viewElement.classList.remove('hidden');
-    
-    analytics.trackPageView('auth');
+    if (this.viewElement) {
+      this.viewElement.classList.remove('hidden');
+    }
+
+    // Get analytics from window
+    const analytics = window.firebaseAnalytics;
+    if (analytics) {
+      analytics.trackPageView('auth');
+    }
   }
-  
+
   /**
    * Hide the authentication view
    */
   hide() {
-    this.viewElement.classList.add('hidden');
+    if (this.viewElement) {
+      this.viewElement.classList.add('hidden');
+    }
   }
 }
 

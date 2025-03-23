@@ -80,6 +80,15 @@ function deployToFirebase(environment, option) {
   // Set Firebase project
   executeCommand(`firebase use ${environment}`);
 
+  // Update version before build
+  console.log('\n🔄 Updating version information...');
+  executeCommand(`node scripts/update-version.js minor --build=${Date.now().toString().slice(-6)}`);
+
+  // Update Firebase Functions configuration from .env files
+  console.log('\n🔧 Updating Firebase configuration from .env files...');
+  const envFlag = environment === ENVIRONMENTS.DEV ? 'dev' : 'prd';
+  executeCommand(`node scripts/update-firebase-config.js --env=${envFlag} --no-confirm`);
+
   // Build application
   const buildCmd = environment === ENVIRONMENTS.DEV ?
     'npm run build:dev' :

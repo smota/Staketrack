@@ -4,6 +4,7 @@ import mapController from './controllers/mapController.js';
 import stakeholderController from './controllers/stakeholderController.js';
 import tooltipService from './services/tooltipService.js';
 import telemetryService from './services/telemetryService.js';
+import versionDisplay from './components/versionDisplay.js';
 // Import from global variables instead
 // import { analytics } from '../firebase/firebaseConfig.js';
 import { config } from './config.js';
@@ -45,6 +46,9 @@ class StakeTrackApp {
       await telemetryService.createSpan('app.init', async () => {
         // Initialize tooltip service
         tooltipService.init();
+
+        // Initialize version display
+        versionDisplay.init();
 
         // Initialize controllers
         await this.controllers.app.init();

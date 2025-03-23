@@ -49,7 +49,7 @@ export class AppController {
   _initAnalytics() {
     // Access analytics from window
     const analytics = window.firebaseAnalytics;
-    if (analytics) {
+    if (analytics && typeof analytics.logEvent === 'function') {
       analytics.logEvent('app_initialized');
 
       // Set user ID if authenticated
@@ -73,6 +73,11 @@ export class AppController {
     EventBus.on('auth:logout', () => {
       this._updateAuthUI(null);
       this.showView('auth');
+    });
+
+    // Handle auth:skip event
+    EventBus.on('auth:skip', () => {
+      this.skipAuth();
     });
 
     // Map events
@@ -115,10 +120,10 @@ export class AppController {
       }
     });
 
-    // Skip auth button
-    document.getElementById('skip-auth-btn').addEventListener('click', () => {
-      this.skipAuth();
-    });
+    // Skip auth button - now handled by authController and auth:skip event
+    // document.getElementById('skip-auth-btn').addEventListener('click', () => {
+    //   this.skipAuth();
+    // });
   }
 
   /**
@@ -128,6 +133,7 @@ export class AppController {
     // Access analytics from window
     const analytics = window.firebaseAnalytics;
 
+    // Updates UI to show login button instead of user profile
     this._updateAuthUI(null);
 
     // Check if there are any maps
@@ -146,7 +152,7 @@ export class AppController {
     }
 
     // Log skip auth event
-    if (analytics) {
+    if (analytics && typeof analytics.logEvent === 'function') {
       analytics.logEvent('skip_auth');
     }
   }
@@ -272,13 +278,10 @@ export class AppController {
   }
 
   /**
-   * Show a specific view and hide others
+   * Show a specific view
    * @param {string} viewName - The name of the view to show
    */
   showView(viewName) {
-    // Access analytics from window
-    const analytics = window.firebaseAnalytics;
-
     // Hide all views
     Object.values(this.views).forEach(view => {
       view.classList.add('hidden');
@@ -289,21 +292,21 @@ export class AppController {
       this.views[viewName].classList.remove('hidden');
       this.currentView = viewName;
 
-      // Track view change
-      if (analytics) {
-        analytics.logEvent('view_change', { view: viewName });
+      // Log screen view
+      const analytics = window.firebaseAnalytics;
+      if (analytics && typeof analytics.logEvent === 'function') {
+        analytics.logEvent('screen_view', {
+          screen_name: viewName
+        });
       }
-
-      // Emit event for view change
-      EventBus.emit('view:changed', viewName);
     } else {
-      console.error(`View not found: ${viewName}`);
+      console.error(`View "${viewName}" does not exist`);
     }
   }
 
   /**
-   * Get the current view name
-   * @returns {string|null} - Current view name or null if no view is active
+   * Get the current view
+   * @returns {string} - The name of the current view
    */
   getCurrentView() {
     return this.currentView;

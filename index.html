@@ -4,8 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Permissions-Policy" content="browsing-topics=()">
   <title>StakeTrack - Stakeholder Management</title>
-  <link rel="icon" href="assets/images/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="assets/images/favicon.png" type="image/png">
   <!-- CSS -->
   <link rel="stylesheet" href="assets/css/reset.css">
   <link rel="stylesheet" href="assets/css/theme.css">
@@ -19,6 +20,7 @@
   <link rel="stylesheet" href="assets/css/components/navbar.css">
   <link rel="stylesheet" href="assets/css/components/sidebar.css">
   <link rel="stylesheet" href="assets/css/components/tooltip.css">
+  <link rel="stylesheet" href="assets/css/components/version.css">
 </head>
 
 <body>
@@ -79,7 +81,9 @@
           <span id="auth-toggle-text">Don't have an account?</span>
           <button id="auth-toggle-btn" class="btn btn-text">Sign Up</button>
         </p>
-        <button id="skip-auth-btn" class="btn btn-text">Continue without signing in</button>
+        <button id="skip-auth-btn" class="btn btn-text"
+          onclick="document.getElementById('auth-view').classList.add('hidden'); document.getElementById('dashboard-view').classList.remove('hidden');">Continue
+          without signing in</button>
       </div>
     </div>
 
@@ -194,6 +198,18 @@
 
   <div id="tooltip" class="tooltip hidden"></div>
 
+  <!-- Firebase error alert -->
+  <div id="firebase-error-alert" class="hidden"
+    style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background-color: #ffebee; color: #f44336; padding: 10px 20px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 9999; max-width: 80%;">
+    <div style="display: flex; align-items: center;">
+      <span style="margin-right: 10px; font-weight: bold;">⚠️</span>
+      <span id="firebase-error-message">Firebase is not properly configured. You can still use the app without signing
+        in.</span>
+      <button id="firebase-error-close"
+        style="margin-left: 15px; background: none; border: none; cursor: pointer; font-weight: bold;">✕</button>
+    </div>
+  </div>
+
   <!-- Templates -->
   <template id="stakeholder-form-template">
     <form id="stakeholder-form">
@@ -205,19 +221,25 @@
       <div class="form-row">
         <div class="form-group">
           <label for="stakeholder-influence">Influence (1-10) <span class="required">*</span></label>
-          <input type="number" id="stakeholder-influence" min="1" max="10" required
+          <input type="range" id="stakeholder-influence" min="1" max="10" value="5"
+            oninput="document.getElementById('influence-value').textContent = this.value" required
             data-tooltip="How much power does this stakeholder have in making decisions? (1=very little, 10=extremely high)">
+          <span id="influence-value">5</span>
         </div>
         <div class="form-group">
           <label for="stakeholder-impact">Impact (1-10) <span class="required">*</span></label>
-          <input type="number" id="stakeholder-impact" min="1" max="10" required
+          <input type="range" id="stakeholder-impact" min="1" max="10" value="5"
+            oninput="document.getElementById('impact-value').textContent = this.value" required
             data-tooltip="How much is this stakeholder affected by your initiative? (1=very little, 10=extremely high)">
+          <span id="impact-value">5</span>
         </div>
       </div>
       <div class="form-group">
         <label for="stakeholder-relationship">Relationship Quality (1-10) <span class="required">*</span></label>
-        <input type="number" id="stakeholder-relationship" min="1" max="10" required
+        <input type="range" id="stakeholder-relationship" min="1" max="10" value="5"
+          oninput="document.getElementById('relationship-value').textContent = this.value" required
           data-tooltip="How strong is your relationship with this stakeholder? (1=very weak, 10=extremely strong)">
+        <span id="relationship-value">5</span>
       </div>
       <div class="form-group">
         <label for="stakeholder-category">Category</label>
@@ -325,7 +347,14 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
 
-  <!-- Firebase config must be loaded before the app -->
+  <!-- Environment Variables -->
+  <script>
+    // Initialize an empty ENV object that will be populated by the environment loader
+    window.ENV = {};
+  </script>
+
+  <!-- Environment Configuration Loader -->
+  <script src="js/utils/environmentLoader.js"></script>
   <script src="firebase/firebaseConfig.js"></script>
 
   <!-- The bundle.js script will be automatically injected by HtmlWebpackPlugin -->

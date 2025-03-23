@@ -30,10 +30,12 @@ export class LLMService {
   async getStakeholderAdvice(stakeholder) {
     try {
       // Track analytics
-      this.analytics.logEvent('get_stakeholder_advice', {
-        stakeholder_id: stakeholder.id,
-        stakeholder_category: stakeholder.category
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('get_stakeholder_advice', {
+          stakeholder_id: stakeholder.id,
+          stakeholder_category: stakeholder.category
+        });
+      }
 
       // Build prompt using the prompt builder
       const prompt = promptBuilder.buildStakeholderAdvicePrompt(stakeholder);
@@ -56,10 +58,12 @@ export class LLMService {
   async getMapRecommendations(map) {
     try {
       // Track analytics
-      this.analytics.logEvent('get_map_recommendations', {
-        map_id: map.id,
-        stakeholders_count: map.stakeholders.length
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('get_map_recommendations', {
+          map_id: map.id,
+          stakeholders_count: map.stakeholders.length
+        });
+      }
 
       // Build prompt using the prompt builder
       const prompt = promptBuilder.buildMapRecommendationsPrompt(map);

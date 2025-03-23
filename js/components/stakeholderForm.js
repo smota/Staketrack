@@ -22,10 +22,10 @@ export class StakeholderForm {
     this.isEdit = !!stakeholderId;
     this.stakeholder = null;
     this.formElement = null;
-    
+
     this._init();
   }
-  
+
   /**
    * Initialize the form
    * @private
@@ -39,11 +39,11 @@ export class StakeholderForm {
         return;
       }
     }
-    
+
     this.render();
     this._addEventListeners();
   }
-  
+
   /**
    * Render the form
    */
@@ -54,23 +54,34 @@ export class StakeholderForm {
       console.error('Stakeholder form template not found');
       return;
     }
-    
+
     // Clone the template
     const formContent = template.content.cloneNode(true);
-    
+
     // Clear container and append form
     this.container.innerHTML = '';
     this.container.appendChild(formContent);
-    
+
     // Get form element
     this.formElement = document.getElementById('stakeholder-form');
-    
+
     // Populate form if editing
     if (this.isEdit && this.stakeholder) {
       document.getElementById('stakeholder-name').value = this.stakeholder.name || '';
-      document.getElementById('stakeholder-influence').value = this.stakeholder.influence || '';
-      document.getElementById('stakeholder-impact').value = this.stakeholder.impact || '';
-      document.getElementById('stakeholder-relationship').value = this.stakeholder.relationship || '';
+
+      // Set range input values and their displays
+      const influenceValue = this.stakeholder.influence || 5;
+      document.getElementById('stakeholder-influence').value = influenceValue;
+      document.getElementById('influence-value').textContent = influenceValue;
+
+      const impactValue = this.stakeholder.impact || 5;
+      document.getElementById('stakeholder-impact').value = impactValue;
+      document.getElementById('impact-value').textContent = impactValue;
+
+      const relationshipValue = this.stakeholder.relationship || 5;
+      document.getElementById('stakeholder-relationship').value = relationshipValue;
+      document.getElementById('relationship-value').textContent = relationshipValue;
+
       document.getElementById('stakeholder-category').value = this.stakeholder.category || 'other';
       document.getElementById('stakeholder-interests').value = this.stakeholder.interests || '';
       document.getElementById('stakeholder-contribution').value = this.stakeholder.contribution || '';
@@ -80,27 +91,27 @@ export class StakeholderForm {
       document.getElementById('stakeholder-measurement').value = this.stakeholder.measurement || '';
     }
   }
-  
+
   /**
    * Add event listeners to the form
    * @private
    */
   _addEventListeners() {
     if (!this.formElement) return;
-    
+
     // Form submit
     this.formElement.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       // Validate form
       if (!this._validateForm()) {
         return;
       }
-      
+
       // Handle submission
       await this._handleSubmit();
     });
-    
+
     // Cancel button
     const cancelBtn = document.getElementById('cancel-stakeholder-btn');
     if (cancelBtn) {
@@ -110,28 +121,28 @@ export class StakeholderForm {
         }
       });
     }
-    
+
     // Form field validation
     document.getElementById('stakeholder-name').addEventListener('blur', () => {
       formValidation.validateRequired('stakeholder-name', 'Name is required');
     });
-    
+
     document.getElementById('stakeholder-influence').addEventListener('blur', () => {
       formValidation.validateRequired('stakeholder-influence', 'Influence rating is required');
       formValidation.validateRange('stakeholder-influence', 1, 10, 'Influence must be between 1 and 10');
     });
-    
+
     document.getElementById('stakeholder-impact').addEventListener('blur', () => {
       formValidation.validateRequired('stakeholder-impact', 'Impact rating is required');
       formValidation.validateRange('stakeholder-impact', 1, 10, 'Impact must be between 1 and 10');
     });
-    
+
     document.getElementById('stakeholder-relationship').addEventListener('blur', () => {
       formValidation.validateRequired('stakeholder-relationship', 'Relationship rating is required');
       formValidation.validateRange('stakeholder-relationship', 1, 10, 'Relationship must be between 1 and 10');
     });
   }
-  
+
   /**
    * Validate the form
    * @returns {boolean} - Whether the form is valid
@@ -139,21 +150,21 @@ export class StakeholderForm {
    */
   _validateForm() {
     let isValid = true;
-    
+
     // Required fields
     isValid = formValidation.validateRequired('stakeholder-name', 'Name is required') && isValid;
     isValid = formValidation.validateRequired('stakeholder-influence', 'Influence rating is required') && isValid;
     isValid = formValidation.validateRequired('stakeholder-impact', 'Impact rating is required') && isValid;
     isValid = formValidation.validateRequired('stakeholder-relationship', 'Relationship rating is required') && isValid;
-    
+
     // Range validations
     isValid = formValidation.validateRange('stakeholder-influence', 1, 10, 'Influence must be between 1 and 10') && isValid;
     isValid = formValidation.validateRange('stakeholder-impact', 1, 10, 'Impact must be between 1 and 10') && isValid;
     isValid = formValidation.validateRange('stakeholder-relationship', 1, 10, 'Relationship must be between 1 and 10') && isValid;
-    
+
     return isValid;
   }
-  
+
   /**
    * Handle form submission
    * @private
@@ -174,11 +185,11 @@ export class StakeholderForm {
         strategy: document.getElementById('stakeholder-strategy').value,
         measurement: document.getElementById('stakeholder-measurement').value
       };
-      
+
       if (this.isEdit) {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.stakeholderId, formData);
-        
+
         analytics.logEvent('stakeholder_updated', {
           stakeholder_id: this.stakeholderId
         });
@@ -188,15 +199,15 @@ export class StakeholderForm {
         if (!currentMap) {
           throw new Error('No map selected');
         }
-        
+
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
-        
+
         analytics.logEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });
       }
-      
+
       // Execute callback if provided
       if (this.onSubmitCallback) {
         this.onSubmitCallback();
@@ -206,7 +217,7 @@ export class StakeholderForm {
       alert(`Error saving stakeholder: ${error.message}`);
     }
   }
-  
+
   /**
    * Reset the form
    */

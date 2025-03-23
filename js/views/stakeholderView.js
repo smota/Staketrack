@@ -3,6 +3,7 @@ import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
 import { dateUtils } from '../utils/dateUtils.js';
 import { analytics } from '../../../firebase/firebaseConfig.js';
+import tooltipService from '../services/tooltipService.js';
 
 /**
  * Stakeholder View - Handles stakeholder details and interaction views
@@ -13,16 +14,16 @@ class StakeholderView {
     this.modalTitleElement = document.getElementById('modal-title');
     this.modalContentElement = document.getElementById('modal-content');
     this.modalContainerElement = document.getElementById('modal-container');
-    
+
     this.stakeholderFormTemplate = document.getElementById('stakeholder-form-template');
     this.interactionLogTemplate = document.getElementById('interaction-log-template');
     this.stakeholderAdviceTemplate = document.getElementById('stakeholder-advice-template');
-    
+
     this.currentStakeholderId = null;
-    
+
     this._initEventListeners();
   }
-  
+
   /**
    * Initialize event listeners
    * @private
@@ -32,31 +33,31 @@ class StakeholderView {
     EventBus.on('stakeholder:show-details', (stakeholderId) => {
       this.showStakeholderDetails(stakeholderId);
     });
-    
+
     EventBus.on('stakeholder:show-form', (stakeholderId = null) => {
       this.showStakeholderForm(stakeholderId);
     });
-    
+
     EventBus.on('stakeholder:show-interaction-log', (stakeholderId) => {
       this.showInteractionLog(stakeholderId);
     });
-    
+
     EventBus.on('stakeholder:get-advice', (stakeholderId) => {
       this.getStakeholderAdvice(stakeholderId);
     });
-    
+
     // Modal close button
     document.getElementById('modal-close').addEventListener('click', () => {
       this.hideModal();
     });
-    
+
     // Close modal when clicking outside
     this.modalContainerElement.addEventListener('click', (e) => {
       if (e.target === this.modalContainerElement) {
         this.hideModal();
       }
     });
-    
+
     // ESC key to close modal
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !this.modalContainerElement.classList.contains('hidden')) {
@@ -64,7 +65,7 @@ class StakeholderView {
       }
     });
   }
-  
+
   /**
    * Show stakeholder details
    * @param {string} stakeholderId - Stakeholder ID
@@ -75,16 +76,16 @@ class StakeholderView {
       console.error(`Stakeholder not found: ${stakeholderId}`);
       return;
     }
-    
+
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitleElement.textContent = stakeholder.name;
-    
+
     // Create details content
     const detailsContent = document.createElement('div');
     detailsContent.className = 'stakeholder-details';
-    
+
     // Add details HTML
     detailsContent.innerHTML = `
       <div class="stakeholder-info">
@@ -124,38 +125,38 @@ class StakeholderView {
         </div>
       </div>
     `;
-    
+
     // Clear modal content and add details
     this.modalContentElement.innerHTML = '';
     this.modalContentElement.appendChild(detailsContent);
-    
+
     // Add event listeners for action buttons
     document.getElementById('edit-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm(stakeholderId);
     });
-    
+
     document.getElementById('delete-stakeholder-btn').addEventListener('click', () => {
       this._confirmDeleteStakeholder(stakeholderId);
     });
-    
+
     document.getElementById('log-interaction-btn').addEventListener('click', () => {
       this.showInteractionLog(stakeholderId);
     });
-    
+
     document.getElementById('get-advice-btn').addEventListener('click', () => {
       this.getStakeholderAdvice(stakeholderId);
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
     analytics.trackEvent('stakeholder_details_viewed', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
   }
-  
+
   /**
    * Show stakeholder form
    * @param {string|null} stakeholderId - Stakeholder ID for editing, or null for new stakeholder
@@ -163,17 +164,17 @@ class StakeholderView {
   showStakeholderForm(stakeholderId = null) {
     const isEdit = !!stakeholderId;
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitleElement.textContent = isEdit ? 'Edit Stakeholder' : 'Add Stakeholder';
-    
+
     // Clone the form template
     const formContent = this.stakeholderFormTemplate.content.cloneNode(true);
     this.modalContentElement.innerHTML = '';
     this.modalContentElement.appendChild(formContent);
-    
+
     const form = document.getElementById('stakeholder-form');
-    
+
     // If editing, populate form with stakeholder data
     if (isEdit) {
       const stakeholder = dataService.getStakeholderById(stakeholderId);
@@ -191,27 +192,36 @@ class StakeholderView {
         document.getElementById('stakeholder-measurement').value = stakeholder.measurement || '';
       }
     }
-    
+
+    // Ensure tooltips are initialized for the form fields
+    // Manually add tooltip listeners to all form fields with data-tooltip
+    form.querySelectorAll('[data-tooltip]').forEach(element => {
+      // Reset tooltip initialization state to ensure fresh listeners
+      delete element.dataset.tooltipInit;
+      // Add tooltip listeners
+      tooltipService._addTooltipListenersToElement(element);
+    });
+
     // Form submit handler
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       this._handleStakeholderFormSubmit(form, isEdit);
     });
-    
+
     // Cancel button handler
     document.getElementById('cancel-stakeholder-btn').addEventListener('click', () => {
       this.hideModal();
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
-    analytics.trackEvent('stakeholder_form_opened', { 
+    analytics.trackEvent('stakeholder_form_opened', {
       action: isEdit ? 'edit' : 'add'
     });
   }
-  
+
   /**
    * Show interaction log
    * @param {string} stakeholderId - Stakeholder ID
@@ -219,28 +229,28 @@ class StakeholderView {
   showInteractionLog(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     this.currentStakeholderId = stakeholderId;
-    
+
     // Set modal title
     this.modalTitleElement.textContent = `Interaction Log - ${stakeholder.name}`;
-    
+
     // Clone the interaction log template
     const logContent = this.interactionLogTemplate.content.cloneNode(true);
     this.modalContentElement.innerHTML = '';
     this.modalContentElement.appendChild(logContent);
-    
+
     // Set stakeholder name
     document.getElementById('interaction-stakeholder-name').textContent = stakeholder.name;
-    
+
     // Populate interactions list
     this._renderInteractionsList(stakeholder);
-    
+
     // Add event listener for adding new interaction
     document.getElementById('add-interaction-btn').addEventListener('click', () => {
       this._addNewInteraction(stakeholderId);
     });
-    
+
     // Enter key in textarea to submit
     document.getElementById('new-interaction').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.ctrlKey) {
@@ -248,17 +258,17 @@ class StakeholderView {
         this._addNewInteraction(stakeholderId);
       }
     });
-    
+
     // Show modal
     this.showModal();
-    
+
     // Track analytics
     analytics.trackEvent('interaction_log_opened', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
   }
-  
+
   /**
    * Get AI-powered engagement advice for a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -266,37 +276,37 @@ class StakeholderView {
   async getStakeholderAdvice(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     // Set modal title
     this.modalTitleElement.textContent = `Engagement Advice for ${stakeholder.name}`;
-    
+
     // Clone the advice template
     const adviceContent = this.stakeholderAdviceTemplate.content.cloneNode(true);
     this.modalContentElement.innerHTML = '';
     this.modalContentElement.appendChild(adviceContent);
-    
+
     // Set stakeholder name
     document.getElementById('advice-stakeholder-name').textContent = stakeholder.name;
-    
+
     // Show loading state
     document.getElementById('stakeholder-advice-loading').classList.remove('hidden');
     document.getElementById('stakeholder-advice-content').classList.add('hidden');
-    
+
     // Show modal
     this.showModal();
-    
+
     try {
       // Get advice from LLM service
       const advice = await llmService.getStakeholderAdvice(stakeholder);
-      
+
       // Hide loading, show content
       document.getElementById('stakeholder-advice-loading').classList.add('hidden');
       document.getElementById('stakeholder-advice-content').classList.remove('hidden');
-      
+
       // Set advice content with markdown formatting
       const adviceContent = document.getElementById('stakeholder-advice-content');
       adviceContent.innerHTML = this._formatMarkdown(advice);
-      
+
       // Track analytics
       analytics.trackEvent('stakeholder_advice_generated', {
         stakeholder_id: stakeholderId,
@@ -304,7 +314,7 @@ class StakeholderView {
       });
     } catch (error) {
       console.error('Error getting stakeholder advice:', error);
-      
+
       // Hide loading, show error
       document.getElementById('stakeholder-advice-loading').classList.add('hidden');
       document.getElementById('stakeholder-advice-content').classList.remove('hidden');
@@ -315,7 +325,7 @@ class StakeholderView {
           <p>Please check your API key settings and try again.</p>
         </div>
       `;
-      
+
       // Track error
       analytics.trackEvent('stakeholder_advice_error', {
         stakeholder_id: stakeholderId,
@@ -323,7 +333,7 @@ class StakeholderView {
       });
     }
   }
-  
+
   /**
    * Handle stakeholder form submission
    * @param {HTMLFormElement} form - Form element
@@ -346,11 +356,11 @@ class StakeholderView {
         strategy: document.getElementById('stakeholder-strategy').value,
         measurement: document.getElementById('stakeholder-measurement').value
       };
-      
+
       if (isEdit) {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.currentStakeholderId, formData);
-        
+
         analytics.trackEvent('stakeholder_updated', {
           stakeholder_id: this.currentStakeholderId
         });
@@ -360,15 +370,15 @@ class StakeholderView {
         if (!currentMap) {
           throw new Error('No map selected');
         }
-        
+
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
-        
+
         analytics.trackEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });
       }
-      
+
       // Hide modal
       this.hideModal();
     } catch (error) {
@@ -376,7 +386,7 @@ class StakeholderView {
       alert(`Error saving stakeholder: ${error.message}`);
     }
   }
-  
+
   /**
    * Confirm and delete a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -385,12 +395,12 @@ class StakeholderView {
   _confirmDeleteStakeholder(stakeholderId) {
     const stakeholder = dataService.getStakeholderById(stakeholderId);
     if (!stakeholder) return;
-    
+
     if (confirm(`Are you sure you want to delete "${stakeholder.name}"? This action cannot be undone.`)) {
       dataService.deleteStakeholder(stakeholderId)
         .then(() => {
           this.hideModal();
-          
+
           analytics.trackEvent('stakeholder_deleted', {
             stakeholder_id: stakeholderId
           });
@@ -401,7 +411,7 @@ class StakeholderView {
         });
     }
   }
-  
+
   /**
    * Render the interactions list for a stakeholder
    * @param {Stakeholder} stakeholder - Stakeholder object
@@ -410,30 +420,30 @@ class StakeholderView {
   _renderInteractionsList(stakeholder) {
     const interactionsList = document.getElementById('interactions-list');
     interactionsList.innerHTML = '';
-    
+
     const interactions = stakeholder.getLatestInteractions();
-    
+
     if (interactions.length === 0) {
       interactionsList.innerHTML = '<p class="empty-state">No interactions recorded yet.</p>';
       return;
     }
-    
+
     interactions.forEach(interaction => {
       const entryElement = document.createElement('div');
       entryElement.className = 'interaction-entry';
-      
+
       const date = new Date(interaction.date);
       const formattedDate = dateUtils.formatDate(date, 'full');
-      
+
       entryElement.innerHTML = `
         <div class="interaction-date">${formattedDate}</div>
         <p class="interaction-text">${this._formatInteractionText(interaction.text)}</p>
       `;
-      
+
       interactionsList.appendChild(entryElement);
     });
   }
-  
+
   /**
    * Add a new interaction for a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -442,19 +452,19 @@ class StakeholderView {
   async _addNewInteraction(stakeholderId) {
     const textArea = document.getElementById('new-interaction');
     const text = textArea.value.trim();
-    
+
     if (!text) return;
-    
+
     try {
       await dataService.addInteraction(stakeholderId, text);
-      
+
       // Clear textarea
       textArea.value = '';
-      
+
       // Re-render interactions list
       const stakeholder = dataService.getStakeholderById(stakeholderId);
       this._renderInteractionsList(stakeholder);
-      
+
       // Track analytics
       analytics.trackEvent('interaction_added', {
         stakeholder_id: stakeholderId
@@ -464,7 +474,7 @@ class StakeholderView {
       alert(`Error adding interaction: ${error.message}`);
     }
   }
-  
+
   /**
    * Create a detail section HTML
    * @param {string} title - Section title
@@ -474,7 +484,7 @@ class StakeholderView {
    */
   _createDetailSection(title, content) {
     if (!content) return '';
-    
+
     return `
       <div class="detail-section">
         <h4>${title}</h4>
@@ -482,7 +492,7 @@ class StakeholderView {
       </div>
     `;
   }
-  
+
   /**
    * Format category for display
    * @param {string} category - Category slug
@@ -491,12 +501,12 @@ class StakeholderView {
    */
   _formatCategory(category) {
     if (!category) return 'Other';
-    
+
     return category
       .replace(/-/g, ' ')
       .replace(/\b\w/g, l => l.toUpperCase());
   }
-  
+
   /**
    * Format interaction text with line breaks
    * @param {string} text - Raw interaction text
@@ -505,11 +515,11 @@ class StakeholderView {
    */
   _formatInteractionText(text) {
     if (!text) return '';
-    
+
     // Convert line breaks to <br> tags
     return text.replace(/\n/g, '<br>');
   }
-  
+
   /**
    * Format markdown text to HTML
    * @param {string} markdown - Markdown text
@@ -518,14 +528,14 @@ class StakeholderView {
    */
   _formatMarkdown(markdown) {
     if (!markdown) return '';
-    
+
     // Convert headers
     let html = markdown
       .replace(/^# (.*$)/gm, '<h2>$1</h2>')
       .replace(/^## (.*$)/gm, '<h3>$1</h3>')
       .replace(/^### (.*$)/gm, '<h4>$1</h4>')
       .replace(/^#### (.*$)/gm, '<h5>$1</h5>');
-    
+
     // Convert lists
     html = html
       .replace(/^\s*\n\* (.*)/gm, '<ul>\n<li>$1</li>')
@@ -538,20 +548,20 @@ class StakeholderView {
       .replace(/<\/ol>\s*\n<ol>/g, '')
       .replace(/<\/li>\s*\n<\/ul>/g, '</li></ul>')
       .replace(/<\/li>\s*\n<\/ol>/g, '</li></ol>');
-    
+
     // Convert bold and italic
     html = html
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
       .replace(/\_(.*?)\_/g, '<em>$1</em>');
-    
+
     // Convert line breaks
     html = html.replace(/\n/g, '<br>');
-    
+
     return html;
   }
-  
+
   /**
    * Show the modal
    */
@@ -561,7 +571,7 @@ class StakeholderView {
       this.modalContainerElement.classList.add('visible');
     }, 10);
   }
-  
+
   /**
    * Hide the modal
    */
@@ -577,8 +587,3 @@ class StakeholderView {
 
 // Create and export instance
 export default new StakeholderView();
-details';
-    
-    // Add details HTML
-    detailsContent.innerHTML = `
-      <div class="stakeholder-

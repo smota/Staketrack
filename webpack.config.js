@@ -35,23 +35,20 @@ module.exports = {
     alias: {
       '@firebase': path.resolve(__dirname, 'firebase')
     },
-    modules: [path.resolve(__dirname), 'node_modules']
+    modules: [path.resolve(__dirname), 'node_modules'],
+    fallback: {
+      "process": require.resolve("process/browser")
+    }
   },
   // Add plugins
   plugins: [
-    // Define environment variables
+    // Define environment variables - only for process.env, not window.ENV
     new webpack.DefinePlugin({
-      'window.ENV': JSON.stringify({
-        ENVIRONMENT: process.env.ENVIRONMENT || 'DEV',
-        FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
-        FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
-        FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-        FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-        FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-        FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
-        USE_EMULATORS: process.env.USE_EMULATORS || 'false'
-      })
+      'process.env': JSON.stringify(process.env)
+    }),
+    // Provide process/browser for the bundle
+    new webpack.ProvidePlugin({
+      process: 'process/browser'
     }),
     new HtmlWebpackPlugin({
       template: './index.html',

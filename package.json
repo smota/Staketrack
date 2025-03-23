@@ -15,8 +15,16 @@
     "build:prod": "dotenv -e .env.production webpack --mode production",
     "firebase:setup": "node scripts/firebase-setup.js",
     "firebase:deploy": "node scripts/firebase-deploy.js",
+    "firebase:update-config": "node scripts/update-firebase-config.js",
+    "firebase:update-config:dev": "node scripts/update-firebase-config.js --env=dev",
+    "firebase:update-config:prod": "node scripts/update-firebase-config.js --env=prd",
+    "firebase:init-functions": "node scripts/init-firebase-functions.js",
+    "firebase:init-functions:dev": "node scripts/init-firebase-functions.js --env=dev",
+    "firebase:init-functions:prod": "node scripts/init-firebase-functions.js --env=prd",
     "deploy:dev": "node scripts/firebase-deploy.js --env=DEV --option=hosting",
     "deploy:prod": "node scripts/firebase-deploy.js --env=PRD --option=hosting",
+    "deploy:functions:dev": "node scripts/firebase-deploy.js --env=DEV --option=functions",
+    "deploy:functions:prod": "node scripts/firebase-deploy.js --env=PRD --option=functions",
     "deploy:rules:dev": "node scripts/firebase-deploy.js --env=DEV --option=rules",
     "deploy:rules:prod": "node scripts/firebase-deploy.js --env=PRD --option=rules",
     "deploy:all:dev": "node scripts/firebase-deploy.js --env=DEV --option=all",
@@ -67,6 +75,8 @@
     "@opentelemetry/sdk-trace-base": "^2.0.0",
     "@opentelemetry/sdk-trace-web": "^2.0.0",
     "@opentelemetry/semantic-conventions": "^1.30.0",
-    "firebase": "^8.10.1"
+    "dotenv": "^16.4.5",
+    "firebase": "^8.10.1",
+    "process": "^0.11.10"
   }
 }

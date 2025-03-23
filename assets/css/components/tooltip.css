@@ -11,13 +11,20 @@
   box-shadow: var(--shadow-md);
   pointer-events: none;
   opacity: 0;
-  transition: opacity var(--transition-fast);
+  transition: opacity 0.2s ease, visibility 0.2s ease;
   word-wrap: break-word;
   line-height: 1.4;
+  visibility: hidden;
+}
+
+.tooltip.hidden {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .tooltip.visible {
   opacity: 1;
+  visibility: visible;
 }
 
 /* Tooltip arrow */

@@ -128,9 +128,11 @@ export class MapController {
     this.showModal();
 
     // Track analytics
-    this.analytics.logEvent('map_form_opened', {
-      action: isEdit ? 'edit' : 'create'
-    });
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('map_form_opened', {
+        action: isEdit ? 'edit' : 'create'
+      });
+    }
   }
 
   /**
@@ -151,16 +153,20 @@ export class MapController {
         // Update existing map
         await dataService.updateMap(this.currentMapId, formData);
 
-        this.analytics.logEvent('map_updated', {
-          map_id: this.currentMapId
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('map_updated', {
+            map_id: this.currentMapId
+          });
+        }
       } else {
         // Create new map
         const map = await dataService.createMap(formData);
 
-        this.analytics.logEvent('map_created', {
-          map_id: map.id
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('map_created', {
+            map_id: map.id
+          });
+        }
       }
 
       // Hide modal
@@ -211,7 +217,9 @@ export class MapController {
     this.showModal();
 
     // Track analytics
-    this.analytics.logEvent('import_form_opened');
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('import_form_opened');
+    }
   }
 
   /**
@@ -240,10 +248,12 @@ export class MapController {
         this.hideModal();
 
         // Track analytics
-        this.analytics.logEvent('map_imported', {
-          file_name: file.name,
-          file_size: file.size
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('map_imported', {
+            file_name: file.name,
+            file_size: file.size
+          });
+        }
       } catch (error) {
         console.error('Error importing data:', error);
         alert(`Error importing data: ${error.message}`);
@@ -291,10 +301,12 @@ export class MapController {
       }, 100);
 
       // Track analytics
-      this.analytics.logEvent('map_exported', {
-        map_id: currentMap.id,
-        stakeholders_count: currentMap.stakeholders.length
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('map_exported', {
+          map_id: currentMap.id,
+          stakeholders_count: currentMap.stakeholders.length
+        });
+      }
     } catch (error) {
       console.error('Error exporting map:', error);
       alert(`Error exporting map: ${error.message}`);
@@ -345,10 +357,12 @@ export class MapController {
       adviceContent.innerHTML = this._markdownToHtml(recommendations);
 
       // Track analytics
-      this.analytics.logEvent('map_recommendations_generated', {
-        map_id: currentMap.id,
-        stakeholders_count: currentMap.stakeholders.length
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('map_recommendations_generated', {
+          map_id: currentMap.id,
+          stakeholders_count: currentMap.stakeholders.length
+        });
+      }
     } catch (error) {
       console.error('Error getting map recommendations:', error);
 
@@ -364,10 +378,12 @@ export class MapController {
       `;
 
       // Track error
-      this.analytics.logEvent('map_recommendations_error', {
-        map_id: currentMap.id,
-        error_message: error.message
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('map_recommendations_error', {
+          map_id: currentMap.id,
+          error_message: error.message
+        });
+      }
     }
   }
 

@@ -27,6 +27,8 @@ StakeTrack comes with comprehensive documentation:
 - [Service Setup Guide](docs/SETUP.md) - Instructions for setting up Firebase, Claude API, and other services
 - [Configuration Guide](docs/CONFIGURATION.md) - How to configure environment variables and application settings
 - [Deployment Guide](docs/DEPLOYMENT.md) - Instructions for deploying the application to Firebase
+- [Firebase Configuration Guide](FIREBASE_CONFIG.md) - Guide for securely handling Firebase configuration
+- [GitHub Workflow Guide](docs/github-workflow.md) - How GitHub Actions automates deployment and configuration
 - [Run and Debug Guide](docs/RUN_DEBUG.md) - How to run and debug the application during development
 - [Testing Guide](docs/TESTING.md) - Instructions for running tests and writing new ones
 - [Specifications](docs/spec/README.md) - Detailed functional specifications in EPIC → FEATURE → STORY format
