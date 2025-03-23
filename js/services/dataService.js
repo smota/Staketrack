@@ -57,6 +57,22 @@ export class DataService {
       const currentMapId = localStorageService.getCurrentMapId();
       if (currentMapId && this.maps.has(currentMapId)) {
         this.currentMapId = currentMapId;
+
+        // Emit event to notify the UI that the current map has changed
+        // This ensures the UI is updated immediately on initialization
+        setTimeout(() => {
+          EventBus.emit('map:current-changed', this.maps.get(currentMapId));
+        }, 0);
+      } else if (this.maps.size > 0) {
+        // If no current map is set but maps exist, set the first one as current
+        const firstMapId = this.maps.keys().next().value;
+        this.currentMapId = firstMapId;
+        localStorageService.saveCurrentMapId(firstMapId);
+
+        // Emit event to notify the UI
+        setTimeout(() => {
+          EventBus.emit('map:current-changed', this.maps.get(firstMapId));
+        }, 0);
       }
     }
   }
@@ -284,6 +300,24 @@ export class DataService {
    */
   getCurrentMap() {
     return this.currentMapId ? this.maps.get(this.currentMapId) : null;
+  }
+
+  /**
+   * Export map data for saving to file
+   * @param {string} mapId - Map ID to export
+   * @returns {Object} - Map and stakeholder data for export
+   */
+  exportMap(mapId) {
+    const map = this.getMapById(mapId);
+    if (!map) {
+      throw new Error(`Map not found: ${mapId}`);
+    }
+
+    // Create export data structure
+    return {
+      map: map.toObject(),
+      stakeholders: map.stakeholders.map(s => s.toObject())
+    };
   }
 
   /**

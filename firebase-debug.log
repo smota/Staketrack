@@ -1,0 +1,22 @@
+[debug] [2025-03-23T18:28:45.871Z] ----------------------------------------------------------------------
+[debug] [2025-03-23T18:28:45.873Z] Command:       C:\Users\samue\nodejs\node.exe C:\Users\samue\nodejs\node_modules\firebase-tools\lib\bin\firebase.js functions:config:get
+[debug] [2025-03-23T18:28:45.874Z] CLI Version:   13.34.0
+[debug] [2025-03-23T18:28:45.874Z] Platform:      win32
+[debug] [2025-03-23T18:28:45.874Z] Node Version:  v20.11.1
+[debug] [2025-03-23T18:28:45.874Z] Time:          Sun Mar 23 2025 19:28:45 GMT+0100 (Central European Standard Time)
+[debug] [2025-03-23T18:28:45.874Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-03-23T18:28:45.998Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-03-23T18:28:45.999Z] > authorizing via signed-in user (samuelmota@gmail.com)
+[debug] [2025-03-23T18:28:45.999Z] [iam] checking project staketrack-dev for permissions ["firebase.projects.get","runtimeconfig.configs.get","runtimeconfig.configs.list","runtimeconfig.variables.get","runtimeconfig.variables.list"]
+[debug] [2025-03-23T18:28:45.999Z] Checked if tokens are valid: true, expires at: 1742758112992
+[debug] [2025-03-23T18:28:45.999Z] Checked if tokens are valid: true, expires at: 1742758112992
+[debug] [2025-03-23T18:28:46.000Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/staketrack-dev:testIamPermissions [none]
+[debug] [2025-03-23T18:28:46.000Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/staketrack-dev:testIamPermissions x-goog-quota-user=projects/staketrack-dev
+[debug] [2025-03-23T18:28:46.000Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/staketrack-dev:testIamPermissions {"permissions":["firebase.projects.get","runtimeconfig.configs.get","runtimeconfig.configs.list","runtimeconfig.variables.get","runtimeconfig.variables.list"]}
+[debug] [2025-03-23T18:28:46.744Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/staketrack-dev:testIamPermissions 200
+[debug] [2025-03-23T18:28:46.744Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/staketrack-dev:testIamPermissions {"permissions":["firebase.projects.get","runtimeconfig.configs.get","runtimeconfig.configs.list","runtimeconfig.variables.get","runtimeconfig.variables.list"]}
+[debug] [2025-03-23T18:28:46.744Z] Checked if tokens are valid: true, expires at: 1742758112992
+[debug] [2025-03-23T18:28:46.745Z] Checked if tokens are valid: true, expires at: 1742758112992
+[debug] [2025-03-23T18:28:46.745Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/staketrack-dev/services/runtimeconfig.googleapis.com [none]
+[debug] [2025-03-23T18:28:46.745Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/staketrack-dev/services/runtimeconfig.googleapis.com x-goog-quota-user=projects/staketrack-dev

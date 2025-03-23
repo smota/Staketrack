@@ -72,7 +72,13 @@ class StakeholderView {
    * @param {string} stakeholderId - Stakeholder ID
    */
   showStakeholderDetails(stakeholderId) {
-    const stakeholder = dataService.getStakeholderById(stakeholderId);
+    const currentMap = dataService.getCurrentMap();
+    if (!currentMap) {
+      console.error('No current map available');
+      return;
+    }
+
+    const stakeholder = currentMap.getStakeholder(stakeholderId);
     if (!stakeholder) {
       console.error(`Stakeholder not found: ${stakeholderId}`);
       return;
@@ -177,8 +183,14 @@ class StakeholderView {
     const form = document.getElementById('stakeholder-form');
 
     // If editing, populate form with stakeholder data
-    if (isEdit) {
-      const stakeholder = dataService.getStakeholderById(stakeholderId);
+    if (stakeholderId) {
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
+      }
+
+      const stakeholder = currentMap.getStakeholder(stakeholderId);
       if (stakeholder) {
         document.getElementById('stakeholder-name').value = stakeholder.name || '';
         document.getElementById('stakeholder-influence').value = stakeholder.influence || '';
@@ -228,8 +240,17 @@ class StakeholderView {
    * @param {string} stakeholderId - Stakeholder ID
    */
   showInteractionLog(stakeholderId) {
-    const stakeholder = dataService.getStakeholderById(stakeholderId);
-    if (!stakeholder) return;
+    const currentMap = dataService.getCurrentMap();
+    if (!currentMap) {
+      console.error('No current map available');
+      return;
+    }
+
+    const stakeholder = currentMap.getStakeholder(stakeholderId);
+    if (!stakeholder) {
+      console.error(`Stakeholder not found: ${stakeholderId}`);
+      return;
+    }
 
     this.currentStakeholderId = stakeholderId;
 
@@ -275,8 +296,17 @@ class StakeholderView {
    * @param {string} stakeholderId - Stakeholder ID
    */
   async getStakeholderAdvice(stakeholderId) {
-    const stakeholder = dataService.getStakeholderById(stakeholderId);
-    if (!stakeholder) return;
+    const currentMap = dataService.getCurrentMap();
+    if (!currentMap) {
+      console.error('No current map available');
+      return;
+    }
+
+    const stakeholder = currentMap.getStakeholder(stakeholderId);
+    if (!stakeholder) {
+      console.error(`Stakeholder not found: ${stakeholderId}`);
+      return;
+    }
 
     // Set modal title
     this.modalTitleElement.textContent = `Engagement Advice for ${stakeholder.name}`;
@@ -394,8 +424,17 @@ class StakeholderView {
    * @private
    */
   _confirmDeleteStakeholder(stakeholderId) {
-    const stakeholder = dataService.getStakeholderById(stakeholderId);
-    if (!stakeholder) return;
+    const currentMap = dataService.getCurrentMap();
+    if (!currentMap) {
+      console.error('No current map available');
+      return;
+    }
+
+    const stakeholder = currentMap.getStakeholder(stakeholderId);
+    if (!stakeholder) {
+      console.error(`Stakeholder not found: ${stakeholderId}`);
+      return;
+    }
 
     if (confirm(`Are you sure you want to delete "${stakeholder.name}"? This action cannot be undone.`)) {
       dataService.deleteStakeholder(stakeholderId)
@@ -463,7 +502,17 @@ class StakeholderView {
       textArea.value = '';
 
       // Re-render interactions list
-      const stakeholder = dataService.getStakeholderById(stakeholderId);
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
+      }
+
+      const stakeholder = currentMap.getStakeholder(stakeholderId);
+      if (!stakeholder) {
+        console.error(`Stakeholder not found: ${stakeholderId}`);
+        return;
+      }
       this._renderInteractionsList(stakeholder);
 
       // Track analytics

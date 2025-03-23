@@ -149,7 +149,7 @@ export class MatrixView {
 
     // Hide tooltip when mouse leaves
     plotElement.addEventListener('mouseleave', () => {
-      tooltipService.hide();
+      tooltipService.hideTooltip();
     });
 
     // Handle click on stakeholder plot
@@ -228,8 +228,17 @@ export class MatrixView {
    * @param {string} stakeholderId - Stakeholder ID
    */
   updateStakeholderPlot(stakeholderId) {
-    const stakeholder = dataService.getStakeholderById(stakeholderId);
-    if (!stakeholder) return;
+    const currentMap = dataService.getCurrentMap();
+    if (!currentMap) {
+      console.error('No current map available');
+      return;
+    }
+
+    const stakeholder = currentMap.getStakeholder(stakeholderId);
+    if (!stakeholder) {
+      console.error(`Stakeholder not found: ${stakeholderId}`);
+      return;
+    }
 
     // Remove existing plot
     const existingPlot = this.plotElements.get(stakeholderId);

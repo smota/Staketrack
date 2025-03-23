@@ -116,8 +116,13 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Advice Content Styling */
@@ -204,16 +209,36 @@
     width: 95%;
     max-height: 95vh;
   }
-  
-  .modal-header, .modal-footer {
+
+  .modal-header,
+  .modal-footer {
     padding: var(--spacing-sm) var(--spacing-md);
   }
-  
+
   .modal-content {
     padding: var(--spacing-md);
   }
-  
+
   .interaction-form {
     flex-direction: column;
   }
+}
+
+/* Export Success Message */
+.export-success-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-lg);
+}
+
+.export-success-message .success-icon {
+  font-size: 3rem;
+  color: var(--color-success);
+  margin-bottom: var(--spacing-md);
+}
+
+.export-success-message p {
+  margin: var(--spacing-xs) 0;
 }

@@ -29,11 +29,18 @@ export class InteractionLog {
    * @private
    */
   async _init() {
-    // Get stakeholder data
-    this.stakeholder = dataService.getStakeholderById(this.stakeholderId);
-    if (!this.stakeholder) {
-      console.error(`Stakeholder not found: ${this.stakeholderId}`);
-      return;
+    if (this.stakeholderId) {
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
+      }
+
+      this.stakeholder = currentMap.getStakeholder(this.stakeholderId);
+      if (!this.stakeholder) {
+        console.error(`Stakeholder not found: ${this.stakeholderId}`);
+        return;
+      }
     }
 
     this.render();

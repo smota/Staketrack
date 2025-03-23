@@ -64,6 +64,11 @@ export class StakeholderList {
     });
 
     EventBus.on('stakeholder:deleted', () => {
+      // Get updated stakeholders list from current map
+      const currentMap = dataService.getCurrentMap();
+      if (currentMap) {
+        this.stakeholders = currentMap.stakeholders;
+      }
       this.render();
     });
 

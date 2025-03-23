@@ -111,6 +111,17 @@ export class MapController {
         document.getElementById('map-name').value = map.name || '';
         document.getElementById('map-description').value = map.description || '';
       }
+
+      // Show delete button if editing (moved after form population)
+      const deleteBtn = document.getElementById('delete-map-btn');
+      if (deleteBtn) { // Add null check
+        deleteBtn.classList.remove('hidden');
+
+        // Add delete button handler
+        deleteBtn.addEventListener('click', () => {
+          this._confirmDeleteMap(this.currentMapId);
+        });
+      }
     }
 
     // Form submit handler
@@ -449,6 +460,92 @@ export class MapController {
       this.modalContent.innerHTML = '';
       this.currentMapId = null;
     }, 300); // Wait for transition to complete
+  }
+
+  /**
+   * Confirm and delete a map
+   * @param {string} mapId - Map ID to delete
+   * @private
+   */
+  _confirmDeleteMap(mapId) {
+    const map = dataService.getMapById(mapId);
+    if (!map) return;
+
+    // Create a confirmation modal within the current modal
+    const confirmDialog = document.createElement('div');
+    confirmDialog.className = 'confirmation-dialog';
+    confirmDialog.innerHTML = `
+      <div class="confirmation-message">
+        <p>Are you sure you want to delete "${map.name}"?</p>
+        <p class="warning">This will permanently delete the map and all associated stakeholders.</p>
+        <p class="warning">This action cannot be undone!</p>
+      </div>
+      <div class="confirmation-actions">
+        <button id="confirm-delete-btn" class="btn btn-danger">Delete Map</button>
+        <button id="cancel-delete-btn" class="btn btn-secondary">Cancel</button>
+      </div>
+    `;
+
+    // Add styles to the confirmation dialog
+    confirmDialog.style.position = 'absolute';
+    confirmDialog.style.top = '0';
+    confirmDialog.style.left = '0';
+    confirmDialog.style.right = '0';
+    confirmDialog.style.bottom = '0';
+    confirmDialog.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+    confirmDialog.style.zIndex = '10';
+    confirmDialog.style.display = 'flex';
+    confirmDialog.style.flexDirection = 'column';
+    confirmDialog.style.justifyContent = 'center';
+    confirmDialog.style.alignItems = 'center';
+    confirmDialog.style.padding = 'var(--spacing-lg)';
+    confirmDialog.style.textAlign = 'center';
+
+    // Style the warning messages
+    const warningElements = confirmDialog.querySelectorAll('.warning');
+    warningElements.forEach(el => {
+      el.style.color = 'var(--color-danger)';
+      el.style.fontWeight = 'var(--font-weight-medium)';
+    });
+
+    // Style the confirmation actions
+    const actionsDiv = confirmDialog.querySelector('.confirmation-actions');
+    actionsDiv.style.marginTop = 'var(--spacing-lg)';
+    actionsDiv.style.display = 'flex';
+    actionsDiv.style.gap = 'var(--spacing-md)';
+
+    // Add confirmation dialog to the modal
+    this.modalContent.appendChild(confirmDialog);
+
+    // Add event listeners
+    document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+      try {
+        await dataService.deleteMap(mapId);
+
+        // Track analytics
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('map_deleted', {
+            map_id: mapId,
+            source: 'edit_form'
+          });
+        }
+
+        this.hideModal();
+
+        // If current map was deleted, go back to dashboard
+        if (dataService.getCurrentMap()?.id === mapId) {
+          EventBus.emit('view:change', 'dashboard');
+        }
+      } catch (error) {
+        console.error('Error deleting map:', error);
+        alert(`Error deleting map: ${error.message}`);
+      }
+    });
+
+    document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+      // Remove the confirmation dialog
+      this.modalContent.removeChild(confirmDialog);
+    });
   }
 }
 

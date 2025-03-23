@@ -37,7 +37,13 @@ export class StakeholderForm {
   async _init() {
     if (this.isEdit) {
       // Load stakeholder data if editing
-      this.stakeholder = dataService.getStakeholderById(this.stakeholderId);
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
+      }
+
+      this.stakeholder = currentMap.getStakeholder(this.stakeholderId);
       if (!this.stakeholder) {
         console.error(`Stakeholder not found: ${this.stakeholderId}`);
         return;

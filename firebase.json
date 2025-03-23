@@ -29,11 +29,11 @@
           ]
         },
         {
-          "source": "**/*",
+          "source": "**",
           "headers": [
             {
               "key": "Permissions-Policy",
-              "value": "browsing-topics=(), interest-cohort=()"
+              "value": "camera=(), microphone=(), geolocation=()"
             }
           ]
         }
@@ -71,11 +71,11 @@
           ]
         },
         {
-          "source": "**/*",
+          "source": "**",
           "headers": [
             {
               "key": "Permissions-Policy",
-              "value": "browsing-topics=(), interest-cohort=()"
+              "value": "camera=(), microphone=(), geolocation=()"
             }
           ]
         }

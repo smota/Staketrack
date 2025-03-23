@@ -122,16 +122,48 @@ function initializeFirebase() {
       signInWithEmailAndPassword: () => Promise.reject(error || new Error('Firebase not configured')),
       createUserWithEmailAndPassword: () => Promise.reject(error || new Error('Firebase not configured')),
       signInWithPopup: () => Promise.reject(error || new Error('Firebase not configured')),
-      signOut: () => Promise.resolve()
+      signOut: () => Promise.resolve(),
+      currentUser: null
     };
 
     firestore = {
-      collection: () => ({
-        doc: () => ({
-          get: () => Promise.resolve({ exists: false }),
-          set: () => Promise.resolve(),
-          update: () => Promise.resolve()
-        })
+      collection: (collectionName) => ({
+        doc: (docId) => ({
+          get: () => Promise.resolve({
+            exists: false,
+            data: () => null,
+            id: docId
+          }),
+          set: (data) => {
+            console.log(`Mock set data for ${collectionName}/${docId}:`, data);
+            return Promise.resolve();
+          },
+          update: (data) => {
+            console.log(`Mock update data for ${collectionName}/${docId}:`, data);
+            return Promise.resolve();
+          }
+        }),
+        add: (data) => {
+          const id = `mock-${Date.now()}`;
+          console.log(`Mock add data to ${collectionName} with ID ${id}:`, data);
+          return Promise.resolve({ id });
+        },
+        where: () => ({
+          get: () => Promise.resolve({
+            empty: true,
+            docs: [],
+            forEach: () => { }
+          })
+        }),
+        onSnapshot: (callback) => {
+          // Immediately call with empty data
+          callback({
+            empty: true,
+            docs: [],
+            forEach: () => { }
+          });
+          return () => { }; // Unsubscribe function
+        }
       })
     };
 
@@ -152,6 +184,11 @@ function initializeFirebase() {
     // Dispatch event to signal Firebase initialization failure
     window.dispatchEvent(new CustomEvent('firebase:error', {
       detail: { error: error || new Error('Firebase not configured') }
+    }));
+
+    // Also dispatch initialized event to ensure application continues
+    window.dispatchEvent(new CustomEvent('firebase:initialized', {
+      detail: { environment: env.ENVIRONMENT }
     }));
   };
 

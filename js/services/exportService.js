@@ -11,6 +11,68 @@ class ExportService {
   }
 
   /**
+   * Show export success modal
+   * @param {string} filename - Name of the exported file
+   * @private
+   */
+  _showExportSuccessModal(filename) {
+    // Create modal container
+    const modalContainer = document.createElement('div');
+    modalContainer.className = 'modal-container';
+
+    // Create modal content
+    const modal = document.createElement('div');
+    modal.className = 'modal modal-sm';
+
+    // Build success message HTML
+    const messageHtml = `
+      <div class="export-success-message">
+        <div class="success-icon">✓</div>
+        <h3>Export Successful</h3>
+        <p>File "${filename}" has been exported successfully!</p>
+        <p>You can find it in your browser's download folder.</p>
+      </div>
+    `;
+
+    // Create modal content
+    modal.innerHTML = messageHtml;
+
+    // Add close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.className = 'btn btn-primary';
+    closeButton.style.marginTop = 'var(--spacing-md)';
+
+    // Append elements
+    modal.querySelector('.export-success-message').appendChild(closeButton);
+    modalContainer.appendChild(modal);
+    document.body.appendChild(modalContainer);
+
+    // Show modal with animation
+    setTimeout(() => {
+      modalContainer.classList.add('visible');
+    }, 10);
+
+    // Handle close events
+    closeButton.addEventListener('click', () => {
+      modalContainer.classList.remove('visible');
+      setTimeout(() => {
+        document.body.removeChild(modalContainer);
+      }, 300); // Wait for transition to complete
+    });
+
+    // Also close when clicking outside modal
+    modalContainer.addEventListener('click', (e) => {
+      if (e.target === modalContainer) {
+        modalContainer.classList.remove('visible');
+        setTimeout(() => {
+          document.body.removeChild(modalContainer);
+        }, 300);
+      }
+    });
+  }
+
+  /**
    * Export a map to JSON file
    * @param {string} mapId - Map ID to export
    * @returns {Promise<void>} - Promise that resolves when export is complete
@@ -32,10 +94,13 @@ class ExportService {
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
 
+      // Create file name
+      const filename = this._getSafeFileName(map.name) + '_stakeholder_map.json';
+
       // Create download link
       const a = document.createElement('a');
       a.href = url;
-      a.download = this._getSafeFileName(map.name) + '_stakeholder_map.json';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
 
@@ -44,6 +109,9 @@ class ExportService {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 100);
+
+      // Show success modal
+      this._showExportSuccessModal(filename);
 
       // Track export
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
@@ -105,10 +173,13 @@ class ExportService {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
 
+      // Create file name
+      const filename = this._getSafeFileName(map.name) + '_stakeholders.csv';
+
       // Create download link
       const a = document.createElement('a');
       a.href = url;
-      a.download = this._getSafeFileName(map.name) + '_stakeholders.csv';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
 
@@ -117,6 +188,9 @@ class ExportService {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 100);
+
+      // Show success modal
+      this._showExportSuccessModal(filename);
 
       // Track export
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
@@ -141,9 +215,16 @@ class ExportService {
    */
   async exportInteractionsToCsv(stakeholderId) {
     try {
-      const stakeholder = dataService.getStakeholderById(stakeholderId);
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
+      }
+
+      const stakeholder = currentMap.getStakeholder(stakeholderId);
       if (!stakeholder) {
-        throw new Error(`Stakeholder not found: ${stakeholderId}`);
+        console.error(`Stakeholder not found: ${stakeholderId}`);
+        return;
       }
 
       // Define CSV headers
@@ -167,10 +248,13 @@ class ExportService {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
 
+      // Create file name
+      const filename = this._getSafeFileName(stakeholder.name) + '_interactions.csv';
+
       // Create download link
       const a = document.createElement('a');
       a.href = url;
-      a.download = this._getSafeFileName(stakeholder.name) + '_interactions.csv';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
 
@@ -179,6 +263,9 @@ class ExportService {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 100);
+
+      // Show success modal
+      this._showExportSuccessModal(filename);
 
       // Track export
       if (this.analytics && typeof this.analytics.logEvent === 'function') {

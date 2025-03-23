@@ -143,14 +143,16 @@ export class AppController {
     this._updateAuthUI(null);
 
     // Check if there are any maps
-    if (dataService.getAllMaps().length > 0) {
+    const maps = dataService.getAllMaps();
+    if (maps.length > 0) {
       // If there's a current map, show map view
       const currentMap = dataService.getCurrentMap();
       if (currentMap) {
         this.showView('map');
       } else {
-        // Otherwise, show dashboard
-        this.showView('dashboard');
+        // If no current map is set but maps exist, set the first one as current
+        dataService.setCurrentMap(maps[0].id);
+        this.showView('map');
       }
     } else {
       // If no maps, show dashboard
@@ -182,8 +184,9 @@ export class AppController {
         if (currentMap) {
           this.showView('map');
         } else {
-          // Otherwise, show dashboard
-          this.showView('dashboard');
+          // If no current map is set but maps exist, set the first one as current
+          dataService.setCurrentMap(maps[0].id);
+          this.showView('map');
         }
       } else {
         // If no maps, show auth view
@@ -245,6 +248,7 @@ export class AppController {
         } else {
           // Set first map as current if no current map
           dataService.setCurrentMap(maps[0].id);
+          this.showView('map');
         }
       }
     });
