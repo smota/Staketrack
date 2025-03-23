@@ -1,4 +1,5 @@
-import { firestore } from '../../../firebase/firebaseConfig.js';
+// Replace direct import with window reference
+// import { firestore } from '../../../firebase/firebaseConfig.js';
 import { EventBus } from '../utils/eventBus.js';
 
 /**
@@ -9,9 +10,9 @@ class FirebaseService {
    * Initialize the Firebase service
    */
   constructor() {
-    this.db = firestore;
+    this.db = window.firebase.firestore();
   }
-  
+
   /**
    * Get a user document
    * @param {string} userId - User ID
@@ -26,7 +27,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Update user settings
    * @param {string} userId - User ID
@@ -37,16 +38,16 @@ class FirebaseService {
     try {
       await this.db.collection('users').doc(userId).update({
         settings: settings,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
       });
-      
+
       EventBus.emit('user:settings-updated', settings);
     } catch (error) {
       console.error('Error updating user settings:', error);
       throw error;
     }
   }
-  
+
   /**
    * Get maps for a user
    * @param {string} userId - User ID
@@ -57,7 +58,7 @@ class FirebaseService {
       const snapshot = await this.db.collection('maps')
         .where('ownerId', '==', userId)
         .get();
-      
+
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -67,7 +68,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Get stakeholders for a map
    * @param {string} mapId - Map ID
@@ -78,7 +79,7 @@ class FirebaseService {
       const snapshot = await this.db.collection('stakeholders')
         .where('mapId', '==', mapId)
         .get();
-      
+
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -88,7 +89,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Create a new map
    * @param {Object} mapData - Map data
@@ -99,15 +100,15 @@ class FirebaseService {
       // Add created and updated timestamps
       const data = {
         ...mapData,
-        created: firebase.firestore.FieldValue.serverTimestamp(),
-        updated: firebase.firestore.FieldValue.serverTimestamp()
+        created: window.firebase.firestore.FieldValue.serverTimestamp(),
+        updated: window.firebase.firestore.FieldValue.serverTimestamp()
       };
-      
+
       const docRef = await this.db.collection('maps').add(data);
-      
+
       // Get the created document
       const doc = await docRef.get();
-      
+
       return {
         id: doc.id,
         ...doc.data()
@@ -117,7 +118,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Update a map
    * @param {string} mapId - Map ID
@@ -128,14 +129,14 @@ class FirebaseService {
     try {
       await this.db.collection('maps').doc(mapId).update({
         ...mapData,
-        updated: firebase.firestore.FieldValue.serverTimestamp()
+        updated: window.firebase.firestore.FieldValue.serverTimestamp()
       });
     } catch (error) {
       console.error('Error updating map:', error);
       throw error;
     }
   }
-  
+
   /**
    * Delete a map and all its stakeholders
    * @param {string} mapId - Map ID
@@ -145,20 +146,20 @@ class FirebaseService {
     try {
       // Start a batch
       const batch = this.db.batch();
-      
+
       // Delete the map
       batch.delete(this.db.collection('maps').doc(mapId));
-      
+
       // Get stakeholders for this map
       const stakeholdersSnapshot = await this.db.collection('stakeholders')
         .where('mapId', '==', mapId)
         .get();
-      
+
       // Add delete operations to batch
       stakeholdersSnapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
       });
-      
+
       // Commit the batch
       await batch.commit();
     } catch (error) {
@@ -166,7 +167,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Create a new stakeholder
    * @param {Object} stakeholderData - Stakeholder data
@@ -177,15 +178,15 @@ class FirebaseService {
       // Add created and updated timestamps
       const data = {
         ...stakeholderData,
-        created: firebase.firestore.FieldValue.serverTimestamp(),
-        updated: firebase.firestore.FieldValue.serverTimestamp()
+        created: window.firebase.firestore.FieldValue.serverTimestamp(),
+        updated: window.firebase.firestore.FieldValue.serverTimestamp()
       };
-      
+
       const docRef = await this.db.collection('stakeholders').add(data);
-      
+
       // Get the created document
       const doc = await docRef.get();
-      
+
       return {
         id: doc.id,
         ...doc.data()
@@ -195,7 +196,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Update a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -206,14 +207,14 @@ class FirebaseService {
     try {
       await this.db.collection('stakeholders').doc(stakeholderId).update({
         ...stakeholderData,
-        updated: firebase.firestore.FieldValue.serverTimestamp()
+        updated: window.firebase.firestore.FieldValue.serverTimestamp()
       });
     } catch (error) {
       console.error('Error updating stakeholder:', error);
       throw error;
     }
   }
-  
+
   /**
    * Delete a stakeholder
    * @param {string} stakeholderId - Stakeholder ID
@@ -227,7 +228,7 @@ class FirebaseService {
       throw error;
     }
   }
-  
+
   /**
    * Set up real-time listeners for maps
    * @param {string} userId - User ID
@@ -254,7 +255,7 @@ class FirebaseService {
         }
       );
   }
-  
+
   /**
    * Set up real-time listeners for stakeholders in a map
    * @param {string} mapId - Map ID
@@ -281,7 +282,7 @@ class FirebaseService {
         }
       );
   }
-  
+
   /**
    * Get API key from user settings
    * @param {string} userId - User ID
@@ -291,20 +292,20 @@ class FirebaseService {
   async getApiKey(userId, keyName) {
     try {
       const userDoc = await this.db.collection('users').doc(userId).get();
-      
+
       if (!userDoc.exists) return null;
-      
+
       const userData = userDoc.data();
       const settings = userData.settings || {};
       const apiKeys = settings.apiKeys || {};
-      
+
       return apiKeys[keyName] || null;
     } catch (error) {
       console.error('Error getting API key:', error);
       return null;
     }
   }
-  
+
   /**
    * Set API key in user settings
    * @param {string} userId - User ID
@@ -316,17 +317,17 @@ class FirebaseService {
     try {
       const userRef = this.db.collection('users').doc(userId);
       const userDoc = await userRef.get();
-      
+
       if (!userDoc.exists) {
         throw new Error('User not found');
       }
-      
+
       // Update using FieldValue to avoid overwriting other settings
       await userRef.update({
         [`settings.apiKeys.${keyName}`]: keyValue,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        lastUpdated: window.firebase.firestore.FieldValue.serverTimestamp()
       });
-      
+
       EventBus.emit('user:api-key-updated', { keyName });
     } catch (error) {
       console.error('Error setting API key:', error);

@@ -5,10 +5,13 @@ import stakeholderController from './controllers/stakeholderController.js';
 import tooltipService from './services/tooltipService.js';
 import telemetryService from './services/telemetryService.js';
 import versionDisplay from './components/versionDisplay.js';
+// Import component singletons to ensure they're initialized
+import matrixView from './components/matrixView.js';
+import stakeholderList from './components/stakeholderList.js';
 // Import from global variables instead
 // import { analytics } from '../firebase/firebaseConfig.js';
 import { config } from './config.js';
-import { env } from './utils/environmentLoader.js';
+import { env } from '../config/environmentLoader.js';
 
 /**
  * Main application entry point
@@ -65,9 +68,13 @@ class StakeTrackApp {
 
       // Log application started event (only in production or if analytics enabled)
       if (analytics && config.features.analytics) {
-        analytics.logEvent('application_started', {
-          environment: env.ENVIRONMENT
-        });
+        try {
+          analytics.logEvent('application_started', {
+            environment: env.ENVIRONMENT
+          });
+        } catch (e) {
+          console.warn('Failed to log analytics event:', e);
+        }
       }
 
       telemetryService.info('Application initialized successfully', {
@@ -90,12 +97,17 @@ class StakeTrackApp {
    */
   _handleInitError(error) {
     // Log error
+    const analytics = window.firebaseAnalytics;
     if (analytics && config.features.analytics) {
-      analytics.logEvent('init_error', {
-        error_message: error.message,
-        error_stack: error.stack,
-        environment: env.ENVIRONMENT
-      });
+      try {
+        analytics.logEvent('init_error', {
+          error_message: error.message,
+          error_stack: error.stack,
+          environment: env.ENVIRONMENT
+        });
+      } catch (e) {
+        console.warn('Failed to log error analytics:', e);
+      }
     }
 
     telemetryService.recordMetric('user_actions', 1, {
@@ -117,9 +129,40 @@ document.addEventListener('DOMContentLoaded', () => {
     environment: env.ENVIRONMENT
   });
 
-  // Create span for app initialization
-  telemetryService.createSpan('app.startup', async () => {
-    const app = new StakeTrackApp();
-    await app.init();
-  });
+  // Check if Firebase is initialized, or wait for its initialization
+  const startApp = async () => {
+    telemetryService.createSpan('app.startup', async () => {
+      const app = new StakeTrackApp();
+      await app.init();
+    });
+  };
+
+  // Add listener for Firebase initialization
+  if (window.firebaseApp || window.firebaseConfig?.isConfigured) {
+    // Firebase is already initialized, start app
+    startApp();
+  } else {
+    // Wait for Firebase to be initialized or report an error
+    const firebaseInitializedListener = () => {
+      window.removeEventListener('firebase:initialized', firebaseInitializedListener);
+      startApp();
+    };
+
+    const firebaseErrorListener = (event) => {
+      window.removeEventListener('firebase:error', firebaseErrorListener);
+      console.warn('Starting app with limited functionality due to Firebase error:', event.detail);
+      startApp();
+    };
+
+    window.addEventListener('firebase:initialized', firebaseInitializedListener);
+    window.addEventListener('firebase:error', firebaseErrorListener);
+
+    // Fallback if no event is fired within 5 seconds
+    setTimeout(() => {
+      window.removeEventListener('firebase:initialized', firebaseInitializedListener);
+      window.removeEventListener('firebase:error', firebaseErrorListener);
+      console.warn('No Firebase initialization event received after timeout. Starting app with limited functionality.');
+      startApp();
+    }, 5000);
+  }
 });

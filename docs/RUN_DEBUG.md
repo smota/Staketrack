@@ -2,27 +2,66 @@
 
 This guide provides instructions for running and debugging the StakeTrack application.
 
+## Environment Types
+
+StakeTrack supports three distinct environments:
+
+1. **LOCAL**: For local development with Firebase emulators
+   - Uses static config files from `/config/local.json`
+   - Firebase emulators enabled
+   - Intended for local development and testing
+
+2. **DEV**: Online development environment
+   - Uses environment variables via API endpoint
+   - Connects to actual Firebase DEV project
+   - No emulators used
+   - For testing in a realistic but non-production environment
+
+3. **PRD**: Production environment
+   - Uses environment variables via API endpoint
+   - Connects to actual Firebase PROD project
+   - For the live application
+
 ## Running the Application
 
 StakeTrack offers several options for running the application during development.
 
-### Development Server
+### Local Development with Emulators
 
-To start the development server with hot-reloading:
+To start the local development server with emulators:
 
 ```bash
+# Start Firebase emulators
+firebase emulators:start
+
+# In a separate terminal, start the development server
 npm run dev
 ```
 
 This will:
-- Load configuration from `.env.development`
+- Load configuration from `config/local.json`
 - Start webpack-dev-server in development mode
-- Serve the application on `http://localhost:5000`
+- Serve the application on `http://localhost:8081`
+- Connect to local Firebase emulators
 - Enable hot module replacement for instant updates
 
-### Production Build (Local)
+### Development Environment Testing
 
-To test a production build locally:
+To test against the DEV environment:
+
+```bash
+npm run dev:online
+```
+
+This will:
+- Load configuration from the DEV environment API endpoint
+- Connect to the actual DEV Firebase project (not emulators)
+- Start webpack-dev-server in development mode
+- Serve the application on `http://localhost:8081`
+
+### Production Build (Local Testing)
+
+To test a production build locally with emulators:
 
 ```bash
 npm run build
@@ -32,6 +71,7 @@ npm run serve
 This will:
 - Build the application with production settings
 - Serve the built files using Firebase hosting emulator
+- Connect to local Firebase emulators
 
 ### Firebase Emulators
 
@@ -51,6 +91,42 @@ This starts the Firebase emulators for:
 
 Access the emulator UI at `http://localhost:4000` to monitor and interact with the emulated Firebase services.
 
+## Configuration Setup
+
+Before running the application, ensure you have the proper configuration files:
+
+### Local Environment
+
+Create or update `/config/local.json` with:
+
+```json
+{
+  "ENVIRONMENT": "LOCAL",
+  "FIREBASE_API_KEY": "your-dev-api-key",
+  "FIREBASE_AUTH_DOMAIN": "localhost",
+  "FIREBASE_PROJECT_ID": "your-dev-project",
+  "FIREBASE_STORAGE_BUCKET": "your-dev-project.appspot.com",
+  "FIREBASE_MESSAGING_SENDER_ID": "your-dev-sender-id",
+  "FIREBASE_APP_ID": "your-dev-app-id",
+  "FIREBASE_MEASUREMENT_ID": "your-dev-measurement-id",
+  "USE_EMULATORS": "true"
+}
+```
+
+### DEV and PRD Environments
+
+For DEV and PRD environments, ensure your Firebase Functions are properly configured with environment variables:
+
+```bash
+# For DEV environment
+firebase use dev
+firebase functions:config:set firebase.api_key="your-dev-api-key" firebase.auth_domain="your-dev-project.firebaseapp.com" ...
+
+# For PRD environment
+firebase use prod
+firebase functions:config:set firebase.api_key="your-prod-api-key" firebase.auth_domain="your-prod-project.firebaseapp.com" ...
+```
+
 ## Debugging
 
 StakeTrack includes VS Code launch configurations for debugging.
@@ -59,26 +135,30 @@ StakeTrack includes VS Code launch configurations for debugging.
 
 Open the project in VS Code and use the following debug configurations from the Run and Debug panel:
 
-1. **Launch Chrome (Development)**:
-   - Launches Chrome with the development build
+1. **Launch Chrome (Local Development)**:
+   - Launches Chrome with the local development build
    - Automatically attaches the VS Code debugger
    - Allows setting breakpoints in source code
-   - Runs the development server as a pre-launch task
+   - Connects to Firebase emulators
 
-2. **Launch Chrome (Production)**:
+2. **Launch Chrome (DEV Environment)**:
+   - Connects to the actual DEV Firebase project
+   - Useful for testing with real Firebase services
+
+3. **Launch Chrome (Production)**:
    - Similar to development, but with production build
    - Useful for testing production behavior
 
-3. **Run Tests**:
+4. **Run Tests**:
    - Launches Jest test runner in debug mode
    - Enables debugging test cases
    - Shows test output in the integrated terminal
 
-4. **Firebase Emulator**:
+5. **Firebase Emulator**:
    - Starts Firebase emulators in debug mode
    - Allows debugging emulator interactions
 
-5. **Dev Server + Firebase Emulator**:
+6. **Dev Server + Firebase Emulator**:
    - Compound configuration that launches both the development server and Firebase emulators
    - Provides a complete local development environment
 
@@ -104,7 +184,8 @@ The VS Code debugger integrates with Chrome DevTools:
 
 StakeTrack includes VS Code tasks for common development operations:
 
-- **Start Dev Server**: Starts the development server
+- **Start Local Server**: Starts the local development server with emulators
+- **Start DEV Server**: Connects to DEV environment Firebase project
 - **Start Prod Server**: Builds and serves the production version
 - **Run Tests**: Executes the test suite
 - **Start Firebase Emulators**: Starts the Firebase emulators
@@ -116,16 +197,16 @@ Access these tasks from the VS Code command palette (`Ctrl+Shift+P` or `Cmd+Shif
 ### Development Server Issues
 
 If the development server fails to start:
-- Check that the required ports (5000, etc.) are not in use
-- Verify your environment variables in `.env.development`
+- Check that the required ports (8081, etc.) are not in use
+- Verify your configuration files in `/config` directory
 - Check for syntax errors in your most recent code changes
 
-### Debugging Connection Issues
+### Environment Configuration Issues
 
-If the debugger fails to connect:
-- Ensure Chrome is started with remote debugging enabled
-- Check if another debugging session is already connected
-- Verify source maps are generated correctly
+If the application fails to load Firebase configuration:
+- For LOCAL: Check that `/config/local.json` exists and is properly formatted
+- For DEV/PRD: Verify the API endpoint is accessible and returns valid JSON
+- Check browser console for specific error messages
 
 ### Firebase Emulator Issues
 

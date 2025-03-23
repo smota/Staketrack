@@ -4,7 +4,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Permissions-Policy" content="browsing-topics=()">
   <title>StakeTrack - Stakeholder Management</title>
   <link rel="icon" href="assets/images/favicon.png" type="image/png">
   <!-- CSS -->
@@ -28,7 +27,6 @@
     <nav class="navbar">
       <div class="navbar-logo">
         <img src="assets/images/logo.svg" alt="StakeTrack Logo">
-        <h1>StakeTrack</h1>
       </div>
       <div class="navbar-actions">
         <div id="maps-dropdown-container" class="hidden">
@@ -341,21 +339,23 @@
     </div>
   </template>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
-
   <!-- Environment Variables -->
   <script>
     // Initialize an empty ENV object that will be populated by the environment loader
     window.ENV = {};
   </script>
 
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
+
   <!-- Environment Configuration Loader -->
-  <script src="js/utils/environmentLoader.js"></script>
-  <script src="firebase/firebaseConfig.js"></script>
+  <script type="module" src="config/environmentLoader.js"></script>
+
+  <!-- Firebase Configuration -->
+  <script defer src="firebase/firebaseConfig.js"></script>
 
   <!-- The bundle.js script will be automatically injected by HtmlWebpackPlugin -->
 </body>

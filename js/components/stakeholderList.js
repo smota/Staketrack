@@ -1,6 +1,7 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
+// Replace direct import with window reference
+// import { analytics } from '../../../firebase/firebaseConfig.js';
 
 /**
  * Stakeholder List Component - Manages the list view of stakeholders
@@ -18,7 +19,23 @@ export class StakeholderList {
     this.sortBy = 'name';
     this.sortDirection = 'asc';
 
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
+
+    // Initialize with current map data if available
+    const currentMap = dataService.getCurrentMap();
+    if (currentMap) {
+      this.stakeholders = currentMap.stakeholders;
+    }
+
     this._initEventListeners();
+
+    // Initial render
+    if (this.stakeholders.length > 0) {
+      this.render();
+    }
+
+    console.log('StakeholderList initialized, listening for stakeholder events');
   }
 
   /**
@@ -33,7 +50,13 @@ export class StakeholderList {
     });
 
     EventBus.on('stakeholder:added', ({ map, stakeholder }) => {
-      this.render();
+      console.log('StakeholderList received stakeholder:added event');
+      // Make sure we're using stakeholders from the current map
+      const currentMap = dataService.getCurrentMap();
+      if (currentMap && currentMap.id === map.id) {
+        this.stakeholders = currentMap.stakeholders;
+        this.render();
+      }
     });
 
     EventBus.on('stakeholder:updated', () => {
@@ -50,10 +73,12 @@ export class StakeholderList {
       this._filterAndSortStakeholders();
       this.render();
 
-      analytics.logEvent('stakeholder_filter_changed', {
-        filter_type: 'category',
-        filter_value: this.categoryFilter
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_filter_changed', {
+          filter_type: 'category',
+          filter_value: this.categoryFilter
+        });
+      }
     });
 
     document.getElementById('sort-by')?.addEventListener('change', (e) => {
@@ -61,9 +86,11 @@ export class StakeholderList {
       this._filterAndSortStakeholders();
       this.render();
 
-      analytics.logEvent('stakeholder_sort_changed', {
-        sort_by: this.sortBy
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_sort_changed', {
+          sort_by: this.sortBy
+        });
+      }
     });
   }
 
@@ -189,40 +216,48 @@ export class StakeholderList {
     row.querySelector('.view-details-btn').addEventListener('click', () => {
       EventBus.emit('stakeholder:show-details', stakeholder.id);
 
-      analytics.logEvent('stakeholder_details_clicked', {
-        stakeholder_id: stakeholder.id,
-        source: 'list_view'
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_details_clicked', {
+          stakeholder_id: stakeholder.id,
+          source: 'list_view'
+        });
+      }
     });
 
     // Edit button
     row.querySelector('.edit-btn').addEventListener('click', () => {
       EventBus.emit('stakeholder:show-form', stakeholder.id);
 
-      analytics.logEvent('stakeholder_edit_clicked', {
-        stakeholder_id: stakeholder.id,
-        source: 'list_view'
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_edit_clicked', {
+          stakeholder_id: stakeholder.id,
+          source: 'list_view'
+        });
+      }
     });
 
     // Log interaction button
     row.querySelector('.log-interaction-btn').addEventListener('click', () => {
       EventBus.emit('stakeholder:show-interaction-log', stakeholder.id);
 
-      analytics.logEvent('log_interaction_clicked', {
-        stakeholder_id: stakeholder.id,
-        source: 'list_view'
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('log_interaction_clicked', {
+          stakeholder_id: stakeholder.id,
+          source: 'list_view'
+        });
+      }
     });
 
     // Delete button
     row.querySelector('.delete-btn').addEventListener('click', () => {
       this._confirmDelete(stakeholder);
 
-      analytics.logEvent('stakeholder_delete_clicked', {
-        stakeholder_id: stakeholder.id,
-        source: 'list_view'
-      });
+      if (this.analytics && typeof this.analytics.logEvent === 'function') {
+        this.analytics.logEvent('stakeholder_delete_clicked', {
+          stakeholder_id: stakeholder.id,
+          source: 'list_view'
+        });
+      }
     });
 
     // Row click (for details)
@@ -231,9 +266,11 @@ export class StakeholderList {
       if (!e.target.closest('button')) {
         EventBus.emit('stakeholder:show-details', stakeholder.id);
 
-        analytics.logEvent('stakeholder_row_clicked', {
-          stakeholder_id: stakeholder.id
-        });
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('stakeholder_row_clicked', {
+            stakeholder_id: stakeholder.id
+          });
+        }
       }
     });
   }
@@ -247,9 +284,11 @@ export class StakeholderList {
     if (confirm(`Are you sure you want to delete "${stakeholder.name}"? This action cannot be undone.`)) {
       dataService.deleteStakeholder(stakeholder.id)
         .then(() => {
-          analytics.logEvent('stakeholder_deleted', {
-            stakeholder_id: stakeholder.id
-          });
+          if (this.analytics && typeof this.analytics.logEvent === 'function') {
+            this.analytics.logEvent('stakeholder_deleted', {
+              stakeholder_id: stakeholder.id
+            });
+          }
         })
         .catch(error => {
           console.error('Error deleting stakeholder:', error);

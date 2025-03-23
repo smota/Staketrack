@@ -84,6 +84,12 @@ export class AppController {
     EventBus.on('map:current-changed', map => {
       this._updateMapsDropdown();
       this.showView('map');
+
+      // Access analytics safely
+      const analytics = window.firebaseAnalytics;
+      if (analytics && typeof analytics.logEvent === 'function') {
+        analytics.logEvent('map_viewed', { map_id: map.id, map_name: map.name });
+      }
     });
 
     EventBus.on('map:created', map => {

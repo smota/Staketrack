@@ -2,7 +2,8 @@ import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
 import { dateUtils } from '../utils/dateUtils.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
+// Replace direct import with window reference
+// import { analytics } from '../../../firebase/firebaseConfig.js';
 import tooltipService from '../services/tooltipService.js';
 
 /**
@@ -151,7 +152,7 @@ class StakeholderView {
     this.showModal();
 
     // Track analytics
-    analytics.trackEvent('stakeholder_details_viewed', {
+    window.firebaseAnalytics.trackEvent('stakeholder_details_viewed', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
@@ -217,7 +218,7 @@ class StakeholderView {
     this.showModal();
 
     // Track analytics
-    analytics.trackEvent('stakeholder_form_opened', {
+    window.firebaseAnalytics.trackEvent('stakeholder_form_opened', {
       action: isEdit ? 'edit' : 'add'
     });
   }
@@ -263,7 +264,7 @@ class StakeholderView {
     this.showModal();
 
     // Track analytics
-    analytics.trackEvent('interaction_log_opened', {
+    window.firebaseAnalytics.trackEvent('interaction_log_opened', {
       stakeholder_id: stakeholderId,
       stakeholder_name: stakeholder.name
     });
@@ -308,7 +309,7 @@ class StakeholderView {
       adviceContent.innerHTML = this._formatMarkdown(advice);
 
       // Track analytics
-      analytics.trackEvent('stakeholder_advice_generated', {
+      window.firebaseAnalytics.trackEvent('stakeholder_advice_generated', {
         stakeholder_id: stakeholderId,
         stakeholder_name: stakeholder.name
       });
@@ -327,7 +328,7 @@ class StakeholderView {
       `;
 
       // Track error
-      analytics.trackEvent('stakeholder_advice_error', {
+      window.firebaseAnalytics.trackEvent('stakeholder_advice_error', {
         stakeholder_id: stakeholderId,
         error_message: error.message
       });
@@ -361,7 +362,7 @@ class StakeholderView {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.currentStakeholderId, formData);
 
-        analytics.trackEvent('stakeholder_updated', {
+        window.firebaseAnalytics.trackEvent('stakeholder_updated', {
           stakeholder_id: this.currentStakeholderId
         });
       } else {
@@ -373,7 +374,7 @@ class StakeholderView {
 
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
 
-        analytics.trackEvent('stakeholder_added', {
+        window.firebaseAnalytics.trackEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });
@@ -401,7 +402,7 @@ class StakeholderView {
         .then(() => {
           this.hideModal();
 
-          analytics.trackEvent('stakeholder_deleted', {
+          window.firebaseAnalytics.trackEvent('stakeholder_deleted', {
             stakeholder_id: stakeholderId
           });
         })
@@ -466,7 +467,7 @@ class StakeholderView {
       this._renderInteractionsList(stakeholder);
 
       // Track analytics
-      analytics.trackEvent('interaction_added', {
+      window.firebaseAnalytics.trackEvent('interaction_added', {
         stakeholder_id: stakeholderId
       });
     } catch (error) {

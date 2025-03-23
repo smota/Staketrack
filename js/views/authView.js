@@ -1,7 +1,6 @@
 import { EventBus } from '../utils/eventBus.js';
 import authService from '../services/authService.js';
 import { formValidation } from '../utils/formValidation.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
 
 /**
  * Auth View - Handles authentication view and interactions

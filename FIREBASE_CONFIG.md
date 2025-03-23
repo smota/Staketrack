@@ -7,29 +7,50 @@ This document explains how to securely handle Firebase configuration in the Stak
 Instead of hard-coding Firebase credentials in your client-side code, this application uses a secure approach to load environment variables at runtime. This approach provides several benefits:
 
 - Prevents exposure of API keys in client-side source code
-- Allows for environment-specific configurations (development, staging, production)
+- Allows for environment-specific configurations (local, development, production)
 - Enables dynamic updates to configuration without redeploying the application
 - Follows security best practices for handling sensitive credentials
 
 ## How It Works
 
-1. The client application makes a request to a secure endpoint
-2. The secure endpoint (Firebase Cloud Function) returns the appropriate configuration
-3. The configuration is loaded into the application's memory at runtime
-4. Firebase is initialized with the securely loaded configuration
+The application uses different methods to load configuration depending on the environment:
+
+1. **LOCAL Environment**: Uses static configuration files for local development with emulators
+2. **DEV Environment**: Uses environment variables via secure API endpoint for online development environment
+3. **PRD Environment**: Uses environment variables via secure API endpoint for production environment
+
+## Environment Types
+
+StakeTrack supports three distinct environments:
+
+1. **LOCAL**: For local development with Firebase emulators
+   - Uses static config files from `/config/local.json`
+   - Firebase emulators enabled
+   - Intended for local development only
+
+2. **DEV**: Online development environment
+   - Uses environment variables via API endpoint
+   - Connects to actual Firebase DEV project
+   - No emulators used
+   - For testing in a realistic but non-production environment
+
+3. **PRD**: Production environment
+   - Uses environment variables via API endpoint
+   - Connects to actual Firebase PROD project
+   - For the live application
 
 ## Setup Instructions
 
-### For Local Development
+### For Local Development with Emulators
 
 1. Create a `config` directory at your project root
-2. Create a `dev.json` file in the `config` directory with your development credentials:
+2. Create a `local.json` file in the `config` directory with your development credentials:
 
 ```json
 {
-  "ENVIRONMENT": "DEV",
+  "ENVIRONMENT": "LOCAL",
   "FIREBASE_API_KEY": "your-dev-api-key",
-  "FIREBASE_AUTH_DOMAIN": "your-dev-project.firebaseapp.com",
+  "FIREBASE_AUTH_DOMAIN": "localhost",
   "FIREBASE_PROJECT_ID": "your-dev-project",
   "FIREBASE_STORAGE_BUCKET": "your-dev-project.appspot.com",
   "FIREBASE_MESSAGING_SENDER_ID": "your-dev-sender-id",
@@ -39,20 +60,51 @@ Instead of hard-coding Firebase credentials in your client-side code, this appli
 }
 ```
 
-3. For local development, the application will load configuration from `/config/dev.json`
+3. Start the Firebase emulators:
 
-### For Production Deployment
+```bash
+firebase emulators:start
+```
 
-1. Deploy the Cloud Function in `functions/getConfig.js` to your Firebase project
+4. Run the application locally:
+
+```bash
+npm run dev
+```
+
+### For Development Environment (DEV)
+
+1. Deploy the Cloud Function in `functions/getConfig.js` to your dev Firebase project
 2. Set environment variables in your Firebase Functions environment:
 
 ```bash
-firebase functions:config:set firebase.api_key="your-api-key" firebase.auth_domain="your-project.firebaseapp.com" ...
+firebase use dev
+firebase functions:config:set firebase.api_key="your-dev-api-key" firebase.auth_domain="your-dev-project.firebaseapp.com" ...
 ```
 
-Or use the Firebase console to set these environment variables.
+3. The application will load configuration from the API endpoint when deployed to the DEV environment
 
-3. Update the URLs in `js/utils/environmentLoader.js` to point to your deployed Cloud Function
+### For Production Environment (PRD)
+
+1. Deploy the Cloud Function in `functions/getConfig.js` to your production Firebase project
+2. Set environment variables in your Firebase Functions environment:
+
+```bash
+firebase use prod
+firebase functions:config:set firebase.api_key="your-prod-api-key" firebase.auth_domain="your-prod-project.firebaseapp.com" ...
+```
+
+3. The application will load configuration from the API endpoint when deployed to the PRD environment
+
+### Fallback Mechanism
+
+The application includes a robust fallback mechanism:
+
+1. First tries to load from the appropriate source (static file for LOCAL, API for DEV/PRD)
+2. If API fails in DEV/PRD, tries to load from static files as a fallback
+3. If all else fails, uses hardcoded values as a last resort
+
+This ensures the application can still function even if there are configuration loading issues.
 
 ### Automatic Configuration Deployment
 
@@ -163,12 +215,12 @@ The following environment variables are required:
 | FIREBASE_MESSAGING_SENDER_ID | Firebase messaging sender ID |
 | FIREBASE_APP_ID | Firebase app ID |
 | FIREBASE_MEASUREMENT_ID | Firebase measurement ID (for Analytics) |
-| USE_EMULATORS | Whether to use Firebase emulators (true/false) |
+| USE_EMULATORS | Whether to use Firebase emulators (only true for LOCAL environment) |
 
 ## Security Considerations
 
 - **Never commit** real API keys or credentials to your code repository
-- Use environment-specific keys (different keys for development, staging, production)
+- Use environment-specific keys (different keys for local, development, production)
 - Configure proper access controls on your Firebase Cloud Function
 - Consider implementing additional security measures:
   - Rate limiting
@@ -180,7 +232,8 @@ The following environment variables are required:
 
 To ensure the secure configuration loading works properly:
 
-1. Test local development setup with `/config/dev.json`
-2. Test production configuration with the deployed Cloud Function
-3. Verify Firebase services initialize correctly in each environment
-4. Test the fallback mechanism for when configuration fails to load 
+1. Test local development setup with emulators using `/config/local.json`
+2. Test DEV environment with the deployed DEV Cloud Function
+3. Test PRD environment with the deployed PRD Cloud Function
+4. Verify Firebase services initialize correctly in each environment
+5. Test the fallback mechanism for when configuration fails to load 

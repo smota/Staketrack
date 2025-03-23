@@ -33,7 +33,8 @@ module.exports = {
   // Resolve aliases to fix file path issues
   resolve: {
     alias: {
-      '@firebase': path.resolve(__dirname, 'firebase')
+      '@firebase': path.resolve(__dirname, 'firebase'),
+      '@config': path.resolve(__dirname, 'config')
     },
     modules: [path.resolve(__dirname), 'node_modules'],
     fallback: {
@@ -60,8 +61,34 @@ module.exports = {
       patterns: [
         { from: 'assets', to: 'assets' },
         { from: 'images', to: 'images', noErrorOnMissing: true },
+        { from: 'config', to: 'config', noErrorOnMissing: true }, // Copy config directory for local development
         { from: 'firebase', to: 'firebase' }
       ]
     })
-  ]
+  ],
+  // Development server configuration
+  devServer: {
+    static: {
+      directory: path.join(__dirname, 'dist'),
+    },
+    compress: true,
+    port: 8081,
+    hot: true,
+    historyApiFallback: true,
+    // Add CORS headers for local development
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
+    },
+    // Add API proxy for Firebase Functions
+    proxy: {
+      '/api/get-config': {
+        target: 'http://localhost:5001/staketrack-dev/us-central1/getConfig',
+        pathRewrite: { '^/api/get-config': '' },
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 }; 

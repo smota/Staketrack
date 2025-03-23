@@ -112,3 +112,40 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Firebase for authentication and data storage
 - Anthropic for Claude API
 - All contributors and supporters of the project
+
+## Environment Configuration
+
+StakeTrack uses environment variables to configure different environments:
+
+1. **Local Development**:
+   - Uses `.env.development` for configuring the web app
+   - Uses Firebase emulators for local testing
+
+2. **Development Deployment**:
+   - Uses `.env.development` for building the web app
+   - Uses Firebase runtime environment variables for Cloud Functions
+   - Configs are uploaded during deployment, not stored in the codebase
+
+3. **Production Deployment**:
+   - Uses `.env.production` for building the web app
+   - Uses Firebase runtime environment variables for Cloud Functions
+   - Configs are uploaded during deployment, not stored in the codebase
+
+### Deploying Functions
+
+To deploy functions with the correct environment variables:
+
+```bash
+# Deploy to development environment
+npm run deploy:functions:dev
+
+# Deploy to production environment
+npm run deploy:functions:prod
+```
+
+This process:
+1. Reads variables from the appropriate .env file
+2. Sets them as Firebase Functions configuration variables
+3. Deploys the functions to the specified environment
+
+No sensitive configuration is stored in the codebase itself.

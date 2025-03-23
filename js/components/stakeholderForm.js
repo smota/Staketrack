@@ -1,7 +1,8 @@
 import { EventBus } from '../utils/eventBus.js';
 import { formValidation } from '../utils/formValidation.js';
 import dataService from '../services/dataService.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
+// Replace direct import with window reference
+// import { analytics } from '../../../firebase/firebaseConfig.js';
 
 /**
  * Stakeholder Form Component - Renders and manages the stakeholder form
@@ -22,6 +23,9 @@ export class StakeholderForm {
     this.isEdit = !!stakeholderId;
     this.stakeholder = null;
     this.formElement = null;
+
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
 
     this._init();
   }
@@ -190,7 +194,7 @@ export class StakeholderForm {
         // Update existing stakeholder
         await dataService.updateStakeholder(this.stakeholderId, formData);
 
-        analytics.logEvent('stakeholder_updated', {
+        this.analytics.logEvent('stakeholder_updated', {
           stakeholder_id: this.stakeholderId
         });
       } else {
@@ -202,7 +206,7 @@ export class StakeholderForm {
 
         const stakeholder = await dataService.addStakeholder(currentMap.id, formData);
 
-        analytics.logEvent('stakeholder_added', {
+        this.analytics.logEvent('stakeholder_added', {
           stakeholder_id: stakeholder.id,
           map_id: currentMap.id
         });

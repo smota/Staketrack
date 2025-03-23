@@ -3,7 +3,7 @@ import dataService from '../services/dataService.js';
 import exportService from '../services/exportService.js';
 import llmService from '../services/llmService.js';
 import matrixView from '../components/matrixView.js';
-import { analytics } from '../../../firebase/firebaseConfig.js';
+import stakeholderList from '../components/stakeholderList.js';
 
 /**
  * Map View - Handles the main map view and interactions
@@ -15,22 +15,25 @@ class MapView {
     this.currentMapNameElement = document.getElementById('current-map-name');
     this.matrixContainer = document.getElementById('matrix-container');
     this.listContainer = document.getElementById('list-container');
-    
+
     this.addStakeholderBtn = document.getElementById('add-stakeholder-btn');
     this.exportMapBtn = document.getElementById('export-map-btn');
     this.importMapBtn = document.getElementById('import-map-btn');
     this.mapAdviceBtn = document.getElementById('map-advice-btn');
     this.editMapBtn = document.getElementById('edit-map-btn');
-    
+
     this.matrixViewBtn = document.getElementById('matrix-view-btn');
     this.listViewBtn = document.getElementById('list-view-btn');
-    
+
     this.currentMapId = null;
     this.currentMap = null;
-    
+
+    // Get analytics from window
+    this.analytics = window.firebaseAnalytics;
+
     this._initEventListeners();
   }
-  
+
   /**
    * Initialize event listeners
    * @private
@@ -39,39 +42,39 @@ class MapView {
     // Add stakeholder button
     this.addStakeholderBtn.addEventListener('click', () => {
       EventBus.emit('stakeholder:show-form');
-      
-      analytics.trackEvent('add_stakeholder_clicked');
+
+      this.analytics.trackEvent('add_stakeholder_clicked');
     });
-    
+
     // Export map button
     this.exportMapBtn.addEventListener('click', () => {
       this._showExportOptions();
     });
-    
+
     // Import map button
     this.importMapBtn.addEventListener('click', () => {
       EventBus.emit('map:show-import');
     });
-    
+
     // Map advice button
     this.mapAdviceBtn.addEventListener('click', () => {
       this._getMapRecommendations();
     });
-    
+
     // Edit map button
     this.editMapBtn.addEventListener('click', () => {
       EventBus.emit('map:show-form', this.currentMapId);
     });
-    
+
     // View toggle buttons
     this.matrixViewBtn.addEventListener('click', () => {
       this._showMatrixView();
     });
-    
+
     this.listViewBtn.addEventListener('click', () => {
       this._showListView();
     });
-    
+
     // Listen for map changes
     EventBus.on('map:current-changed', map => {
       this.currentMapId = map.id;
@@ -79,7 +82,7 @@ class MapView {
       this._updateMapDisplay();
     });
   }
-  
+
   /**
    * Update the map display
    * @private
@@ -91,7 +94,7 @@ class MapView {
       this.currentMapNameElement.textContent = 'Stakeholder Map';
     }
   }
-  
+
   /**
    * Show the matrix view
    * @private
@@ -99,16 +102,16 @@ class MapView {
   _showMatrixView() {
     this.matrixContainer.classList.remove('hidden');
     this.listContainer.classList.add('hidden');
-    
+
     this.matrixViewBtn.classList.add('active');
     this.listViewBtn.classList.remove('active');
-    
+
     // Render matrix if needed
     matrixView.render();
-    
-    analytics.trackEvent('view_toggle', { view: 'matrix' });
+
+    this.analytics.trackEvent('view_toggle', { view: 'matrix' });
   }
-  
+
   /**
    * Show the list view
    * @private
@@ -116,13 +119,16 @@ class MapView {
   _showListView() {
     this.matrixContainer.classList.add('hidden');
     this.listContainer.classList.remove('hidden');
-    
+
     this.matrixViewBtn.classList.remove('active');
     this.listViewBtn.classList.add('active');
-    
-    analytics.trackEvent('view_toggle', { view: 'list' });
+
+    // Force render the stakeholder list
+    stakeholderList.render();
+
+    this.analytics.trackEvent('view_toggle', { view: 'list' });
   }
-  
+
   /**
    * Show export options
    * @private
@@ -132,10 +138,10 @@ class MapView {
       { id: 'json', label: 'Export as JSON' },
       { id: 'csv', label: 'Export as CSV' }
     ];
-    
+
     const menu = document.createElement('div');
     menu.className = 'dropdown-menu';
-    
+
     options.forEach(option => {
       const item = document.createElement('button');
       item.className = 'dropdown-item';
@@ -144,20 +150,20 @@ class MapView {
         this._handleExport(option.id);
         menu.remove();
       });
-      
+
       menu.appendChild(item);
     });
-    
+
     // Position menu near the export button
     const rect = this.exportMapBtn.getBoundingClientRect();
     menu.style.position = 'absolute';
     menu.style.top = `${rect.bottom}px`;
     menu.style.left = `${rect.left}px`;
     menu.style.zIndex = 1000;
-    
+
     // Add to document
     document.body.appendChild(menu);
-    
+
     // Close when clicking outside
     const clickHandler = (e) => {
       if (!menu.contains(e.target) && e.target !== this.exportMapBtn) {
@@ -165,13 +171,13 @@ class MapView {
         document.removeEventListener('click', clickHandler);
       }
     };
-    
+
     // Add delay before adding click handler to prevent immediate close
     setTimeout(() => {
       document.addEventListener('click', clickHandler);
     }, 100);
   }
-  
+
   /**
    * Handle export based on format
    * @param {string} format - Export format (json, csv)
@@ -182,15 +188,15 @@ class MapView {
       alert('No map selected.');
       return;
     }
-    
+
     try {
       if (format === 'json') {
         exportService.exportMapToJson(this.currentMapId);
       } else if (format === 'csv') {
         exportService.exportMapToCsv(this.currentMapId);
       }
-      
-      analytics.trackEvent('map_exported', {
+
+      this.analytics.trackEvent('map_exported', {
         map_id: this.currentMapId,
         format: format
       });
@@ -199,7 +205,7 @@ class MapView {
       alert(`Error exporting map: ${error.message}`);
     }
   }
-  
+
   /**
    * Get AI-powered recommendations for the current map
    * @private
@@ -209,13 +215,13 @@ class MapView {
       alert('No map selected.');
       return;
     }
-    
+
     // Check if there are stakeholders
     if (this.currentMap.stakeholders.length === 0) {
       alert('Please add stakeholders to the map before requesting recommendations.');
       return;
     }
-    
+
     // Show loading modal
     EventBus.emit('modal:show', {
       title: 'Next Best Action Recommendations',
@@ -226,11 +232,11 @@ class MapView {
         </div>
       `
     });
-    
+
     try {
       // Get recommendations from LLM service
       const recommendations = await llmService.getMapRecommendations(this.currentMap);
-      
+
       // Update modal with recommendations
       EventBus.emit('modal:update', {
         title: 'Next Best Action Recommendations',
@@ -240,14 +246,14 @@ class MapView {
           </div>
         `
       });
-      
-      analytics.trackEvent('map_recommendations_generated', {
+
+      this.analytics.trackEvent('map_recommendations_generated', {
         map_id: this.currentMapId,
         stakeholders_count: this.currentMap.stakeholders.length
       });
     } catch (error) {
       console.error('Error getting map recommendations:', error);
-      
+
       // Show error in modal
       EventBus.emit('modal:update', {
         title: 'Error Getting Recommendations',
@@ -259,14 +265,14 @@ class MapView {
           </div>
         `
       });
-      
-      analytics.trackEvent('map_recommendations_error', {
+
+      this.analytics.trackEvent('map_recommendations_error', {
         map_id: this.currentMapId,
         error_message: error.message
       });
     }
   }
-  
+
   /**
    * Format markdown text to HTML
    * @param {string} markdown - Markdown text
@@ -275,14 +281,14 @@ class MapView {
    */
   _formatMarkdown(markdown) {
     if (!markdown) return '';
-    
+
     // Convert headers
     let html = markdown
       .replace(/^# (.*$)/gm, '<h2>$1</h2>')
       .replace(/^## (.*$)/gm, '<h3>$1</h3>')
       .replace(/^### (.*$)/gm, '<h4>$1</h4>')
       .replace(/^#### (.*$)/gm, '<h5>$1</h5>');
-    
+
     // Convert lists
     html = html
       .replace(/^\s*\n\* (.*)/gm, '<ul>\n<li>$1</li>')
@@ -295,20 +301,20 @@ class MapView {
       .replace(/<\/ol>\s*\n<ol>/g, '')
       .replace(/<\/li>\s*\n<\/ul>/g, '</li></ul>')
       .replace(/<\/li>\s*\n<\/ol>/g, '</li></ol>');
-    
+
     // Convert bold and italic
     html = html
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\_\_(.*?)\_\_/g, '<strong>$1</strong>')
       .replace(/\_(.*?)\_/g, '<em>$1</em>');
-    
+
     // Convert line breaks
     html = html.replace(/\n/g, '<br>');
-    
+
     return html;
   }
-  
+
   /**
    * Show the map view
    */
@@ -319,35 +325,35 @@ class MapView {
       this.currentMapId = this.currentMap.id;
       this._updateMapDisplay();
     }
-    
+
     // Show the view
     this.viewElement.classList.remove('hidden');
-    
+
     // Default to matrix view
     this._showMatrixView();
-    
-    analytics.trackPageView('map', {
+
+    this.analytics.trackPageView('map', {
       map_id: this.currentMapId
     });
   }
-  
+
   /**
    * Hide the map view
    */
   hide() {
     this.viewElement.classList.add('hidden');
   }
-  
+
   /**
    * Toggle the sidebar visibility (for mobile)
    */
   toggleSidebar() {
     this.sidebarElement.classList.toggle('visible');
-    
+
     const isVisible = this.sidebarElement.classList.contains('visible');
     document.getElementById('sidebar-overlay')?.classList.toggle('visible', isVisible);
-    
-    analytics.trackEvent('sidebar_toggle', {
+
+    this.analytics.trackEvent('sidebar_toggle', {
       visible: isVisible
     });
   }
