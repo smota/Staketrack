@@ -1,6 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const webpack = require('webpack');
 const dotenv = require('dotenv');
 
@@ -10,82 +10,98 @@ const env = process.env.NODE_ENV === 'production'
   : dotenv.config({ path: '.env.development' });
 
 module.exports = {
-  entry: './js/app.js',
+  entry: './src/index.tsx',
   output: {
-    filename: 'bundle.js',
     path: path.resolve(__dirname, 'dist'),
-    clean: true // Clean the dist folder before each build
+    filename: '[name].[contenthash].js',
+    clean: true,
+    publicPath: '/'
   },
-  // Add support for development mode
   mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
-  // Basic rules for JavaScript files
   module: {
     rules: [
       {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader',
-        }
+        test: /\.(ts|tsx)$/,
+        use: 'babel-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader', 'postcss-loader']
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        type: 'asset/resource'
       }
     ]
   },
-  // Resolve aliases to fix file path issues
   resolve: {
+    extensions: ['.tsx', '.ts', '.js'],
     alias: {
-      '@firebase': path.resolve(__dirname, 'firebase'),
-      '@config': path.resolve(__dirname, 'config')
+      '@': path.resolve(__dirname, 'src'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@hooks': path.resolve(__dirname, 'src/hooks'),
+      '@utils': path.resolve(__dirname, 'src/utils'),
+      '@services': path.resolve(__dirname, 'src/services'),
+      '@types': path.resolve(__dirname, 'src/types')
     },
-    modules: [path.resolve(__dirname), 'node_modules'],
     fallback: {
       "process": require.resolve("process/browser")
     }
   },
-  // Add plugins
   plugins: [
-    // Define environment variables - only for process.env, not window.ENV
+    new HtmlWebpackPlugin({
+      template: 'public/index.html',
+      inject: true,
+      filename: 'index.html'
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'public',
+          to: '',
+          globOptions: {
+            ignore: ['**/index.html']
+          }
+        }
+      ]
+    }),
     new webpack.DefinePlugin({
       'process.env': JSON.stringify(process.env)
     }),
-    // Provide process/browser for the bundle
     new webpack.ProvidePlugin({
       process: 'process/browser'
-    }),
-    new HtmlWebpackPlugin({
-      template: './index.html',
-      filename: 'index.html',
-      inject: 'body',
-      scriptLoading: 'blocking' // Make sure scripts load in a blocking manner
-    }),
-    new CopyPlugin({
-      patterns: [
-        { from: 'assets', to: 'assets' },
-        { from: 'images', to: 'images', noErrorOnMissing: true },
-        { from: 'config', to: 'config', noErrorOnMissing: true }, // Copy config directory for local development
-        { from: 'firebase', to: 'firebase' }
-      ]
     })
   ],
-  // Development server configuration
+  optimization: {
+    runtimeChunk: 'single',
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          chunks: 'all'
+        }
+      }
+    }
+  },
   devServer: {
+    historyApiFallback: true,
+    hot: true,
+    port: 3000,
     static: {
       directory: path.join(__dirname, 'dist'),
     },
     compress: true,
-    port: 8081,
-    hot: true,
-    historyApiFallback: true,
-    // Add CORS headers for local development
     headers: {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
       "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
     },
-    // Add API proxy for Firebase Functions
     proxy: {
-      '/api/get-config': {
-        target: 'http://localhost:5001/staketrack-dev/us-central1/getConfig',
-        pathRewrite: { '^/api/get-config': '' },
+      '/api': {
+        target: 'http://localhost:5001',
+        pathRewrite: { '^/api': '' },
         changeOrigin: true,
         secure: false
       }

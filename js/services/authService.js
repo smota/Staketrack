@@ -11,106 +11,113 @@ export class AuthService {
     this.initialized = false;
     this.initializationError = null;
 
+    // Wait for Firebase to be initialized
+    window.addEventListener('firebase:initialized', this._handleFirebaseInitialized.bind(this));
+    window.addEventListener('firebase:error', this._handleFirebaseError.bind(this));
+
+    // Initialize if Firebase is already available
+    if (window.firebaseAuth && window.firebaseFirestore) {
+      this._initAuth();
+    }
+  }
+
+  _handleFirebaseInitialized(event) {
     // Get Firebase objects from window
     this.auth = window.firebaseAuth;
     this.firestore = window.firebaseFirestore;
     this.analytics = window.firebaseAnalytics;
 
-    // Check if Firebase is configured properly
+    if (this.auth && this.firestore) {
+      this._initAuth();
+    } else {
+      this.initializationError = new Error('Firebase services not available after initialization');
+      console.warn('Firebase services are not properly initialized:', this.initializationError);
+      this._emitAuthState(null);
+    }
+  }
+
+  _handleFirebaseError(event) {
+    this.initializationError = event.detail.error;
+    console.warn('Firebase services are not properly initialized:', this.initializationError);
+    this._emitAuthState(null);
+  }
+
+  _initAuth() {
     if (!this.auth || !this.firestore) {
       this.initializationError = new Error('Firebase services not available');
       console.warn('Firebase services are not properly initialized:', this.initializationError);
-      // Mark as initialized to prevent waiting indefinitely
+      this._emitAuthState(null);
+      return;
+    }
+
+    // Listen for auth state changes
+    this.auth.onAuthStateChanged((user) => {
+      this.currentUser = user;
+      this._emitAuthState(user);
       this.initialized = true;
-      // Emit initialized event
-      setTimeout(() => {
-        EventBus.emit('auth:initialized', null);
-        EventBus.emit('auth:error', this.initializationError);
-      }, 0);
-    } else {
-      // Initialize authentication state
-      this._initAuth();
+    });
+  }
+
+  _emitAuthState(user) {
+    EventBus.emit('auth:initialized', user);
+    if (this.initializationError) {
+      EventBus.emit('auth:error', this.initializationError);
     }
   }
 
   /**
-   * Initialize the authentication state listener
-   * @private
+   * Sign in with email and password
    */
-  _initAuth() {
+  async signInWithEmailAndPassword(email, password) {
     try {
-      this.auth.onAuthStateChanged(user => {
-        this.currentUser = user;
-        this.initialized = true;
-
-        // Notify the application of auth state change
-        if (user) {
-          EventBus.emit('auth:login', user);
-          if (this.analytics && typeof this.analytics.logEvent === 'function') {
-            this.analytics.setUserId(user.uid);
-            this.analytics.logEvent('login');
-          }
-        } else {
-          EventBus.emit('auth:logout');
-        }
-
-        // Emit initialized event once
-        EventBus.emit('auth:initialized', user);
-      }, error => {
-        console.error('Auth state change error:', error);
-        this.initialized = true;
-        this.initializationError = error;
-        EventBus.emit('auth:error', error);
-        EventBus.emit('auth:initialized', null);
-      });
+      const userCredential = await this.auth.signInWithEmailAndPassword(email, password);
+      this.currentUser = userCredential.user;
+      return userCredential.user;
     } catch (error) {
-      console.error('Failed to initialize auth state listener:', error);
-      this.initialized = true;
-      this.initializationError = error;
-      EventBus.emit('auth:error', error);
-      EventBus.emit('auth:initialized', null);
+      console.error('Sign in error:', error);
+      throw error;
     }
   }
 
   /**
-   * Get the current authenticated user
-   * @returns {Object|null} - Firebase user object or null if not authenticated
+   * Sign out the current user
+   */
+  async signOut() {
+    try {
+      await this.auth.signOut();
+      this.currentUser = null;
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the current user
    */
   getCurrentUser() {
     return this.currentUser;
   }
 
   /**
-   * Check if a user is authenticated
-   * @returns {boolean} - True if user is authenticated, false otherwise
+   * Check if the user is authenticated
    */
   isAuthenticated() {
     return !!this.currentUser;
   }
 
   /**
-   * Sign in with email and password
-   * @param {string} email - User email
-   * @param {string} password - User password
-   * @returns {Promise} - Authentication promise
+   * Check if the service is initialized
    */
-  async signInWithEmailPassword(email, password) {
-    if (!this.auth) {
-      const error = new Error('Firebase authentication is not available');
-      error.code = 'auth/service-unavailable';
-      throw error;
-    }
+  isInitialized() {
+    return this.initialized;
+  }
 
-    try {
-      const result = await this.auth.signInWithEmailAndPassword(email, password);
-      if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('login_method', { method: 'email' });
-      }
-      return result.user;
-    } catch (error) {
-      console.error('Email sign in error:', error);
-      throw error;
-    }
+  /**
+   * Get any initialization error
+   */
+  getInitializationError() {
+    return this.initializationError;
   }
 
   /**
@@ -205,26 +212,6 @@ export class AuthService {
   }
 
   /**
-   * Sign out the current user
-   * @returns {Promise} - Sign out promise
-   */
-  async signOut() {
-    if (!this.auth) {
-      return Promise.resolve();
-    }
-
-    try {
-      if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('logout');
-      }
-      return await this.auth.signOut();
-    } catch (error) {
-      console.error('Sign out error:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Create a user document in Firestore if it doesn't exist
    * @param {Object} user - Firebase user object
    * @returns {Promise} - Firestore operation promise
@@ -292,5 +279,5 @@ export class AuthService {
   }
 }
 
-// Singleton instance
-export default new AuthService();
+// Create and export a singleton instance
+export const authService = new AuthService();

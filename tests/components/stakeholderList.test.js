@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import StakeholderList from '../stakeholderList';
+import StakeholderList from '@components/stakeholderList';
 
 // Mock data
 const mockStakeholders = [
@@ -22,7 +22,7 @@ describe('StakeholderList Component', () => {
 
   test('renders without crashing', () => {
     render(
-      <StakeholderList 
+      <StakeholderList
         stakeholders={mockStakeholders}
         onSelectStakeholder={mockSelectStakeholder}
         onDeleteStakeholder={mockDeleteStakeholder}
@@ -30,13 +30,13 @@ describe('StakeholderList Component', () => {
         onSortStakeholders={mockSortStakeholders}
       />
     );
-    
+
     expect(screen.getByText(/stakeholders/i)).toBeInTheDocument();
   });
 
   test('displays stakeholder items correctly', () => {
     render(
-      <StakeholderList 
+      <StakeholderList
         stakeholders={mockStakeholders}
         onSelectStakeholder={mockSelectStakeholder}
         onDeleteStakeholder={mockDeleteStakeholder}
@@ -44,7 +44,7 @@ describe('StakeholderList Component', () => {
         onSortStakeholders={mockSortStakeholders}
       />
     );
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('StakeholderList Component', () => {
 
   test('calls onSelectStakeholder when a stakeholder is clicked', () => {
     render(
-      <StakeholderList 
+      <StakeholderList
         stakeholders={mockStakeholders}
         onSelectStakeholder={mockSelectStakeholder}
         onDeleteStakeholder={mockDeleteStakeholder}
@@ -61,14 +61,14 @@ describe('StakeholderList Component', () => {
         onSortStakeholders={mockSortStakeholders}
       />
     );
-    
+
     fireEvent.click(screen.getByText('John Doe'));
     expect(mockSelectStakeholder).toHaveBeenCalledWith(mockStakeholders[0]);
   });
 
   test('filters stakeholders when search input changes', () => {
     render(
-      <StakeholderList 
+      <StakeholderList
         stakeholders={mockStakeholders}
         onSelectStakeholder={mockSelectStakeholder}
         onDeleteStakeholder={mockDeleteStakeholder}
@@ -76,16 +76,16 @@ describe('StakeholderList Component', () => {
         onSortStakeholders={mockSortStakeholders}
       />
     );
-    
+
     const searchInput = screen.getByPlaceholderText(/search/i);
     fireEvent.change(searchInput, { target: { value: 'John' } });
-    
+
     expect(mockFilterStakeholders).toHaveBeenCalledWith('John');
   });
 
   test('sorts stakeholders when sort option is changed', () => {
     render(
-      <StakeholderList 
+      <StakeholderList
         stakeholders={mockStakeholders}
         onSelectStakeholder={mockSelectStakeholder}
         onDeleteStakeholder={mockDeleteStakeholder}
@@ -93,10 +93,10 @@ describe('StakeholderList Component', () => {
         onSortStakeholders={mockSortStakeholders}
       />
     );
-    
+
     const sortSelect = screen.getByLabelText(/sort by/i);
     fireEvent.change(sortSelect, { target: { value: 'influence' } });
-    
+
     expect(mockSortStakeholders).toHaveBeenCalledWith('influence');
   });
 }); 

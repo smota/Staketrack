@@ -1,22 +1,43 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase/
+firebase-debug.log
+ui-debug.log
+.runtimeconfig.json
+
 # Dependencies
-node_modules
-/.pnp
-.pnp.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+build/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
 
 # Testing
 /coverage
 
-# Production
-/build
-/dist
-
 # Environment variables
-.env
 .env.local
 .env.development
 .env.test
 .env.production
-.env.*
 
 # IDE
 .idea/
@@ -28,12 +49,8 @@ node_modules
 *.code-workspace
 
 # Misc
-.DS_Store
 *.pem
 .cache
 .eslintcache
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 .vercel 
 .firebase/hosting.ZGlzdA.cache

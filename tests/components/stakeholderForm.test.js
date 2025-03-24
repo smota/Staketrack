@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import StakeholderForm from '../stakeholderForm';
+import StakeholderForm from '@components/stakeholderForm';
 
 // Mock stakeholder for editing
 const mockStakeholder = {
@@ -28,13 +28,13 @@ describe('StakeholderForm Component', () => {
 
   test('renders form for creating new stakeholder', () => {
     render(
-      <StakeholderForm 
+      <StakeholderForm
         stakeholder={null}
         onSave={mockSaveStakeholder}
         onCancel={mockCancelEdit}
       />
     );
-    
+
     expect(screen.getByText(/add new stakeholder/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/name/i)).toHaveValue('');
     expect(screen.getByLabelText(/organization/i)).toHaveValue('');
@@ -42,13 +42,13 @@ describe('StakeholderForm Component', () => {
 
   test('renders form with stakeholder data for editing', () => {
     render(
-      <StakeholderForm 
+      <StakeholderForm
         stakeholder={mockStakeholder}
         onSave={mockSaveStakeholder}
         onCancel={mockCancelEdit}
       />
     );
-    
+
     expect(screen.getByText(/edit stakeholder/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/name/i)).toHaveValue('John Doe');
     expect(screen.getByLabelText(/organization/i)).toHaveValue('Acme Corp');
@@ -58,39 +58,39 @@ describe('StakeholderForm Component', () => {
 
   test('validates required fields', () => {
     render(
-      <StakeholderForm 
+      <StakeholderForm
         stakeholder={null}
         onSave={mockSaveStakeholder}
         onCancel={mockCancelEdit}
       />
     );
-    
+
     // Try to submit without required fields
     fireEvent.click(screen.getByText(/save/i));
-    
+
     expect(screen.getByText(/name is required/i)).toBeInTheDocument();
     expect(mockSaveStakeholder).not.toHaveBeenCalled();
   });
 
   test('submits form with valid data', () => {
     render(
-      <StakeholderForm 
+      <StakeholderForm
         stakeholder={null}
         onSave={mockSaveStakeholder}
         onCancel={mockCancelEdit}
       />
     );
-    
+
     // Fill out form
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Jane Smith' } });
     fireEvent.change(screen.getByLabelText(/organization/i), { target: { value: 'XYZ Inc' } });
     fireEvent.change(screen.getByLabelText(/role/i), { target: { value: 'Manager' } });
     fireEvent.change(screen.getByLabelText(/influence/i), { target: { value: '6' } });
     fireEvent.change(screen.getByLabelText(/interest/i), { target: { value: '7' } });
-    
+
     // Submit form
     fireEvent.click(screen.getByText(/save/i));
-    
+
     expect(mockSaveStakeholder).toHaveBeenCalledWith(expect.objectContaining({
       name: 'Jane Smith',
       organization: 'XYZ Inc',
@@ -102,13 +102,13 @@ describe('StakeholderForm Component', () => {
 
   test('calls cancel function when cancel button is clicked', () => {
     render(
-      <StakeholderForm 
+      <StakeholderForm
         stakeholder={mockStakeholder}
         onSave={mockSaveStakeholder}
         onCancel={mockCancelEdit}
       />
     );
-    
+
     fireEvent.click(screen.getByText(/cancel/i));
     expect(mockCancelEdit).toHaveBeenCalled();
   });

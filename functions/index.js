@@ -2,13 +2,13 @@ const { https, logger } = require("firebase-functions");
 const functions = require('firebase-functions');
 
 // Basic Hello World function to make sure Functions is initialized properly
-exports.helloWorld = https.onRequest((request, response) => {
+exports.helloWorld = functions.region('europe-west1').https.onRequest((request, response) => {
   logger.info("Hello request received");
   response.send("Hello from Firebase Functions!");
 });
 
-// Export the getConfig function directly from a new implementation
-exports.getConfig = functions.https.onRequest((request, response) => {
+// Export the getConfig function with improved configuration
+exports.getConfig = functions.region('europe-west1').https.onRequest((request, response) => {
   // Set CORS headers
   response.set('Access-Control-Allow-Origin', '*');
   response.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -39,50 +39,16 @@ exports.getConfig = functions.https.onRequest((request, response) => {
       'No app configuration found';
     logger.info(availableKeys);
 
-    // Hard-coded configuration for development environment
-    // Values for staging environment - replace with your actual Firebase project values
-    // IMPORTANT: In production, these would come from secure environment settings
-    const hardcodedDevConfig = {
-      api_key: "AIzaSyDX_QLoBYkAX9o-_9RE4QJjZt47VrQDNFM",
-      auth_domain: "staketrack-dev.firebaseapp.com",
-      project_id: "staketrack-dev",
-      storage_bucket: "staketrack-dev.appspot.com",
-      messaging_sender_id: "376336482298",
-      app_id: "1:376336482298:web:fecd532b9c13e3c94f1321",
-      measurement_id: "G-XXXXXXXXXX"
-    };
-
-    // Default fallback values - only used if specific values are missing
-    const defaultConfig = {
-      api_key: process.env.FIREBASE_API_KEY || '',
-      auth_domain: process.env.FIREBASE_AUTH_DOMAIN || '',
-      project_id: process.env.FIREBASE_PROJECT_ID || '',
-      storage_bucket: process.env.FIREBASE_STORAGE_BUCKET || '',
-      messaging_sender_id: process.env.FIREBASE_MESSAGING_SENDER_ID || '',
-      app_id: process.env.FIREBASE_APP_ID || '',
-      measurement_id: process.env.FIREBASE_MEASUREMENT_ID || ''
-    };
-
-    // Select the appropriate configuration source based on environment
-    let configSource;
-    if (env.toLowerCase() === 'development' || env.toLowerCase() === 'dev') {
-      configSource = hardcodedDevConfig;
-      logger.info('Using hard-coded development configuration');
-    } else {
-      configSource = appConfig;
-      logger.info('Using configuration from Firebase Functions config');
-    }
-
     // Build the configuration object (without exposing sensitive data in logs)
     const config = {
       ENVIRONMENT: env.toUpperCase(),
-      FIREBASE_API_KEY: configSource.api_key || defaultConfig.api_key,
-      FIREBASE_AUTH_DOMAIN: configSource.auth_domain || defaultConfig.auth_domain,
-      FIREBASE_PROJECT_ID: configSource.project_id || defaultConfig.project_id,
-      FIREBASE_STORAGE_BUCKET: configSource.storage_bucket || defaultConfig.storage_bucket,
-      FIREBASE_MESSAGING_SENDER_ID: configSource.messaging_sender_id || defaultConfig.messaging_sender_id,
-      FIREBASE_APP_ID: configSource.app_id || defaultConfig.app_id,
-      FIREBASE_MEASUREMENT_ID: configSource.measurement_id || defaultConfig.measurement_id,
+      FIREBASE_API_KEY: appConfig.api_key || process.env.FIREBASE_API_KEY || '',
+      FIREBASE_AUTH_DOMAIN: appConfig.auth_domain || process.env.FIREBASE_AUTH_DOMAIN || '',
+      FIREBASE_PROJECT_ID: appConfig.project_id || process.env.FIREBASE_PROJECT_ID || '',
+      FIREBASE_STORAGE_BUCKET: appConfig.storage_bucket || process.env.FIREBASE_STORAGE_BUCKET || '',
+      FIREBASE_MESSAGING_SENDER_ID: appConfig.messaging_sender_id || process.env.FIREBASE_MESSAGING_SENDER_ID || '',
+      FIREBASE_APP_ID: appConfig.app_id || process.env.FIREBASE_APP_ID || '',
+      FIREBASE_MEASUREMENT_ID: appConfig.measurement_id || process.env.FIREBASE_MEASUREMENT_ID || '',
       USE_EMULATORS: isEmulator.toString()
     };
 

@@ -67,10 +67,62 @@ class StakeholderManager {
   initialize() {
     console.log('StakeholderList initialized, listening for stakeholder events');
     EventBus.subscribe('stakeholder:loaded', this.handleStakeholderLoaded.bind(this));
+    EventBus.subscribe('stakeholder:added', this.handleStakeholderAdded.bind(this));
   }
 
   handleStakeholderLoaded(stakeholders) {
     this.stakeholders = stakeholders || [];
+    this.updateUI();
+  }
+
+  handleStakeholderAdded(stakeholder) {
+    if (!this.stakeholders) {
+      this.stakeholders = [];
+    }
+    const existingIndex = this.stakeholders.findIndex(s => s.id === stakeholder.id);
+    if (existingIndex >= 0) {
+      this.stakeholders[existingIndex] = stakeholder;
+    } else {
+      this.stakeholders.push(stakeholder);
+    }
+    this.updateUI();
+  }
+
+  updateUI() {
+    // Update matrix view
+    const matrixPlots = document.getElementById('matrix-plots');
+    if (matrixPlots) {
+      matrixPlots.innerHTML = '';
+      this.stakeholders.forEach(stakeholder => {
+        const plot = document.createElement('div');
+        plot.className = 'matrix-plot';
+        plot.style.left = `${(stakeholder.influence / 10) * 100}%`;
+        plot.style.top = `${(stakeholder.impact / 10) * 100}%`;
+        plot.setAttribute('data-tooltip', stakeholder.name);
+        matrixPlots.appendChild(plot);
+      });
+    }
+
+    // Update list view
+    const tableBody = document.getElementById('stakeholders-table-body');
+    if (tableBody) {
+      tableBody.innerHTML = '';
+      this.stakeholders.forEach(stakeholder => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${stakeholder.name}</td>
+          <td>${stakeholder.influence}/10</td>
+          <td>${stakeholder.impact}/10</td>
+          <td>${stakeholder.relationship}/10</td>
+          <td>${stakeholder.category}</td>
+          <td>
+            <button class="btn btn-icon edit-stakeholder" data-id="${stakeholder.id}">✏️</button>
+            <button class="btn btn-icon delete-stakeholder" data-id="${stakeholder.id}">🗑️</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
   }
 
   async getStakeholders(projectId = 'default') {

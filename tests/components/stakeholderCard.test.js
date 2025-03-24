@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import StakeholderCard from '../stakeholderCard';
+import StakeholderCard from '@components/stakeholderCard';
 
 // Mock data
 const mockStakeholder = {
@@ -28,13 +28,13 @@ describe('StakeholderCard Component', () => {
 
   test('renders stakeholder information correctly', () => {
     render(
-      <StakeholderCard 
+      <StakeholderCard
         stakeholder={mockStakeholder}
         onEdit={mockEditStakeholder}
         onDelete={mockDeleteStakeholder}
       />
     );
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Acme Corp')).toBeInTheDocument();
     expect(screen.getByText('CEO')).toBeInTheDocument();
@@ -45,13 +45,13 @@ describe('StakeholderCard Component', () => {
 
   test('displays influence and interest ratings', () => {
     render(
-      <StakeholderCard 
+      <StakeholderCard
         stakeholder={mockStakeholder}
         onEdit={mockEditStakeholder}
         onDelete={mockDeleteStakeholder}
       />
     );
-    
+
     expect(screen.getByText(/influence/i)).toBeInTheDocument();
     expect(screen.getByText(/8\/10/i)).toBeInTheDocument();
     expect(screen.getByText(/interest/i)).toBeInTheDocument();
@@ -60,13 +60,13 @@ describe('StakeholderCard Component', () => {
 
   test('calls edit function when edit button is clicked', () => {
     render(
-      <StakeholderCard 
+      <StakeholderCard
         stakeholder={mockStakeholder}
         onEdit={mockEditStakeholder}
         onDelete={mockDeleteStakeholder}
       />
     );
-    
+
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));
     expect(mockEditStakeholder).toHaveBeenCalledWith(mockStakeholder);
   });
@@ -75,19 +75,19 @@ describe('StakeholderCard Component', () => {
     // Mock window.confirm
     const originalConfirm = window.confirm;
     window.confirm = jest.fn(() => true);
-    
+
     render(
-      <StakeholderCard 
+      <StakeholderCard
         stakeholder={mockStakeholder}
         onEdit={mockEditStakeholder}
         onDelete={mockDeleteStakeholder}
       />
     );
-    
+
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(window.confirm).toHaveBeenCalled();
     expect(mockDeleteStakeholder).toHaveBeenCalledWith(mockStakeholder.id);
-    
+
     // Restore original window.confirm
     window.confirm = originalConfirm;
   });
@@ -96,19 +96,19 @@ describe('StakeholderCard Component', () => {
     // Mock window.confirm
     const originalConfirm = window.confirm;
     window.confirm = jest.fn(() => false);
-    
+
     render(
-      <StakeholderCard 
+      <StakeholderCard
         stakeholder={mockStakeholder}
         onEdit={mockEditStakeholder}
         onDelete={mockDeleteStakeholder}
       />
     );
-    
+
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(window.confirm).toHaveBeenCalled();
     expect(mockDeleteStakeholder).not.toHaveBeenCalled();
-    
+
     // Restore original window.confirm
     window.confirm = originalConfirm;
   });
