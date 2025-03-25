@@ -10,4 +10,10 @@ module.exports = {
     'js/**/*.js',
     '!js/node_modules/**',
   ],
+  transform: {
+    '^.+\\.(js|jsx)$': 'babel-jest'
+  },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@opentelemetry)/)'
+  ],
 }; 

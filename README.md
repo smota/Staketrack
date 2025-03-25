@@ -1,6 +1,15 @@
-# StakeTrack - Stakeholder Management Application
+# StakeTrack - Vue.js Edition
 
-StakeTrack is a comprehensive web application for managing stakeholder relationships, visualizing influence-impact metrics, and receiving AI-powered engagement recommendations.
+A comprehensive web application for managing stakeholder relationships, visualizing influence-impact metrics, and receiving AI-powered engagement recommendations.
+
+## Technology Stack
+
+- **Frontend**: Vue.js 3, Vuetify 3 (Material Design)
+- **Backend**: Firebase (Authentication, Firestore, Analytics)
+- **AI Recommendations**: Anthropic Claude API
+- **Deployment**: Firebase Hosting
+- **Testing**: Jest (Unit), Playwright (E2E)
+- **Linting**: ESLint with Vue.js plugin
 
 ## Features
 
@@ -13,139 +22,135 @@ StakeTrack is a comprehensive web application for managing stakeholder relations
 - **Flexible Authentication**: Multiple sign-in options including anonymous mode.
 - **Responsive Design**: Works on both desktop and mobile devices.
 
-## Technology Stack
-
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Backend**: Firebase (Authentication, Firestore, Analytics)
-- **AI Recommendations**: Anthropic Claude API
-- **Deployment**: Firebase Hosting
-
-## Documentation
-
-StakeTrack comes with comprehensive documentation:
-
-- [Service Setup Guide](docs/SETUP.md) - Instructions for setting up Firebase, Claude API, and other services
-- [Configuration Guide](docs/CONFIGURATION.md) - How to configure environment variables and application settings
-- [Deployment Guide](docs/DEPLOYMENT.md) - Instructions for deploying the application to Firebase
-- [Firebase Configuration Guide](FIREBASE_CONFIG.md) - Guide for securely handling Firebase configuration
-- [GitHub Workflow Guide](docs/github-workflow.md) - How GitHub Actions automates deployment and configuration
-- [Run and Debug Guide](docs/RUN_DEBUG.md) - How to run and debug the application during development
-- [Testing Guide](docs/TESTING.md) - Instructions for running tests and writing new ones
-- [Specifications](docs/spec/README.md) - Detailed functional specifications in EPIC → FEATURE → STORY format
-- [Test Specifications](docs/spec/tests/README.md) - Detailed test specifications aligned with EPICs and user stories
-
-## Getting Started
+## Project Setup
 
 ### Prerequisites
 
-- Node.js (v16+)
-- npm or yarn
+- Node.js (v18+)
+- npm (v8+)
 - Firebase CLI (`npm install -g firebase-tools`)
 
-### Quick Start
+### Installation
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/staketrack.git
-cd staketrack
-```
-
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
+
+# Setup Firebase emulators (optional, for local development)
+npm run firebase:emulators
 ```
 
-3. Set up services following the [Service Setup Guide](docs/SETUP.md)
+### Environment Configuration
 
-4. Configure the application following the [Configuration Guide](docs/CONFIGURATION.md)
+Create `.env.development.local` and `.env.production.local` files for your environment-specific secrets:
 
-5. Start the development server:
+```
+# .env.development.local example
+VUE_APP_FIREBASE_API_KEY=your-dev-api-key
+VUE_APP_FIREBASE_AUTH_DOMAIN=your-project-dev.firebaseapp.com
+VUE_APP_FIREBASE_PROJECT_ID=your-project-dev
+VUE_APP_FIREBASE_STORAGE_BUCKET=your-project-dev.appspot.com
+VUE_APP_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+VUE_APP_FIREBASE_APP_ID=your-app-id
+VUE_APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
+VUE_APP_ANTHROPIC_API_KEY=your-anthropic-api-key
+```
+
+### Development
+
 ```bash
-npm run dev
+# Serve with hot-reload at localhost:8080
+npm run serve
+
+# Start Firebase emulators
+npm run firebase:emulators
 ```
 
-See the [Run and Debug Guide](docs/RUN_DEBUG.md) for more detailed instructions.
+### Testing
 
-## Usage
+```bash
+# Run unit tests
+npm run test:unit
 
-1. **Sign in or continue anonymously**: Choose your preferred authentication method or use without signing in.
-2. **Create a stakeholder map**: Start a new map for your project or initiative.
-3. **Add stakeholders**: Document each stakeholder with their attributes and strategic importance.
-4. **Visualize relationships**: Use the matrix view to understand stakeholder positioning.
-5. **Log interactions**: Keep track of meetings, calls, and other interactions.
-6. **Get recommendations**: Use AI recommendations for engagement strategies and next best actions.
+# Run E2E tests with Playwright
+npm run test:e2e
 
-## Folder Structure
-
-```
-staketrack/
-├── assets/          # Static assets
-│   ├── css/         # CSS styles and components
-│   ├── images/      # App images
-├── docs/            # Documentation
-│   └── spec/        # Detailed specifications
-├── firebase/        # Firebase configuration
-├── js/              # JavaScript files
-│   ├── components/  # UI components
-│   ├── controllers/ # Controllers managing app logic
-│   ├── models/      # Data models
-│   ├── services/    # Services for data, auth, etc.
-│   ├── utils/       # Utility functions
-│   └── views/       # View components
-├── scripts/         # Automation scripts
-├── tests/           # Test files
-├── .vscode/         # VS Code configuration
-├── index.html       # Main HTML file
-└── README.md        # This file
+# Run both unit and E2E tests
+npm run test
 ```
 
-## Contributing
+### Linting
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+# Lint and fix files
+npm run lint
+```
+
+### Building for Production
+
+```bash
+# Build for production
+npm run build
+
+# Build for development
+npm run build:dev
+```
+
+### Deployment
+
+```bash
+# Deploy to Firebase development environment
+npm run firebase:deploy:dev
+
+# Deploy to Firebase production environment
+npm run firebase:deploy:prod
+
+# Deploy functions to development environment
+npm run firebase:deploy:functions:dev
+
+# Deploy functions to production environment
+npm run firebase:deploy:functions:prod
+```
+
+## Project Structure
+
+```
+staketrack-vue/
+├── public/                # Static assets
+├── src/                   # Source code
+│   ├── assets/            # Assets (images, fonts, etc.)
+│   ├── components/        # Vue components
+│   ├── config/            # Configuration
+│   ├── models/            # Data models
+│   ├── plugins/           # Vue plugins
+│   ├── router/            # Vue Router configuration
+│   ├── services/          # Services for API, auth, etc.
+│   ├── store/             # Global state management
+│   ├── styles/            # Global CSS
+│   ├── utils/             # Utility functions
+│   ├── views/             # Page components
+│   ├── App.vue            # Root component
+│   └── main.js            # Entry point
+├── functions/             # Firebase Cloud Functions
+├── tests/                 # Tests
+│   ├── e2e/               # End-to-end tests
+│   └── unit/              # Unit tests
+├── .env.development       # Development environment variables (non-secret)
+├── .env.production        # Production environment variables (non-secret)
+├── .env.development.local # Local dev secrets (gitignored)
+├── .eslintrc.js           # ESLint configuration
+├── babel.config.js        # Babel configuration
+├── firebase.json          # Firebase configuration
+├── package.json           # Project dependencies and scripts
+└── README.md              # Project documentation
+```
+
+## Secret Management
+
+- **Local Development**: Uses `.env.development.local` (gitignored)
+- **Production**: Secrets are stored in Firebase Functions environment variables
+- **CI/CD**: Secrets are stored in GitHub Actions secrets
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Firebase for authentication and data storage
-- Anthropic for Claude API
-- All contributors and supporters of the project
-
-## Environment Configuration
-
-StakeTrack uses environment variables to configure different environments:
-
-1. **Local Development**:
-   - Uses `.env.development` for configuring the web app
-   - Uses Firebase emulators for local testing
-
-2. **Development Deployment**:
-   - Uses `.env.development` for building the web app
-   - Uses Firebase runtime environment variables for Cloud Functions
-   - Configs are uploaded during deployment, not stored in the codebase
-
-3. **Production Deployment**:
-   - Uses `.env.production` for building the web app
-   - Uses Firebase runtime environment variables for Cloud Functions
-   - Configs are uploaded during deployment, not stored in the codebase
-
-### Deploying Functions
-
-To deploy functions with the correct environment variables:
-
-```bash
-# Deploy to development environment
-npm run deploy:functions:dev
-
-# Deploy to production environment
-npm run deploy:functions:prod
-```
-
-This process:
-1. Reads variables from the appropriate .env file
-2. Sets them as Firebase Functions configuration variables
-3. Deploys the functions to the specified environment
-
-No sensitive configuration is stored in the codebase itself.
+This project is licensed under the MIT License.

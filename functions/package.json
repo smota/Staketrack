@@ -1,7 +1,8 @@
 {
-  "name": "functions",
-  "description": "Cloud Functions for Firebase",
+  "name": "staketrack-functions",
+  "description": "StakeTrack Firebase Cloud Functions",
   "scripts": {
+    "lint": "eslint .",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",
@@ -9,15 +10,17 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "20"
+    "node": "18"
   },
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
+    "cors": "^2.8.5",
     "firebase-admin": "^11.8.0",
-    "firebase-functions": "^4.5.0",
-    "staketrack": "file:.."
+    "firebase-functions": "^4.3.1"
   },
   "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
     "firebase-functions-test": "^3.1.0"
   },
   "private": true

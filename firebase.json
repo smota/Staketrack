@@ -87,12 +87,13 @@
   ],
   "functions": {
     "source": "functions",
+    "runtime": "nodejs18",
     "predeploy": [
       "npm --prefix \"$RESOURCE_DIR\" install"
     ]
   },
   "firestore": {
-    "rules": "firebase/firestore.rules.ts",
+    "rules": "firebase/firestore.rules",
     "indexes": "firebase/firestore.indexes.json"
   },
   "storage": {
