@@ -12,9 +12,9 @@
 // Version details - will be updated during build/deployment
 const version = {
   major: 1,
-  minor: 54,
+  minor: 45,
   patch: 0,
-  build: '118428',
+  build: '519115',
   timestamp: new Date().toISOString(),
   environment: process.env.ENVIRONMENT || 'DEV'
 };

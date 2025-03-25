@@ -112,46 +112,10 @@ export class MatrixView {
    * @private
    */
   _createStakeholderPlot(stakeholder) {
-    // Safely get plot position with fallbacks
-    let position;
-    try {
-      // First attempt: use getPlotPosition if it exists
-      if (typeof stakeholder.getPlotPosition === 'function') {
-        position = stakeholder.getPlotPosition();
-      }
-      // Second attempt: calculate position from influence/impact properties
-      else if (stakeholder.influence && stakeholder.impact) {
-        const x = ((stakeholder.influence - 1) / 9) * 100;
-        const y = 100 - ((stakeholder.impact - 1) / 9) * 100;
-        position = { x, y };
-      }
-      // Third attempt: use position property if it exists
-      else if (stakeholder.position) {
-        position = stakeholder.position;
-      }
-      // Finally: use default position if all else fails
-      else {
-        position = { x: 50, y: 50 };
-        console.warn('Could not determine position for stakeholder:', stakeholder.id);
-      }
-    } catch (error) {
-      console.error('Error getting plot position:', error);
-      position = { x: 50, y: 50 };
-    }
-
-    // Skip if we still don't have a position
+    const position = stakeholder.getPlotPosition();
     if (!position) return;
 
-    // Get relationship quality with fallback
-    let relationshipQuality;
-    try {
-      relationshipQuality = typeof stakeholder.getRelationshipQuality === 'function'
-        ? stakeholder.getRelationshipQuality()
-        : 'medium';
-    } catch (error) {
-      console.warn('Error getting relationship quality:', error);
-      relationshipQuality = 'medium';
-    }
+    const relationshipQuality = stakeholder.getRelationshipQuality() || 'medium';
 
     // Create plot element
     const plotElement = document.createElement('div');

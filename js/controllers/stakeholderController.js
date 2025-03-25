@@ -1,8 +1,6 @@
 import { EventBus } from '../utils/eventBus.js';
 import dataService from '../services/dataService.js';
 import llmService from '../services/llmService.js';
-import { stakeholderService } from '../services/stakeholderService.js';
-import { analyticsService } from '../services/analyticsService.js';
 // import { analytics } from '../../firebase/firebaseConfig.js';
 
 /**
@@ -25,43 +23,21 @@ export class StakeholderController {
     // Get analytics from window
     this.analytics = window.firebaseAnalytics;
 
-    this.initialized = false;
-    this.setupEventListeners();
+    this._initEventListeners();
   }
 
   /**
    * Initialize the controller
    */
   init() {
-    if (this.initialized) return;
-
-    try {
-      // Listen for stakeholder events
-      EventBus.on('stakeholder:show-form', this.handleShowForm.bind(this));
-      EventBus.on('stakeholder:submit', this.handleSubmit.bind(this));
-      EventBus.on('stakeholder:delete', this.handleDelete.bind(this));
-      EventBus.on('stakeholder:update', this.handleUpdate.bind(this));
-
-      this.initialized = true;
-      console.log('StakeholderController initialized');
-    } catch (error) {
-      console.error('Failed to initialize StakeholderController:', error);
-      throw error;
-    }
+    // Additional initialization if needed
   }
 
-  setupEventListeners() {
-    // Form submission handler
-    const form = document.getElementById('stakeholder-form');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
-        const stakeholderData = Object.fromEntries(formData.entries());
-        EventBus.emit('stakeholder:submit', stakeholderData);
-      });
-    }
-
+  /**
+   * Initialize event listeners
+   * @private
+   */
+  _initEventListeners() {
     // Add stakeholder button
     document.getElementById('add-stakeholder-btn').addEventListener('click', () => {
       this.showStakeholderForm();
@@ -100,108 +76,125 @@ export class StakeholderController {
    * Show the stakeholder form modal
    * @param {string} [stakeholderId] - Stakeholder ID to edit, or null for new stakeholder
    */
-  async handleShowForm(stakeholder = null) {
-    try {
-      const form = document.getElementById('stakeholder-form');
-      if (!form) return;
+  showStakeholderForm(stakeholderId = null) {
+    const isEdit = !!stakeholderId;
+    this.currentStakeholderId = stakeholderId;
 
-      // Reset form
-      form.reset();
+    // Set modal title
+    this.modalTitle.textContent = isEdit ? 'Edit Stakeholder' : 'Add Stakeholder';
 
-      if (stakeholder) {
-        // Populate form with stakeholder data
-        Object.entries(stakeholder).forEach(([key, value]) => {
-          const input = form.elements[key];
-          if (input) {
-            input.value = value;
-          }
-        });
+    // Clone the form template
+    const formContent = this.stakeholderFormTemplate.content.cloneNode(true);
+    this.modalContent.innerHTML = '';
+    this.modalContent.appendChild(formContent);
+
+    const form = document.getElementById('stakeholder-form');
+
+    // If editing, populate form with stakeholder data
+    if (isEdit) {
+      const currentMap = dataService.getCurrentMap();
+      if (!currentMap) {
+        console.error('No current map available');
+        return;
       }
 
-      // Show form
-      form.classList.remove('hidden');
-    } catch (error) {
-      console.error('Error showing stakeholder form:', error);
-      this.showError('Failed to show stakeholder form');
+      const stakeholder = currentMap.getStakeholder(stakeholderId);
+      if (stakeholder) {
+        document.getElementById('stakeholder-name').value = stakeholder.name || '';
+        document.getElementById('stakeholder-influence').value = stakeholder.influence || '';
+        document.getElementById('stakeholder-impact').value = stakeholder.impact || '';
+        document.getElementById('stakeholder-relationship').value = stakeholder.relationship || '';
+        document.getElementById('stakeholder-category').value = stakeholder.category || 'other';
+        document.getElementById('stakeholder-interests').value = stakeholder.interests || '';
+        document.getElementById('stakeholder-contribution').value = stakeholder.contribution || '';
+        document.getElementById('stakeholder-risk').value = stakeholder.risk || '';
+        document.getElementById('stakeholder-communication').value = stakeholder.communication || '';
+        document.getElementById('stakeholder-strategy').value = stakeholder.strategy || '';
+        document.getElementById('stakeholder-measurement').value = stakeholder.measurement || '';
+      }
+    }
+
+    // Form submit handler
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._handleStakeholderFormSubmit(form, isEdit);
+    });
+
+    // Cancel button handler
+    document.getElementById('cancel-stakeholder-btn').addEventListener('click', () => {
+      this.hideModal();
+    });
+
+    // Show modal
+    this.showModal();
+
+    // Track analytics
+    if (this.analytics && typeof this.analytics.logEvent === 'function') {
+      this.analytics.logEvent('stakeholder_form_opened', {
+        action: isEdit ? 'edit' : 'add'
+      });
     }
   }
 
-  async handleSubmit(stakeholderData) {
+  /**
+   * Handle stakeholder form submission
+   * @param {HTMLFormElement} form - Form element
+   * @param {boolean} isEdit - Whether this is an edit or new stakeholder
+   * @private
+   */
+  async _handleStakeholderFormSubmit(form, isEdit) {
     try {
-      const form = document.getElementById('stakeholder-form');
-      if (!form) return;
+      // Get form data
+      const formData = {
+        name: document.getElementById('stakeholder-name').value,
+        influence: parseInt(document.getElementById('stakeholder-influence').value),
+        impact: parseInt(document.getElementById('stakeholder-impact').value),
+        relationship: parseInt(document.getElementById('stakeholder-relationship').value),
+        category: document.getElementById('stakeholder-category').value,
+        interests: document.getElementById('stakeholder-interests').value,
+        contribution: document.getElementById('stakeholder-contribution').value,
+        risk: document.getElementById('stakeholder-risk').value,
+        communication: document.getElementById('stakeholder-communication').value,
+        strategy: document.getElementById('stakeholder-strategy').value,
+        measurement: document.getElementById('stakeholder-measurement').value
+      };
 
-      // Add or update stakeholder
-      const stakeholder = stakeholderData.id
-        ? await stakeholderService.updateStakeholder(stakeholderData.id, stakeholderData)
-        : await stakeholderService.addStakeholder(stakeholderData);
+      if (isEdit) {
+        // Update existing stakeholder
+        const currentMap = dataService.getCurrentMap();
+        if (!currentMap) {
+          throw new Error('No map selected');
+        }
 
-      // Log analytics event
-      analyticsService.logEvent('stakeholder_saved', {
-        stakeholder_id: stakeholder.id,
-        action: stakeholderData.id ? 'update' : 'create'
-      });
+        await currentMap.updateStakeholder(this.currentStakeholderId, formData);
 
-      // Hide form
-      form.classList.add('hidden');
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('stakeholder_updated', {
+            stakeholder_id: this.currentStakeholderId
+          });
+        }
+      } else {
+        // Add new stakeholder
+        const currentMap = dataService.getCurrentMap();
+        if (!currentMap) {
+          throw new Error('No map selected');
+        }
 
-      // Show success message
-      this.showSuccess('Stakeholder saved successfully');
+        const stakeholder = await currentMap.addStakeholder(formData);
+
+        if (this.analytics && typeof this.analytics.logEvent === 'function') {
+          this.analytics.logEvent('stakeholder_added', {
+            stakeholder_id: stakeholder.id,
+            map_id: currentMap.id
+          });
+        }
+      }
+
+      // Hide modal
+      this.hideModal();
     } catch (error) {
       console.error('Error saving stakeholder:', error);
-      this.showError('Failed to save stakeholder');
-    }
-  }
-
-  async handleDelete(stakeholderId) {
-    try {
-      await stakeholderService.deleteStakeholder(stakeholderId);
-
-      // Log analytics event
-      analyticsService.logEvent('stakeholder_deleted', {
-        stakeholder_id: stakeholderId
-      });
-
-      this.showSuccess('Stakeholder deleted successfully');
-    } catch (error) {
-      console.error('Error deleting stakeholder:', error);
-      this.showError('Failed to delete stakeholder');
-    }
-  }
-
-  async handleUpdate(stakeholder) {
-    try {
-      await stakeholderService.updateStakeholder(stakeholder.id, stakeholder);
-
-      // Log analytics event
-      analyticsService.logEvent('stakeholder_updated', {
-        stakeholder_id: stakeholder.id
-      });
-
-      this.showSuccess('Stakeholder updated successfully');
-    } catch (error) {
-      console.error('Error updating stakeholder:', error);
-      this.showError('Failed to update stakeholder');
-    }
-  }
-
-  showSuccess(message) {
-    const toast = document.getElementById('toast');
-    if (toast) {
-      toast.textContent = message;
-      toast.classList.remove('hidden', 'error');
-      toast.classList.add('success');
-      setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
-  }
-
-  showError(message) {
-    const toast = document.getElementById('toast');
-    if (toast) {
-      toast.textContent = message;
-      toast.classList.remove('hidden', 'success');
-      toast.classList.add('error');
-      setTimeout(() => toast.classList.add('hidden'), 3000);
+      alert(`Error saving stakeholder: ${error.message}`);
     }
   }
 

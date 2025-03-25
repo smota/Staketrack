@@ -23,87 +23,146 @@ async function fetchFirebaseConfig() {
 
     // Determine environment based on hostname
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      // Local development - use API endpoint with local parameter
       configSource = '/api/get-config?env=local';
       envName = 'local';
     } else if (hostname.includes('staketrack-dev.web.app') || hostname.includes('staketrack-dev.firebaseapp.com')) {
+      // Development environment - use API endpoint
       configSource = '/api/get-config?env=development';
       envName = 'development';
     } else if (hostname.includes('staketrack.com') || hostname.includes('staketrack.web.app')) {
+      // Production environment - use API endpoint
       configSource = '/api/get-config?env=production';
       envName = 'production';
     } else {
+      // Default - assume development
       configSource = '/api/get-config?env=development';
       envName = 'development';
     }
 
     console.log(`Loading configuration for ${envName} environment from ${configSource}`);
 
-    // Try to fetch configuration from API
-    const response = await fetch(configSource);
-    if (!response.ok) {
-      throw new Error(`Failed to load configuration: ${response.statusText}`);
+    // Try to fetch the configuration
+    try {
+      const response = await fetch(configSource);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch configuration: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Expected JSON response but got: ${contentType}`);
+      }
+
+      const config = await response.json();
+
+      // Make sure the config has the required fields
+      if (!config.FIREBASE_API_KEY || !config.FIREBASE_PROJECT_ID) {
+        throw new Error('Incomplete configuration received from server');
+      }
+
+      // Update both window.ENV and our exported env object
+      Object.assign(window.ENV, config);
+      Object.assign(envData, config);
+
+      console.log(`Environment loaded: ${config.ENVIRONMENT || envName}`);
+
+      // Dispatch event to signal environment has been loaded
+      window.dispatchEvent(new CustomEvent('env:loaded', { detail: config }));
+
+    } catch (error) {
+      console.error(`Error loading configuration from API:`, error);
+
+      // For API failures, try with fallback URL
+      try {
+        const fallbackUrl = `/api/get-config?env=${envName}&fallback=true`;
+        console.log(`Attempting fallback API URL: ${fallbackUrl}`);
+
+        const fallbackResponse = await fetch(fallbackUrl);
+
+        if (fallbackResponse.ok) {
+          const fallbackConfig = await fallbackResponse.json();
+
+          // Update configs with fallback values
+          Object.assign(window.ENV, fallbackConfig);
+          Object.assign(envData, fallbackConfig);
+
+          console.log(`Environment loaded from fallback: ${fallbackConfig.ENVIRONMENT}`);
+
+          // Dispatch event with fallback config
+          window.dispatchEvent(new CustomEvent('env:loaded', { detail: fallbackConfig }));
+          return; // Exit early if fallback succeeded
+        }
+      } catch (fallbackError) {
+        console.error('Fallback API request also failed:', fallbackError);
+      }
+
+      // If we're in development environment, use hardcoded development values
+      if (envName === 'development' || hostname.includes('staketrack-dev')) {
+        const devConfig = {
+          ENVIRONMENT: 'DEV',
+          FIREBASE_API_KEY: 'AIzaSyDX_QLoBYkAX9o-_9RE4QJjZt47VrQDNFM',
+          FIREBASE_AUTH_DOMAIN: 'staketrack-dev.firebaseapp.com',
+          FIREBASE_PROJECT_ID: 'staketrack-dev',
+          FIREBASE_STORAGE_BUCKET: 'staketrack-dev.appspot.com',
+          FIREBASE_MESSAGING_SENDER_ID: '376336482298',
+          FIREBASE_APP_ID: '1:376336482298:web:fecd532b9c13e3c94f1321',
+          FIREBASE_MEASUREMENT_ID: 'G-XXXXXXXXXX',
+          USE_EMULATORS: 'false',
+          CONFIG_INCOMPLETE: false
+        };
+
+        Object.assign(window.ENV, devConfig);
+        Object.assign(envData, devConfig);
+
+        console.log('Using hardcoded development configuration');
+        window.dispatchEvent(new CustomEvent('env:loaded', { detail: devConfig }));
+        return;
+      }
+
+      // For all environments, create minimal configuration without sensitive data
+      const defaultEmptyConfig = {
+        ENVIRONMENT: hostname.includes('localhost') ? 'LOCAL' :
+          (hostname.includes('staketrack-dev') ? 'DEV' : 'PRD'),
+        USE_EMULATORS: hostname.includes('localhost') ? 'true' : 'false',
+        CONFIG_INCOMPLETE: true
+      };
+
+      // Update both window.ENV and our exported env object
+      Object.assign(window.ENV, defaultEmptyConfig);
+      Object.assign(envData, defaultEmptyConfig);
+
+      // Flag to indicate that configuration is incomplete
+      window.ENV.CONFIG_INCOMPLETE = true;
+
+      console.warn('Using incomplete configuration. Firebase services will be unavailable.');
+
+      // Dispatch both events: error and loaded with incomplete config
+      window.dispatchEvent(new CustomEvent('env:error', { detail: error }));
+      window.dispatchEvent(new CustomEvent('env:loaded', { detail: defaultEmptyConfig }));
     }
+  } catch (error) {
+    console.error('Fatal error in environment loading process:', error);
 
-    const config = await response.json();
-
-    // Validate configuration before applying
-    if (!config || !config.firebase || !config.firebase.apiKey || !config.firebase.authDomain || !config.firebase.projectId) {
-      throw new Error('Incomplete configuration received');
-    }
-
-    // Update window.ENV with the received configuration
-    window.ENV = {
-      ...window.ENV,
-      ENVIRONMENT: envName.toUpperCase(),
-      FIREBASE_API_KEY: config.firebase.apiKey,
-      FIREBASE_AUTH_DOMAIN: config.firebase.authDomain,
-      FIREBASE_PROJECT_ID: config.firebase.projectId,
-      FIREBASE_STORAGE_BUCKET: config.firebase.storageBucket,
-      FIREBASE_MESSAGING_SENDER_ID: config.firebase.messagingSenderId,
-      FIREBASE_APP_ID: config.firebase.appId,
-      FIREBASE_MEASUREMENT_ID: config.firebase.measurementId,
-      USE_EMULATORS: envName === 'local' ? 'true' : 'false',
-      CONFIG_INCOMPLETE: false
+    // Create minimal default configuration without sensitive data
+    const defaultEmptyConfig = {
+      ENVIRONMENT: 'UNKNOWN',
+      USE_EMULATORS: 'false',
+      CONFIG_INCOMPLETE: true
     };
 
-    // Dispatch environment loaded event
-    window.dispatchEvent(new CustomEvent('env:loaded', { detail: window.ENV }));
-    console.log(`Environment loaded: ${window.ENV.ENVIRONMENT}`);
+    // Update both window.ENV and our exported env object
+    Object.assign(window.ENV, defaultEmptyConfig);
+    Object.assign(envData, defaultEmptyConfig);
 
-    return window.ENV;
+    // Dispatch error event
+    window.dispatchEvent(new CustomEvent('env:error', { detail: error }));
 
-  } catch (error) {
-    console.error('Error loading configuration:', error);
-    return loadFallbackConfig();
+    // Then dispatch loaded event with default empty config to ensure application continues
+    window.dispatchEvent(new CustomEvent('env:loaded', { detail: defaultEmptyConfig }));
   }
 }
 
-function loadFallbackConfig() {
-  const hostname = window.location.hostname;
-  const envName = hostname.includes('localhost') ? 'LOCAL' : 'DEVELOPMENT';
-
-  // Set minimal configuration for fallback
-  window.ENV = {
-    ENVIRONMENT: envName,
-    USE_EMULATORS: envName === 'LOCAL' ? 'true' : 'false',
-    CONFIG_INCOMPLETE: true
-  };
-
-  // Dispatch error event
-  window.dispatchEvent(new CustomEvent('env:error', {
-    detail: { error: new Error('Failed to load configuration, using fallback') }
-  }));
-
-  console.log(`Environment loaded from fallback: ${envName.toLowerCase()}`);
-  return window.ENV;
-}
-
-// Execute the configuration loading immediately and initialize Firebase afterward
-fetchFirebaseConfig().then(() => {
-  // Initialize Firebase only after environment is loaded
-  if (typeof initializeFirebase === 'function') {
-    initializeFirebase();
-  }
-}).catch(error => {
-  console.error('Failed to initialize application:', error);
-}); 
+// Execute the configuration loading immediately
+fetchFirebaseConfig(); 

@@ -1,18 +1,14 @@
 // import { analytics } from '../../../firebase/firebaseConfig.js';
 import authService from './authService.js';
-import { configService } from './configService.js';
 
 /**
  * Analytics Service - Handles application analytics and tracking
  */
 class AnalyticsService {
   constructor() {
-    this.initialized = false;
-    this.record = null;
     this.enabled = true;
     this.anonymousId = this._generateAnonymousId();
     this._initFromLocalStorage();
-    this._initializeFallbackAnalytics();
   }
 
   /**
@@ -235,84 +231,7 @@ class AnalyticsService {
       ...params
     });
   }
-
-  _initializeFallbackAnalytics() {
-    // Always initialize fallback analytics first
-    this.record = (eventName, params) => {
-      this._recordToLocalStorage(eventName, params);
-    };
-  }
-
-  async initialize() {
-    if (this.initialized) return;
-
-    try {
-      const config = await configService.initialize();
-
-      // Try to initialize Firebase analytics if available
-      if (configService.isFeatureEnabled('analytics') && configService.isFirebaseAvailable) {
-        if (window.firebaseAnalytics) {
-          const firebaseRecord = (eventName, params) => {
-            try {
-              window.firebaseAnalytics.logEvent(eventName, params);
-            } catch (error) {
-              console.warn('Firebase analytics error, falling back to local storage:', error);
-              this._recordToLocalStorage(eventName, params);
-            }
-          };
-          this.record = firebaseRecord;
-        }
-      }
-
-      this.initialized = true;
-    } catch (error) {
-      console.warn('Analytics initialization failed:', error);
-      // Ensure fallback is always available
-      this._initializeFallbackAnalytics();
-    }
-  }
-
-  _recordToLocalStorage(eventName, params) {
-    try {
-      const events = JSON.parse(localStorage.getItem('analytics_events') || '[]');
-      events.push({
-        name: eventName,
-        params: params,
-        timestamp: new Date().toISOString()
-      });
-      localStorage.setItem('analytics_events', JSON.stringify(events));
-    } catch (error) {
-      console.warn('Failed to record analytics event to localStorage:', error);
-    }
-  }
-
-  logEvent(eventName, params = {}) {
-    if (!this.enabled) return;
-
-    try {
-      // Add user ID if available
-      const enhancedParams = { ...params };
-      if (authService.isAuthenticated()) {
-        enhancedParams.user_id = authService.getCurrentUser().uid;
-      } else {
-        enhancedParams.anonymous_id = this.anonymousId;
-      }
-
-      // Add timestamp
-      enhancedParams.timestamp = Date.now();
-
-      // Use the record function (either Firebase or fallback)
-      if (this.record) {
-        this.record(eventName, enhancedParams);
-      } else {
-        this._recordToLocalStorage(eventName, enhancedParams);
-      }
-    } catch (error) {
-      console.warn('Failed to record analytics event:', error);
-      this._recordToLocalStorage(eventName, params);
-    }
-  }
 }
 
-// Export a singleton instance
-export const analyticsService = new AnalyticsService();
+// Singleton instance
+export default new AnalyticsService();
