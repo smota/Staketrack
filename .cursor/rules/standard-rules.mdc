@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- You are free to select libraries and frameworks that simplify code. Use those well-known and mantained. Do not mix libraries and frameworks from the same domain - simplify dependencies. Use the latest versions when possible.
+- Use CDN when possible.
+- Use good practices for secret management. Do not rely on static files or hard-coded properties when deploying the web-application.
+- For configurations, never duplicate properties for the same environment. Rely on a single strategy. Make it simple to update and to be made effective.
+- This application is based on FIREBASE services - prefer it as much as possible. Deployment is based in Belgium.
+- Always review docs, spec, unit tests, integration tests, gitflow and automation scripts to ensure they are up-to-date.
+- This application should be responsive and mobile-friendly.
+- DEVELOPMENT and PRODUCTION are two different online FIREBASE applications. LOCAL is the debug localhost version.
+- Use good practices and patterns for coding. Minimally: Component-Based Architecture, MVC Pattern, Event-Driven Communication, Separation of Concerns, Proper model classes with encapsulation, Repository pattern for data operations.
+- When using the not logged in option, disable all backend dependencies except for the Analytic capabilities.
