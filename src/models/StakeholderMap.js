@@ -310,4 +310,4 @@ export class StakeholderMap {
   }
 }
 
-export default StakeholderMap 
+export default StakeholderMap

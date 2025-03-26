@@ -8,52 +8,52 @@ const EventBus = {
 
   subscribe(event, callback) {
     if (!this.events[event]) {
-      this.events[event] = [];
+      this.events[event] = []
     }
-    this.events[event].push(callback);
-    console.log(`EventBus: ${event} has ${this.events[event].length} listener(s)`);
-    return () => this.unsubscribe(event, callback);
+    this.events[event].push(callback)
+    console.log(`EventBus: ${event} has ${this.events[event].length} listener(s)`)
+    return () => this.unsubscribe(event, callback)
   },
 
   unsubscribe(event, callback) {
     if (this.events[event]) {
-      this.events[event] = this.events[event].filter(cb => cb !== callback);
+      this.events[event] = this.events[event].filter(cb => cb !== callback)
     }
   },
 
   emit(event, ...args) {
-    console.log(`EventBus: Emitting '${event}' with args:`, args);
+    console.log(`EventBus: Emitting '${event}' with args:`, args)
     if (this.events[event]) {
-      console.log(`EventBus: '${event}' has ${this.events[event].length} listener(s)`);
+      console.log(`EventBus: '${event}' has ${this.events[event].length} listener(s)`)
       this.events[event].forEach(callback => {
         try {
-          callback(...args);
+          callback(...args)
         } catch (error) {
-          console.error(`Error in ${event} event handler:`, error);
+          console.error(`Error in ${event} event handler:`, error)
         }
-      });
+      })
     } else {
-      console.log(`EventBus: No listeners for '${event}'`);
+      console.log(`EventBus: No listeners for '${event}'`)
     }
   }
-};
+}
 
 // Make EventBus global
-window.EventBus = EventBus;
+window.EventBus = EventBus
 
 // Analytics wrapper with fallback
 class Analytics {
   constructor() {
-    this.analytics = window.firebaseAnalytics;
+    this.analytics = window.firebaseAnalytics
   }
 
   logEvent() {
     try {
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent(...arguments);
+        this.analytics.logEvent(...arguments)
       }
     } catch (error) {
-      console.warn('Analytics not available:', error);
+      console.warn('Analytics not available:', error)
     }
   }
 }
@@ -61,41 +61,41 @@ class Analytics {
 // StakeholderManager - handles stakeholder operations with localStorage fallback
 class StakeholderManager {
   constructor() {
-    this.initialize();
+    this.initialize()
   }
 
   initialize() {
-    console.log('StakeholderList initialized, listening for stakeholder events');
-    EventBus.subscribe('stakeholder:loaded', this.handleStakeholderLoaded.bind(this));
+    console.log('StakeholderList initialized, listening for stakeholder events')
+    EventBus.subscribe('stakeholder:loaded', this.handleStakeholderLoaded.bind(this))
   }
 
   handleStakeholderLoaded(stakeholders) {
-    this.stakeholders = stakeholders || [];
+    this.stakeholders = stakeholders || []
   }
 
   async getStakeholders(projectId = 'default') {
     try {
       // Check if Firebase is available
       if (window.firebaseFirestore && window.ENV && !window.ENV.CONFIG_INCOMPLETE) {
-        const db = window.firebaseFirestore;
+        const db = window.firebaseFirestore
         const snapshot = await db.collection('projects').doc(projectId)
-          .collection('stakeholders').get();
+          .collection('stakeholders').get()
 
-        const stakeholders = [];
+        const stakeholders = []
         snapshot.forEach(doc => {
-          stakeholders.push(doc.data());
-        });
+          stakeholders.push(doc.data())
+        })
 
-        return stakeholders;
+        return stakeholders
       } else {
         // Use localStorage as fallback
-        console.log('Using localStorage fallback for stakeholder retrieval');
-        const storageKey = `stakeholders-${projectId}`;
-        return JSON.parse(localStorage.getItem(storageKey) || '[]');
+        console.log('Using localStorage fallback for stakeholder retrieval')
+        const storageKey = `stakeholders-${projectId}`
+        return JSON.parse(localStorage.getItem(storageKey) || '[]')
       }
     } catch (error) {
-      console.error('Error getting stakeholders:', error);
-      return [];
+      console.error('Error getting stakeholders:', error)
+      return []
     }
   }
 
@@ -105,44 +105,44 @@ class StakeholderManager {
       const stakeholderWithId = {
         ...stakeholder,
         id: stakeholder.id || `stakeholder-${Date.now()}`
-      };
+      }
 
       // Check if Firebase is available
       if (window.firebaseFirestore && window.ENV && !window.ENV.CONFIG_INCOMPLETE) {
         // Normal Firebase save logic
-        const db = window.firebaseFirestore;
-        const projectId = stakeholderWithId.projectId || 'default';
+        const db = window.firebaseFirestore
+        const projectId = stakeholderWithId.projectId || 'default'
 
         await db.collection('projects').doc(projectId)
           .collection('stakeholders').doc(stakeholderWithId.id)
-          .set(stakeholderWithId);
+          .set(stakeholderWithId)
       } else {
         // Use localStorage as fallback when Firebase isn't available
-        console.log('Using localStorage fallback for stakeholder add');
+        console.log('Using localStorage fallback for stakeholder add')
 
         // Get existing stakeholders from localStorage
-        const storageKey = `stakeholders-${stakeholderWithId.projectId || 'default'}`;
-        const existingStakeholders = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        const storageKey = `stakeholders-${stakeholderWithId.projectId || 'default'}`
+        const existingStakeholders = JSON.parse(localStorage.getItem(storageKey) || '[]')
 
         // Add or update stakeholder
-        const existingIndex = existingStakeholders.findIndex(s => s.id === stakeholderWithId.id);
+        const existingIndex = existingStakeholders.findIndex(s => s.id === stakeholderWithId.id)
         if (existingIndex >= 0) {
-          existingStakeholders[existingIndex] = stakeholderWithId;
+          existingStakeholders[existingIndex] = stakeholderWithId
         } else {
-          existingStakeholders.push(stakeholderWithId);
+          existingStakeholders.push(stakeholderWithId)
         }
 
         // Save back to localStorage
-        localStorage.setItem(storageKey, JSON.stringify(existingStakeholders));
+        localStorage.setItem(storageKey, JSON.stringify(existingStakeholders))
       }
 
       // Emit event to update UI regardless of storage method
-      EventBus.emit('stakeholder:added', stakeholderWithId);
-      return stakeholderWithId;
+      EventBus.emit('stakeholder:added', stakeholderWithId)
+      return stakeholderWithId
     } catch (error) {
-      console.error('Error adding stakeholder:', error);
-      alert('Failed to add stakeholder. Please try again.');
-      throw error;
+      console.error('Error adding stakeholder:', error)
+      alert('Failed to add stakeholder. Please try again.')
+      throw error
     }
   }
 }
@@ -150,45 +150,45 @@ class StakeholderManager {
 // MapManager - handles map operations with fallback
 class MapManager {
   constructor() {
-    this.currentMap = null;
-    this.initialize();
+    this.currentMap = null
+    this.initialize()
   }
 
   initialize() {
-    console.log('MatrixView initialized, listening for stakeholder events');
-    EventBus.subscribe('map:created', this.handleMapCreated.bind(this));
+    console.log('MatrixView initialized, listening for stakeholder events')
+    EventBus.subscribe('map:created', this.handleMapCreated.bind(this))
   }
 
   handleMapCreated(map) {
-    this.currentMap = map;
+    this.currentMap = map
   }
 
   getRecord() {
     try {
       if (this.currentMap && this.currentMap.record) {
-        return this.currentMap.record;
+        return this.currentMap.record
       } else {
-        return {};
+        return {}
       }
     } catch (error) {
-      console.warn('Error accessing record:', error);
-      return {};
+      console.warn('Error accessing record:', error)
+      return {}
     }
   }
 
   getPlotPosition(item) {
     try {
       if (item && typeof item.getPlotPosition === 'function') {
-        return item.getPlotPosition();
+        return item.getPlotPosition()
       } else if (item && item.position) {
-        return item.position;
+        return item.position
       } else {
-        console.warn('getPlotPosition not available, using default position');
-        return { x: 0, y: 0 };
+        console.warn('getPlotPosition not available, using default position')
+        return { x: 0, y: 0 }
       }
     } catch (error) {
-      console.warn('Error getting plot position:', error);
-      return { x: 0, y: 0 };
+      console.warn('Error getting plot position:', error)
+      return { x: 0, y: 0 }
     }
   }
 
@@ -197,43 +197,43 @@ class MapManager {
       const mapWithId = {
         ...map,
         id: map.id || `map-${Date.now()}`
-      };
+      }
 
       // Check if Firebase is available
       if (window.firebaseFirestore && window.firebaseAuth && window.firebaseAuth.currentUser) {
         // Normal Firebase save logic for authenticated users
-        const db = window.firebaseFirestore;
-        await db.collection('maps').doc(mapWithId.id).set(mapWithId);
+        const db = window.firebaseFirestore
+        await db.collection('maps').doc(mapWithId.id).set(mapWithId)
       } else {
         // Save to localStorage for guest users or when Firebase isn't available
-        const maps = JSON.parse(localStorage.getItem('maps') || '[]');
+        const maps = JSON.parse(localStorage.getItem('maps') || '[]')
 
-        const existingIndex = maps.findIndex(m => m.id === mapWithId.id);
+        const existingIndex = maps.findIndex(m => m.id === mapWithId.id)
         if (existingIndex >= 0) {
-          maps[existingIndex] = mapWithId;
+          maps[existingIndex] = mapWithId
         } else {
-          maps.push(mapWithId);
+          maps.push(mapWithId)
         }
 
-        localStorage.setItem('maps', JSON.stringify(maps));
+        localStorage.setItem('maps', JSON.stringify(maps))
       }
 
       // Emit events to update the UI
-      EventBus.emit('map:created', mapWithId);
-      EventBus.emit('map:current-changed', mapWithId);
+      EventBus.emit('map:created', mapWithId)
+      EventBus.emit('map:current-changed', mapWithId)
 
-      return mapWithId;
+      return mapWithId
     } catch (error) {
-      console.error('Error saving map:', error);
-      alert('Failed to save map. Please try again.');
-      throw error;
+      console.error('Error saving map:', error)
+      alert('Failed to save map. Please try again.')
+      throw error
     }
   }
 }
 
 // Initialize managers when document is ready
 document.addEventListener('DOMContentLoaded', () => {
-  window.analytics = new Analytics();
-  window.stakeholderManager = new StakeholderManager();
-  window.mapManager = new MapManager();
-}); 
+  window.analytics = new Analytics()
+  window.stakeholderManager = new StakeholderManager()
+  window.mapManager = new MapManager()
+})

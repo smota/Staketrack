@@ -288,4 +288,4 @@ export class Stakeholder {
   }
 }
 
-export default Stakeholder 
+export default Stakeholder

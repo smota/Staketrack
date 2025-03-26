@@ -1,13 +1,13 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
-const webpack = require('webpack');
-const dotenv = require('dotenv');
+const path = require('path')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const CopyPlugin = require('copy-webpack-plugin')
+const webpack = require('webpack')
+const dotenv = require('dotenv')
 
 // Load environment variables
 const env = process.env.NODE_ENV === 'production'
   ? dotenv.config({ path: '.env.production' })
-  : dotenv.config({ path: '.env.development' });
+  : dotenv.config({ path: '.env.development' })
 
 module.exports = {
   entry: './js/app.js',
@@ -25,7 +25,7 @@ module.exports = {
         test: /\.js$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
+          loader: 'babel-loader'
         }
       }
     ]
@@ -38,7 +38,7 @@ module.exports = {
     },
     modules: [path.resolve(__dirname), 'node_modules'],
     fallback: {
-      "process": require.resolve("process/browser")
+      'process': require.resolve('process/browser')
     }
   },
   // Add plugins
@@ -69,7 +69,7 @@ module.exports = {
   // Development server configuration
   devServer: {
     static: {
-      directory: path.join(__dirname, 'dist'),
+      directory: path.join(__dirname, 'dist')
     },
     compress: true,
     port: 8081,
@@ -77,9 +77,9 @@ module.exports = {
     historyApiFallback: true,
     // Add CORS headers for local development
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
     },
     // Add API proxy for Firebase Functions
     proxy: {
@@ -91,4 +91,4 @@ module.exports = {
       }
     }
   }
-}; 
+}

@@ -10,7 +10,7 @@
             <v-card-subtitle class="text-center">
               Comprehensive stakeholder management and visualization
             </v-card-subtitle>
-            
+
             <v-card-text>
               <div class="text-center mb-4">
                 <v-img
@@ -18,15 +18,15 @@
                   alt="StakeTrack Logo"
                   max-width="200"
                   class="mx-auto"
-                ></v-img>
+                />
               </div>
-              
+
               <p class="text-body-1">
-                StakeTrack helps you manage your stakeholder relationships effectively 
-                by visualizing influence-impact matrices, tracking interactions, and 
+                StakeTrack helps you manage your stakeholder relationships effectively
+                by visualizing influence-impact matrices, tracking interactions, and
                 providing AI-powered engagement recommendations.
               </p>
-              
+
               <v-row class="mt-5">
                 <v-col cols="12" sm="4">
                   <v-card height="100%">
@@ -37,12 +37,12 @@
                       Stakeholder Profiles
                     </v-card-title>
                     <v-card-text>
-                      Document stakeholders with detailed attributes including 
+                      Document stakeholders with detailed attributes including
                       influence, impact, relationship quality, and more.
                     </v-card-text>
                   </v-card>
                 </v-col>
-                
+
                 <v-col cols="12" sm="4">
                   <v-card height="100%">
                     <v-card-title>
@@ -52,12 +52,12 @@
                       Visual Matrix
                     </v-card-title>
                     <v-card-text>
-                      Interactive quadrant map to visualize stakeholders based 
+                      Interactive quadrant map to visualize stakeholders based
                       on their strategic importance.
                     </v-card-text>
                   </v-card>
                 </v-col>
-                
+
                 <v-col cols="12" sm="4">
                   <v-card height="100%">
                     <v-card-title>
@@ -67,27 +67,27 @@
                       AI Recommendations
                     </v-card-title>
                     <v-card-text>
-                      Get personalized advice for stakeholder engagement 
+                      Get personalized advice for stakeholder engagement
                       and next best actions.
                     </v-card-text>
                   </v-card>
                 </v-col>
               </v-row>
-              
+
               <div class="text-center mt-8">
                 <v-btn
+                  v-if="!isLoggedIn"
                   color="primary"
                   x-large
                   to="/login"
-                  v-if="!isLoggedIn"
                 >
                   Get Started
                 </v-btn>
                 <v-btn
+                  v-else
                   color="primary"
                   x-large
                   to="/dashboard"
-                  v-else
                 >
                   Go to Dashboard
                 </v-btn>
@@ -108,14 +108,14 @@ export default {
   name: 'HomeView',
   setup() {
     const isLoggedIn = ref(false)
-    
+
     onMounted(() => {
       const auth = getAuth()
       onAuthStateChanged(auth, (user) => {
         isLoggedIn.value = !!user
       })
     })
-    
+
     return {
       isLoggedIn
     }
@@ -127,4 +127,4 @@ export default {
 .home {
   padding-bottom: 60px;
 }
-</style> 
+</style>

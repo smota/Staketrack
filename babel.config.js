@@ -7,4 +7,4 @@ module.exports = {
     '@babel/plugin-syntax-jsx',
     '@babel/plugin-transform-runtime'
   ]
-}; 
+}

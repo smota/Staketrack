@@ -105,4 +105,4 @@ export default {
   getFirebaseFirestore,
   getFirebaseAnalytics,
   getFirebaseEnv
-} 
+}

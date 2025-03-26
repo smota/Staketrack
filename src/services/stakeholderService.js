@@ -709,4 +709,4 @@ class StakeholderService {
   }
 }
 
-export default new StakeholderService() 
+export default new StakeholderService()

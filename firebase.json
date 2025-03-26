@@ -1,7 +1,7 @@
 {
   "hosting": [
     {
-      "target": "development",
+      "target": "staging",
       "public": "dist",
       "ignore": [
         "firebase.json",
@@ -39,7 +39,7 @@
         }
       ],
       "predeploy": [
-        "npm run build:dev"
+        "npm run build:staging"
       ]
     },
     {

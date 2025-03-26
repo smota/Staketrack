@@ -57,4 +57,4 @@ export const getCurrentUser = () => {
   return auth.currentUser
 }
 
-export default { app, db, auth, storage, trackAuthState, getCurrentUser } 
+export default { app, db, auth, storage, trackAuthState, getCurrentUser }

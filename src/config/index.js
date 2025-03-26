@@ -96,9 +96,9 @@ const config = {
     relationshipColors: {
       strong: '#4CAF50', // Green
       neutral: '#FFC107', // Amber
-      weak: '#F44336', // Red
+      weak: '#F44336' // Red
     }
   }
 }
 
-export default config 
+export default config

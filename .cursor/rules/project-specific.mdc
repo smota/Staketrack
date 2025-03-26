@@ -10,6 +10,6 @@ alwaysApply: true
 - This application is based on FIREBASE services - prefer it as much as possible. Deployment is based in Belgium.
 - Always review docs, spec, unit tests, integration tests, gitflow and automation scripts to ensure they are up-to-date.
 - This application should be responsive and mobile-friendly.
-- DEVELOPMENT and PRODUCTION are two different online FIREBASE applications. LOCAL is the debug localhost version.
+- STAGING and PRODUCTION are two different online FIREBASE applications. DEVELOPMENT is the debug localhost version.
 - Use good practices and patterns for coding. Minimally: Component-Based Architecture, MVC Pattern, Event-Driven Communication, Separation of Concerns, Proper model classes with encapsulation, Repository pattern for data operations.
 - When using the not logged in option, disable all backend dependencies except for the Analytic capabilities.

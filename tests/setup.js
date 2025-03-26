@@ -1,8 +1,8 @@
-import '@testing-library/jest-dom';
+import '@testing-library/jest-dom'
 
 // Add TextEncoder/TextDecoder for @opentelemetry
-global.TextEncoder = require('util').TextEncoder;
-global.TextDecoder = require('util').TextDecoder;
+global.TextEncoder = require('util').TextEncoder
+global.TextDecoder = require('util').TextDecoder
 
 // Mock Firebase - using proper path
 jest.mock('../firebase/firebaseConfig.js', () => {
@@ -28,8 +28,8 @@ jest.mock('../firebase/firebaseConfig.js', () => {
     analytics: {
       logEvent: jest.fn()
     }
-  };
-});
+  }
+})
 
 // Create DOM structure for testing
 document.body.innerHTML = `
@@ -40,9 +40,9 @@ document.body.innerHTML = `
   </div>
   <div id="modal-container" class="modal-container hidden"></div>
   <div id="tooltip" class="tooltip hidden"></div>
-`;
+`
 
 // Global test cleanup
 afterEach(() => {
-  jest.clearAllMocks();
-}); 
+  jest.clearAllMocks()
+})

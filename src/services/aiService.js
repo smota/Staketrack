@@ -251,53 +251,53 @@ Your response should be in valid JSON format with the following structure:
       stakeholderRecsByName[s.name] = {
         engagementApproach: this._getBasicEngagementApproach(s),
         communicationChannels: this._getBasicCommunicationChannels(s),
-        keyMessages: ["Focus on project benefits", "Address specific concerns"],
-        riskMitigation: s.risk || "Maintain regular communication"
+        keyMessages: ['Focus on project benefits', 'Address specific concerns'],
+        riskMitigation: s.risk || 'Maintain regular communication'
       }
     })
 
     return {
       overallStrategy: {
-        summary: "Focus on regular communication with key stakeholders while maintaining transparency across all groups",
+        summary: 'Focus on regular communication with key stakeholders while maintaining transparency across all groups',
         keyPriorities: [
-          "Establish regular communication cadence",
-          "Develop clear messaging about project goals",
-          "Identify and address stakeholder concerns early"
+          'Establish regular communication cadence',
+          'Develop clear messaging about project goals',
+          'Identify and address stakeholder concerns early'
         ],
-        criticalStakeholders: highInfluence.length > 0 ? highInfluence : ["No high-influence stakeholders identified"],
+        criticalStakeholders: highInfluence.length > 0 ? highInfluence : ['No high-influence stakeholders identified'],
         recommendedActions: [
-          "Schedule individual meetings with high-influence stakeholders",
-          "Create a communication plan with regular updates",
-          "Document and address stakeholder feedback"
+          'Schedule individual meetings with high-influence stakeholders',
+          'Create a communication plan with regular updates',
+          'Document and address stakeholder feedback'
         ]
       },
       stakeholderSpecificRecommendations: stakeholderRecsByName,
       communicationPriorities: [
-        "Ensure all stakeholders understand project goals and timeline",
-        "Provide regular status updates to maintain transparency",
-        "Create tailored messages for different stakeholder groups"
+        'Ensure all stakeholders understand project goals and timeline',
+        'Provide regular status updates to maintain transparency',
+        'Create tailored messages for different stakeholder groups'
       ],
       riskManagement: {
         topRisks: [
           {
-            description: "Lack of stakeholder buy-in for project approach",
-            stakeholdersInvolved: manageClosely.length > 0 ? manageClosely : ["All stakeholders"],
-            mitigationStrategy: "Increase communication frequency and collect regular feedback"
+            description: 'Lack of stakeholder buy-in for project approach',
+            stakeholdersInvolved: manageClosely.length > 0 ? manageClosely : ['All stakeholders'],
+            mitigationStrategy: 'Increase communication frequency and collect regular feedback'
           }
         ]
       },
       opportunityAreas: [
         {
-          description: "Improve stakeholder relationships through more regular engagement",
-          stakeholdersInvolved: ["All stakeholders"],
-          potentialApproach: "Implement regular check-ins and feedback mechanisms"
+          description: 'Improve stakeholder relationships through more regular engagement',
+          stakeholdersInvolved: ['All stakeholders'],
+          potentialApproach: 'Implement regular check-ins and feedback mechanisms'
         }
       ],
       metadata: {
         generatedAt: new Date().toISOString(),
         mapId: map.id,
         mapName: map.name,
-        note: "These are fallback recommendations. For more personalized insights, please try again later."
+        note: 'These are fallback recommendations. For more personalized insights, please try again later.'
       }
     }
   }
@@ -310,16 +310,16 @@ Your response should be in valid JSON format with the following structure:
    */
   _getBasicEngagementApproach(stakeholder) {
     switch (stakeholder.quadrant) {
-      case 'manage-closely':
-        return "Regular personal meetings and proactive engagement"
-      case 'keep-satisfied':
-        return "Regular updates and consultation on decisions"
-      case 'keep-informed':
-        return "Regular communication and updates"
-      case 'monitor':
-        return "Periodic updates and monitoring of needs"
-      default:
-        return "Maintain appropriate level of communication"
+    case 'manage-closely':
+      return 'Regular personal meetings and proactive engagement'
+    case 'keep-satisfied':
+      return 'Regular updates and consultation on decisions'
+    case 'keep-informed':
+      return 'Regular communication and updates'
+    case 'monitor':
+      return 'Periodic updates and monitoring of needs'
+    default:
+      return 'Maintain appropriate level of communication'
     }
   }
 
@@ -332,30 +332,30 @@ Your response should be in valid JSON format with the following structure:
   _getBasicCommunicationChannels(stakeholder) {
     const category = stakeholder.category
 
-    const channels = ["Email", "Project updates"]
+    const channels = ['Email', 'Project updates']
 
     if (category === 'internal' || category === 'employee') {
-      channels.push("Team meetings", "Internal communication tools")
+      channels.push('Team meetings', 'Internal communication tools')
     }
 
     if (stakeholder.quadrant === 'manage-closely' || stakeholder.quadrant === 'keep-satisfied') {
-      channels.push("One-on-one meetings", "Phone calls")
+      channels.push('One-on-one meetings', 'Phone calls')
     }
 
     if (category === 'external' || category === 'community') {
-      channels.push("Public communications")
+      channels.push('Public communications')
     }
 
     if (category === 'customer') {
-      channels.push("Customer feedback sessions")
+      channels.push('Customer feedback sessions')
     }
 
     if (category === 'regulator') {
-      channels.push("Formal written communications")
+      channels.push('Formal written communications')
     }
 
     return channels
   }
 }
 
-export default new AIService() 
+export default new AIService()

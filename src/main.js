@@ -83,4 +83,4 @@ app.config.globalProperties.$firebase = {
   db,
   analytics
 }
-app.mount('#app') 
+app.mount('#app')

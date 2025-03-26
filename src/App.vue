@@ -1,18 +1,28 @@
 <template>
   <v-app>
-    <v-app-bar app color="primary" dark v-if="isLoggedIn || $route.meta.showNavbar !== false">
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+    <v-app-bar
+      v-if="isLoggedIn || $route.meta.showNavbar !== false"
+      app
+      color="primary"
+      dark
+    >
+      <v-app-bar-nav-icon @click="drawer = !drawer" />
       <v-toolbar-title>StakeTrack</v-toolbar-title>
-      <v-spacer></v-spacer>
+      <v-spacer />
       <v-btn icon @click="toggleDarkMode">
         <v-icon>{{ isDarkMode ? 'mdi-white-balance-sunny' : 'mdi-moon-waning-crescent' }}</v-icon>
       </v-btn>
-      <v-btn icon @click="logout" v-if="isLoggedIn">
+      <v-btn v-if="isLoggedIn" icon @click="logout">
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
 
-    <v-navigation-drawer v-model="drawer" app temporary v-if="isLoggedIn || $route.meta.showNavbar !== false">
+    <v-navigation-drawer
+      v-if="isLoggedIn || $route.meta.showNavbar !== false"
+      v-model="drawer"
+      app
+      temporary
+    >
       <v-list>
         <v-list-item to="/" link>
           <v-list-item-icon>
@@ -22,8 +32,8 @@
             <v-list-item-title>Home</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-        
-        <v-list-item to="/dashboard" link v-if="isLoggedIn">
+
+        <v-list-item v-if="isLoggedIn" to="/dashboard" link>
           <v-list-item-icon>
             <v-icon>mdi-view-dashboard</v-icon>
           </v-list-item-icon>
@@ -31,8 +41,8 @@
             <v-list-item-title>Dashboard</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-        
-        <v-list-item to="/settings" link v-if="isLoggedIn">
+
+        <v-list-item v-if="isLoggedIn" to="/settings" link>
           <v-list-item-icon>
             <v-icon>mdi-cog</v-icon>
           </v-list-item-icon>
@@ -40,8 +50,8 @@
             <v-list-item-title>Settings</v-list-item-title>
           </v-list-item-content>
         </v-list-item>
-        
-        <v-list-item to="/login" link v-if="!isLoggedIn">
+
+        <v-list-item v-if="!isLoggedIn" to="/login" link>
           <v-list-item-icon>
             <v-icon>mdi-login</v-icon>
           </v-list-item-icon>
@@ -79,7 +89,7 @@ export default {
     const isLoggedIn = ref(false)
     const appVersion = ref(process.env.VUE_APP_VERSION || '1.0.0')
     const router = useRouter()
-    
+
     onMounted(() => {
       // Check for saved theme preference
       const savedTheme = localStorage.getItem('theme')
@@ -87,20 +97,20 @@ export default {
         isDarkMode.value = true
         document.body.classList.add('dark-theme')
       }
-      
+
       // Set up auth state listener
       const auth = getAuth()
       onAuthStateChanged(auth, (user) => {
         isLoggedIn.value = !!user
       })
     })
-    
+
     const toggleDarkMode = () => {
       isDarkMode.value = !isDarkMode.value
       document.body.classList.toggle('dark-theme')
       localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
     }
-    
+
     const logout = async () => {
       try {
         const auth = getAuth()
@@ -110,7 +120,7 @@ export default {
         console.error('Error signing out:', error)
       }
     }
-    
+
     return {
       drawer,
       isDarkMode,
@@ -139,4 +149,4 @@ html, body {
   margin: 0;
   padding: 0;
 }
-</style> 
+</style>

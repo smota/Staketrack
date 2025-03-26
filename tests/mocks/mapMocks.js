@@ -28,4 +28,4 @@ export const mockMapData = {
       color: '#FF5733'
     }
   ]
-}; 
+}

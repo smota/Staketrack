@@ -23,4 +23,4 @@ export const mockStakeholders = [
     influence: 'high',
     interest: 'medium'
   }
-]; 
+]
