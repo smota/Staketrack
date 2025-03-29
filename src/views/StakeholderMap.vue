@@ -656,7 +656,7 @@
             </div>
           </div>
 
-          <v-card-text v-else-if="dialogContent.authRequired">
+          <div v-else-if="dialogContent.authRequired">
             <div class="auth-required-container d-flex flex-column align-center justify-center pa-4">
               <v-icon color="warning" size="48">
                 mdi-account-lock
@@ -667,13 +667,13 @@
               <p class="text-body-1 text-center mb-4">
                 You need to be logged in to access AI recommendations.
               </p>
-              <v-btn color="primary" @click="goToLogin">
+              <v-btn color="primary" @click="navigateToLogin">
                 Log In Now
               </v-btn>
             </div>
-          </v-card-text>
+          </div>
 
-          <v-card-text v-else-if="dialogContent.limitReached">
+          <div v-else-if="dialogContent.limitReached">
             <div class="limit-reached-container d-flex flex-column align-center justify-center pa-4">
               <v-icon color="warning" size="48">
                 mdi-alert-circle
@@ -694,9 +694,9 @@
                 Contact your administrator for unlimited access.
               </p>
             </div>
-          </v-card-text>
+          </div>
 
-          <v-card-text v-else>
+          <div v-else>
             <div v-if="dialogContent.text" class="recommendation-content">
               <vue-markdown :source="dialogContent.text" />
             </div>
@@ -711,7 +711,7 @@
                 {{ dialogContent.error || 'Please try again later.' }}
               </div>
             </div>
-          </v-card-text>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -779,7 +779,7 @@ export default {
     const editMapDialog = ref(false)
     const actionsDialog = ref(false)
     const dialogTitle = ref('')
-    const dialogContent = ref(null)
+    const dialogContent = ref({})
     const showStakeholderDetail = ref(false)
 
     // Additional dialog states for backwards compatibility
@@ -1164,11 +1164,18 @@ export default {
 
     const getMapRecommendations = async () => {
       try {
-        if (!currentMap.value || currentMap.value.stakeholders.length === 0) {
-          notificationStore.showNotification({
-            message: 'Please add stakeholders to the map before requesting recommendations',
-            type: 'warning'
-          })
+        // Check authentication first
+        const auth = getAuth()
+        const user = auth.currentUser
+
+        if (!user || user.isAnonymous) {
+          // Show login required dialog
+          dialogTitle.value = 'Authentication Required'
+          dialogContent.value = {
+            authRequired: true,
+            message: 'This feature requires authentication. Please log in to access AI-powered recommendations.'
+          }
+          actionsDialog.value = true
           return
         }
 
@@ -1200,6 +1207,21 @@ export default {
 
     const getStakeholderRecommendations = async (stakeholder) => {
       try {
+        // Check authentication first
+        const auth = getAuth()
+        const user = auth.currentUser
+
+        if (!user || user.isAnonymous) {
+          // Show login required dialog
+          dialogTitle.value = 'Authentication Required'
+          dialogContent.value = {
+            authRequired: true,
+            message: 'This feature requires authentication. Please log in to access AI-powered recommendations.'
+          }
+          actionsDialog.value = true
+          return
+        }
+
         aiLoading.value = true
 
         // Call AI service with focus on this specific stakeholder

@@ -412,4 +412,53 @@ The UI is designed to provide a consistent experience for all users while clearl
 3. Users who have reached their limit see usage statistics and reset date
 4. Loading states provide visual feedback during API calls
 5. Responses are formatted in a clear, actionable way
-6. Error states and fallbacks ensure a graceful experience when issues occur 
+6. Error states and fallbacks ensure a graceful experience when issues occur
+
+## Implementation Details
+
+### Prompt Templates
+
+The AI recommendation system uses a set of prompt templates defined in the `functions/src/config` directory:
+
+- **Main Configuration**: `promptTemplates.js` - The entry point that loads the appropriate environment-specific template
+- **Environment-specific Templates**:
+  - `promptTemplates.default.js` - Default template definitions
+  - `promptTemplates.production.js` - Production-specific templates
+  - `promptTemplates.development.js` - Development-specific templates
+  - `promptTemplates.local.js` - Templates for local testing
+
+Each template file exports definitions for different recommendation functions, including:
+- Model configurations (temperature, top-k, top-p)
+- Prompt structures
+- Safety settings
+- Response formats
+
+For more details on prompt template structure and management, see the [Prompt Templates README](../../functions/src/config/README.md).
+
+### Deployment
+
+AI prompt templates are deployed using the `deploy-prompts.js` script in the `functions` directory. This script:
+
+1. Selects the appropriate prompt template file based on the target environment
+2. Sets the `NODE_ENV` environment variable in the functions `.env` file
+3. Prepares the functions for deployment with Firebase
+
+To deploy prompt templates:
+
+```bash
+# Using npm scripts:
+npm run deploy:development   # Deploy development templates
+npm run deploy:production    # Deploy production templates
+npm run deploy:local         # Deploy local testing templates
+
+# Or using the script directly:
+node functions/deploy-prompts.js [environment]
+```
+
+After deploying the templates, you must deploy the functions to Firebase:
+
+```bash
+firebase deploy --only functions
+```
+
+For more information on the full deployment process, see the [Deployment Guide](../../docs/DEPLOYMENT.md).

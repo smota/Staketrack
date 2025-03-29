@@ -8,6 +8,7 @@ const functions = require('firebase-functions')
 const admin = require('firebase-admin')
 const cors = require('cors')({ origin: true })
 const { VertexAI } = require('@google-cloud/vertexai')
+const promptTemplates = require('./config/promptTemplates')
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -18,7 +19,13 @@ if (!admin.apps.length) {
 const projectId = process.env.GCLOUD_PROJECT
 const location = 'us-central1'
 const vertexAI = new VertexAI({ project: projectId, location })
-const model = 'gemini-1.5-pro'
+
+/**
+ * Default model configurations
+ * These are now handled by the prompt templates
+ */
+const ModelConfig = promptTemplates.modelConfigs
+const SafetySettings = promptTemplates.safetySettings
 
 /**
  * Get environment-specific configuration
@@ -100,6 +107,33 @@ exports.getConfig = functions.https.onRequest((request, response) => {
 })
 
 /**
+ * Generate AI content with Vertex AI
+ * @param {string} prompt - The formatted prompt
+ * @param {Object} modelConfig - Configuration for the model
+ * @returns {Promise<Object>} Response from Vertex AI
+ */
+async function generateAIContent(prompt, modelConfig = ModelConfig.default) {
+  // Initialize the generative model with the specified configuration
+  const generativeModel = vertexAI.preview.getGenerativeModel({
+    model: modelConfig.model || 'gemini-1.5-pro',
+    generation_config: {
+      temperature: modelConfig.temperature !== undefined ? modelConfig.temperature : 0.7,
+      maxOutputTokens: modelConfig.maxTokens || modelConfig.maxOutputTokens || 1500,
+      topK: modelConfig.topK || 40,
+      topP: modelConfig.topP || 0.8
+    },
+    safety_settings: SafetySettings
+  })
+
+  // Generate response
+  const result = await generativeModel.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }]
+  })
+
+  return result.response
+}
+
+/**
  * Firebase Cloud Function to generate stakeholder recommendations
  * Uses Vertex AI with Gemini model to generate recommendations
  */
@@ -124,85 +158,38 @@ exports.generateStakeholderRecommendations = https.onCall(async (data, context) 
         success: false,
         message: `You've reached your weekly limit of ${usageLimits.limit} AI recommendations. Your limit will reset on ${resetDate.toLocaleDateString()}.`,
         limitReached: true,
-        currentUsage: usageLimits.currentUsage,
-        limit: usageLimits.limit,
-        resetDate: usageLimits.resetDate
+        usageInfo: {
+          currentUsage: usageLimits.currentUsage,
+          limit: usageLimits.limit,
+          resetDate: usageLimits.resetDate
+        }
       }
     }
 
-    // Extract parameters
-    const { stakeholderData, userQuestion } = data
+    // Extract parameters - now we expect mapData instead of a full prompt
+    const { mapData, modelOverrides, specialFocus } = data
 
-    if (!stakeholderData) {
+    if (!mapData) {
       return {
         success: false,
-        message: 'Stakeholder data is required to generate recommendations.'
+        message: 'Map data is required to generate recommendations.'
       }
     }
 
-    // Prepare the content for the model
-    let content = 'You are an expert stakeholder engagement consultant. Analyze the following stakeholder data and provide detailed recommendations for engagement:'
-
-    content += '\n\nStakeholder Information:\n'
-    content += `Name: ${stakeholderData.name || 'Unknown'}\n`
-    content += `Organization: ${stakeholderData.organization || 'Unknown'}\n`
-    content += `Role: ${stakeholderData.role || 'Unknown'}\n`
-    content += `Influence Level: ${stakeholderData.influence || 'Unknown'}\n`
-    content += `Support Level: ${stakeholderData.support || 'Unknown'}\n`
-    content += `Key Interests: ${stakeholderData.interests || 'Unknown'}\n`
-
-    if (stakeholderData.notes) {
-      content += `Additional Notes: ${stakeholderData.notes}\n`
-    }
-
-    if (userQuestion) {
-      content += `\nSpecific Question: ${userQuestion}\n`
-    }
-
-    content += `\nProvide specific, detailed recommendations for the following:
-1. Communication Strategy: How to effectively communicate with this stakeholder
-2. Engagement Frequency: How often to engage
-3. Key Messages: What messages will resonate most
-4. Potential Risks: What challenges might arise
-5. Next Best Actions: 2-3 specific next steps
-
-Format your response in clear sections with headers.`
-
-    // Initialize the generative model
-    const generativeModel = vertexAI.preview.getGenerativeModel({
-      model: model,
-      generation_config: {
-        temperature: 0.4,
-        maxOutputTokens: 1024,
-        topK: 40,
-        topP: 0.8
-      },
-      safety_settings: [
-        {
-          category: 'HARM_CATEGORY_HARASSMENT',
-          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-        },
-        {
-          category: 'HARM_CATEGORY_HATE_SPEECH',
-          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-        },
-        {
-          category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-        },
-        {
-          category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-          threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-        }
-      ]
+    // Build prompt using server-side template
+    const prompt = promptTemplates.buildPrompt('stakeholderRecommendationsJSON', mapData, {
+      specialFocus,
+      modelOverrides
     })
 
-    // Generate response
-    const result = await generativeModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: content }] }]
+    // Get model configuration from the template
+    const modelConfig = promptTemplates.getModelConfig('stakeholderRecommendationsJSON', {
+      modelOverrides
     })
 
-    const response = result.response
+    // Generate response using the centralized generation function
+    const response = await generateAIContent(prompt, modelConfig)
+
     const usage = {
       promptTokens: response.usageMetadata?.promptTokenCount || 0,
       outputTokens: response.usageMetadata?.candidatesTokenCount || 0
@@ -212,7 +199,7 @@ Format your response in clear sections with headers.`
     await recordAIUsage(
       userId,
       'stakeholder-recommendations',
-      model,
+      modelConfig.model,
       usage.promptTokens,
       usage.outputTokens
     )
@@ -230,6 +217,275 @@ Format your response in clear sections with headers.`
     return {
       success: false,
       message: 'An error occurred while generating recommendations. Please try again later.'
+    }
+  }
+})
+
+/**
+ * Firebase Cloud Function to generate stakeholder advice
+ * For specific advice on engaging with individual stakeholders
+ */
+exports.generateStakeholderAdvice = https.onCall(async (data, context) => {
+  try {
+    // Check if user is authenticated
+    if (!context.auth) {
+      return {
+        success: false,
+        message: 'Authentication required to access AI recommendations.',
+        authRequired: true
+      }
+    }
+
+    const userId = context.auth.uid
+
+    // Check if user has reached their weekly limit
+    const usageLimits = await checkUserUsageLimits(userId)
+    if (usageLimits.hasReachedLimit) {
+      const resetDate = new Date(usageLimits.resetDate)
+      return {
+        success: false,
+        message: `You've reached your weekly limit of ${usageLimits.limit} AI recommendations. Your limit will reset on ${resetDate.toLocaleDateString()}.`,
+        limitReached: true,
+        usageInfo: {
+          currentUsage: usageLimits.currentUsage,
+          limit: usageLimits.limit,
+          resetDate: usageLimits.resetDate
+        }
+      }
+    }
+
+    // Extract parameters - now we expect stakeholderData instead of a full prompt
+    const { stakeholderData, modelOverrides, specialFocus } = data
+
+    if (!stakeholderData) {
+      return {
+        success: false,
+        message: 'Stakeholder data is required to generate advice.'
+      }
+    }
+
+    // Build prompt using server-side template
+    const prompt = promptTemplates.buildPrompt('stakeholderAdvice', stakeholderData, {
+      specialFocus,
+      modelOverrides
+    })
+
+    // Get model configuration from the template
+    const modelConfig = promptTemplates.getModelConfig('stakeholderAdvice', {
+      modelOverrides
+    })
+
+    // Generate response using the centralized generation function
+    const response = await generateAIContent(prompt, modelConfig)
+
+    const usage = {
+      promptTokens: response.usageMetadata?.promptTokenCount || 0,
+      outputTokens: response.usageMetadata?.candidatesTokenCount || 0
+    }
+
+    // Record usage in Firestore
+    await recordAIUsage(
+      userId,
+      'stakeholder-advice',
+      modelConfig.model,
+      usage.promptTokens,
+      usage.outputTokens
+    )
+
+    logger.info(`Generated stakeholder advice for user ${userId}`)
+
+    return {
+      success: true,
+      text: response.text(),
+      usage: usage,
+      timestamp: new Date().toISOString()
+    }
+  } catch (error) {
+    logger.error('Error generating stakeholder advice:', error)
+    return {
+      success: false,
+      message: 'An error occurred while generating stakeholder advice. Please try again later.'
+    }
+  }
+})
+
+/**
+ * Firebase Cloud Function to generate influence network analysis
+ */
+exports.generateInfluenceAnalysis = https.onCall(async (data, context) => {
+  try {
+    // Check if user is authenticated
+    if (!context.auth) {
+      return {
+        success: false,
+        message: 'Authentication required to access AI recommendations.',
+        authRequired: true
+      }
+    }
+
+    const userId = context.auth.uid
+
+    // Check if user has reached their weekly limit
+    const usageLimits = await checkUserUsageLimits(userId)
+    if (usageLimits.hasReachedLimit) {
+      const resetDate = new Date(usageLimits.resetDate)
+      return {
+        success: false,
+        message: `You've reached your weekly limit of ${usageLimits.limit} AI recommendations. Your limit will reset on ${resetDate.toLocaleDateString()}.`,
+        limitReached: true,
+        usageInfo: {
+          currentUsage: usageLimits.currentUsage,
+          limit: usageLimits.limit,
+          resetDate: usageLimits.resetDate
+        }
+      }
+    }
+
+    // Extract parameters - now we expect mapData instead of a full prompt
+    const { mapData, modelOverrides, specialFocus } = data
+
+    if (!mapData) {
+      return {
+        success: false,
+        message: 'Map data is required to generate influence analysis.'
+      }
+    }
+
+    // Build prompt using server-side template
+    const prompt = promptTemplates.buildPrompt('influenceNetwork', mapData, {
+      specialFocus,
+      modelOverrides
+    })
+
+    // Get model configuration from the template
+    const modelConfig = promptTemplates.getModelConfig('influenceNetwork', {
+      modelOverrides
+    })
+
+    // Generate response using the centralized generation function
+    const response = await generateAIContent(prompt, modelConfig)
+
+    const usage = {
+      promptTokens: response.usageMetadata?.promptTokenCount || 0,
+      outputTokens: response.usageMetadata?.candidatesTokenCount || 0
+    }
+
+    // Record usage in Firestore
+    await recordAIUsage(
+      userId,
+      'influence-analysis',
+      modelConfig.model,
+      usage.promptTokens,
+      usage.outputTokens
+    )
+
+    logger.info(`Generated influence analysis for user ${userId}`)
+
+    return {
+      success: true,
+      text: response.text(),
+      usage: usage,
+      timestamp: new Date().toISOString()
+    }
+  } catch (error) {
+    logger.error('Error generating influence analysis:', error)
+    return {
+      success: false,
+      message: 'An error occurred while generating influence analysis. Please try again later.'
+    }
+  }
+})
+
+/**
+ * Firebase Cloud Function to generate issue-specific recommendations
+ */
+exports.generateIssueRecommendations = https.onCall(async (data, context) => {
+  try {
+    // Check if user is authenticated
+    if (!context.auth) {
+      return {
+        success: false,
+        message: 'Authentication required to access AI recommendations.',
+        authRequired: true
+      }
+    }
+
+    const userId = context.auth.uid
+
+    // Check if user has reached their weekly limit
+    const usageLimits = await checkUserUsageLimits(userId)
+    if (usageLimits.hasReachedLimit) {
+      const resetDate = new Date(usageLimits.resetDate)
+      return {
+        success: false,
+        message: `You've reached your weekly limit of ${usageLimits.limit} AI recommendations. Your limit will reset on ${resetDate.toLocaleDateString()}.`,
+        limitReached: true,
+        usageInfo: {
+          currentUsage: usageLimits.currentUsage,
+          limit: usageLimits.limit,
+          resetDate: usageLimits.resetDate
+        }
+      }
+    }
+
+    // Extract parameters - now we expect mapData and issue instead of a full prompt
+    const { mapData, issue, modelOverrides, specialFocus } = data
+
+    if (!mapData) {
+      return {
+        success: false,
+        message: 'Map data is required to generate issue-specific recommendations.'
+      }
+    }
+
+    if (!issue) {
+      return {
+        success: false,
+        message: 'Issue description is required for issue-specific recommendations.'
+      }
+    }
+
+    // Build prompt using server-side template
+    const prompt = promptTemplates.buildPrompt('issueSpecific', { ...mapData, issue }, {
+      specialFocus,
+      modelOverrides
+    })
+
+    // Get model configuration from the template
+    const modelConfig = promptTemplates.getModelConfig('issueSpecific', {
+      modelOverrides
+    })
+
+    // Generate response using the centralized generation function
+    const response = await generateAIContent(prompt, modelConfig)
+
+    const usage = {
+      promptTokens: response.usageMetadata?.promptTokenCount || 0,
+      outputTokens: response.usageMetadata?.candidatesTokenCount || 0
+    }
+
+    // Record usage in Firestore
+    await recordAIUsage(
+      userId,
+      'issue-recommendations',
+      modelConfig.model,
+      usage.promptTokens,
+      usage.outputTokens
+    )
+
+    logger.info(`Generated issue recommendations for user ${userId}`)
+
+    return {
+      success: true,
+      text: response.text(),
+      usage: usage,
+      timestamp: new Date().toISOString()
+    }
+  } catch (error) {
+    logger.error('Error generating issue recommendations:', error)
+    return {
+      success: false,
+      message: 'An error occurred while generating issue recommendations. Please try again later.'
     }
   }
 })
@@ -255,29 +511,30 @@ async function recordAIUsage(userId, type, model, promptTokens, outputTokens) {
       outputTokens
     })
 
-    // Update weekly aggregated usage
-    const startOfWeek = getStartOfWeek()
-    const weekId = startOfWeek.toISOString().split('T')[0]
+    // Update weekly usage counter
+    const now = new Date()
+    const weekStart = getWeekStartDate(now)
+    const weekEnd = getWeekEndDate(now)
+    const weekId = weekStart.toISOString().split('T')[0]
     const weeklyUsageRef = admin.firestore().collection('aiWeeklyUsage').doc(`${userId}_${weekId}`)
 
-    // Try to update the existing document
-    const endOfWeek = getEndOfWeek(startOfWeek)
+    // Use transaction to safely update the counter
     await admin.firestore().runTransaction(async (transaction) => {
-      const doc = await transaction.get(weeklyUsageRef)
+      const weeklyUsageDoc = await transaction.get(weeklyUsageRef)
 
-      if (doc.exists) {
-        // Update existing document
+      if (weeklyUsageDoc.exists) {
+        // Update existing weekly usage record
         transaction.update(weeklyUsageRef, {
           callCount: admin.firestore.FieldValue.increment(1),
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         })
       } else {
-        // Create new document
+        // Create new weekly usage record
         transaction.set(weeklyUsageRef, {
           userId,
           weekId,
-          startDate: admin.firestore.Timestamp.fromDate(startOfWeek),
-          endDate: admin.firestore.Timestamp.fromDate(endOfWeek),
+          startDate: admin.firestore.Timestamp.fromDate(weekStart),
+          endDate: admin.firestore.Timestamp.fromDate(weekEnd),
           callCount: 1,
           created: admin.firestore.FieldValue.serverTimestamp(),
           lastUpdated: admin.firestore.FieldValue.serverTimestamp()
@@ -285,88 +542,91 @@ async function recordAIUsage(userId, type, model, promptTokens, outputTokens) {
       }
     })
 
-    logger.info(`Recorded AI usage for user ${userId}`)
-    return true
+    logger.info(`Recorded AI usage for user ${userId}, type: ${type}`)
   } catch (error) {
     logger.error('Error recording AI usage:', error)
-    return false
+    // Fail softly - don't block the user from getting their response
   }
 }
 
 /**
- * Check if user has reached usage limits
- * @param {string} userId - User ID to check
- * @returns {Promise<Object>} Result with allowed status and usage info
+ * Check if user has reached their weekly AI usage limits
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} Limit check results
  */
 async function checkUserUsageLimits(userId) {
   try {
+    // Get the current week start date
+    const now = new Date()
+    const weekStart = getWeekStartDate(now)
+    const weekEnd = getWeekEndDate(now)
+    const weekId = weekStart.toISOString().split('T')[0]
+
     // Check if user has unlimited access
     const userDoc = await admin.firestore().collection('users').doc(userId).get()
-    if (userDoc.exists && userDoc.data().unlimitedAiAccess === true) {
-      return { hasReachedLimit: false }
-    }
+    const userData = userDoc.data() || {}
 
-    // Get system-wide limit configuration
-    const configDoc = await admin.firestore().collection('config').doc('aiLimits').get()
-    const weeklyLimit = configDoc.exists ? configDoc.data().weeklyCallLimit : 10 // Default to 10 if not configured
-
-    // Get current week start and end dates
-    const startOfWeek = getStartOfWeek()
-    const endOfWeek = getEndOfWeek(startOfWeek)
-
-    // Create a weekId based on the start date (format: YYYY-MM-DD)
-    const weekId = startOfWeek.toISOString().split('T')[0]
-
-    // Get user's weekly usage
-    const weeklyUsageRef = admin.firestore().collection('aiWeeklyUsage').doc(`${userId}_${weekId}`)
-    const weeklyUsageDoc = await weeklyUsageRef.get()
-
-    if (!weeklyUsageDoc.exists) {
+    if (userData.unlimitedAiAccess === true) {
+      // User has unlimited access
       return {
         hasReachedLimit: false,
         currentUsage: 0,
-        limit: weeklyLimit,
-        resetDate: endOfWeek.toISOString()
+        limit: Infinity,
+        resetDate: weekEnd.toISOString()
       }
     }
 
-    const weeklyUsage = weeklyUsageDoc.data()
-    const hasReachedLimit = weeklyUsage.callCount >= weeklyLimit
+    // Get the configured weekly limit
+    const configDoc = await admin.firestore().collection('config').doc('aiLimits').get()
+    const configData = configDoc.data() || {}
+    const weeklyLimit = configData.weeklyCallLimit || 10 // Default if not configured
+
+    // Get user's current weekly usage
+    const weeklyUsageRef = admin.firestore().collection('aiWeeklyUsage').doc(`${userId}_${weekId}`)
+    const weeklyUsageDoc = await weeklyUsageRef.get()
+    const weeklyUsageData = weeklyUsageDoc.exists ? weeklyUsageDoc.data() : { callCount: 0 }
+
+    // Check if user has reached their limit
+    const hasReachedLimit = weeklyUsageData.callCount >= weeklyLimit
 
     return {
       hasReachedLimit,
-      currentUsage: weeklyUsage.callCount,
+      currentUsage: weeklyUsageData.callCount,
       limit: weeklyLimit,
-      resetDate: endOfWeek.toISOString()
+      resetDate: weekEnd.toISOString()
     }
   } catch (error) {
-    logger.error('Error checking usage limits:', error)
-    // Default to not limiting in case of errors to prevent blocking legitimate requests
-    return { hasReachedLimit: false }
+    logger.error('Error checking user usage limits:', error)
+    // In case of error, allow the user to proceed (fail open)
+    return {
+      hasReachedLimit: false,
+      currentUsage: 0,
+      limit: 10,
+      resetDate: getWeekEndDate(new Date()).toISOString()
+    }
   }
 }
 
 /**
- * Get the start of week (Sunday) for a given date
- * @param {Date} date - Date to get week start for
- * @returns {Date} Start of week date
+ * Get the start date of the week (Sunday) for a given date
+ * @param {Date} date - Date to find the week start for
+ * @returns {Date} Week start date
  */
-function getStartOfWeek() {
-  const now = new Date()
-  const day = now.getUTCDay() // 0 for Sunday, 1 for Monday, etc.
-  const diff = now.getUTCDate() - day
-  const startOfWeek = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), diff, 0, 0, 0))
-  return startOfWeek
+function getWeekStartDate(date) {
+  const result = new Date(date)
+  result.setDate(date.getDate() - date.getDay()) // Go back to Sunday
+  result.setHours(0, 0, 0, 0) // Start of day
+  return result
 }
 
 /**
- * Get the end of week (Saturday) for a given date
- * @param {Date} date - Date to get week end for
- * @returns {Date} End of week date
+ * Get the end date of the week (Saturday) for a given date
+ * @param {Date} date - Date to find the week end for
+ * @returns {Date} Week end date
  */
-function getEndOfWeek(startOfWeek) {
-  const endOfWeek = new Date(startOfWeek)
-  endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6)
-  endOfWeek.setUTCHours(23, 59, 59, 999)
-  return endOfWeek
+function getWeekEndDate(date) {
+  const result = new Date(date)
+  result.setDate(date.getDate() + (6 - date.getDay())) // Go forward to Saturday
+  result.setHours(23, 59, 59, 999) // End of day
+  return result
 }

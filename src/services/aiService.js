@@ -47,13 +47,13 @@ class AIService {
         throw new Error('Map not found')
       }
 
-      // Build prompt from map data
-      const prompt = this._buildStakeholderRecommendationsPrompt(map, options)
+      // Extract only the data needed for the recommendation prompt
+      const mapData = this._prepareMapDataForAI(map)
 
-      // Prepare request
+      // Prepare options for server-side prompt generation
       const requestOptions = {
-        ...this.defaultOptions,
-        ...options
+        specialFocus: options.specificFocus,
+        modelOverrides: options.modelOverrides
       }
 
       // Get Firebase Functions instance
@@ -62,12 +62,10 @@ class AIService {
       // Call the Firebase Cloud Function
       const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
 
-      // Make the request to Firebase Function
+      // Make the request to Firebase Function with map data instead of prompt
       const result = await generateRecommendations({
-        prompt,
-        model: requestOptions.model,
-        temperature: requestOptions.temperature,
-        maxTokens: requestOptions.maxTokens
+        mapData,
+        ...requestOptions
       })
 
       // Check if user has reached usage limits
@@ -93,6 +91,327 @@ class AIService {
           }
         }
       }
+    }
+  }
+
+  /**
+   * Get AI-powered advice for individual stakeholder engagement
+   * @param {string|Object} stakeholderId - Stakeholder ID or object
+   * @param {Object} options - Options for the request
+   * @returns {Promise<Object>} Stakeholder advice data
+   */
+  async getStakeholderAdvice(stakeholderId, options = {}) {
+    let stakeholder
+    try {
+      // Check if user is authenticated
+      const auth = getAuth()
+      const user = auth.currentUser
+
+      if (!user) {
+        return this._getAuthRequiredResponse()
+      }
+
+      // Get the stakeholder data
+      if (typeof stakeholderId === 'string') {
+        stakeholder = await stakeholderService.getStakeholder(stakeholderId)
+      } else {
+        stakeholder = stakeholderId
+      }
+
+      if (!stakeholder) {
+        throw new Error('Stakeholder not found')
+      }
+
+      // Extract only the data needed for the advice prompt
+      const stakeholderData = this._prepareStakeholderDataForAI(stakeholder)
+
+      // Prepare options for server-side prompt generation
+      const requestOptions = {
+        specialFocus: options.specificFocus,
+        modelOverrides: options.modelOverrides
+      }
+
+      // Get Firebase Functions instance
+      const functions = getFunctions()
+
+      // Call the Firebase Cloud Function
+      const generateAdvice = httpsCallable(functions, 'generateStakeholderAdvice')
+
+      // Make the request to Firebase Function with stakeholder data instead of prompt
+      const result = await generateAdvice({
+        stakeholderData,
+        ...requestOptions
+      })
+
+      // Check if user has reached usage limits
+      if (result.data.limitReached) {
+        return this._getLimitReachedResponse(result.data.usageInfo)
+      }
+
+      // Process and format the AI response
+      return {
+        success: true,
+        advice: result.data.text,
+        stakeholder: stakeholder.name,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          model: result.data.usage?.model
+        }
+      }
+    } catch (error) {
+      console.error('Error getting stakeholder advice:', error)
+
+      return {
+        error: true,
+        message: error.message,
+        metadata: {
+          generatedAt: new Date().toISOString()
+        }
+      }
+    }
+  }
+
+  /**
+   * Get AI analysis of stakeholder influence network
+   * @param {string|Object} mapIdOrMap - Map ID or object
+   * @returns {Promise<Object>} Influence network analysis
+   */
+  async getInfluenceNetworkAnalysis(mapIdOrMap, options = {}) {
+    let map
+    try {
+      // Check if user is authenticated
+      const auth = getAuth()
+      const user = auth.currentUser
+
+      if (!user) {
+        return this._getAuthRequiredResponse()
+      }
+
+      // Get the map data
+      if (typeof mapIdOrMap === 'string') {
+        map = await stakeholderService.getMap(mapIdOrMap)
+      } else {
+        map = mapIdOrMap
+      }
+
+      if (!map) {
+        throw new Error('Map not found')
+      }
+
+      // Extract only the data needed for the influence network prompt
+      const mapData = this._prepareMapDataForAI(map)
+
+      // Prepare options for server-side prompt generation
+      const requestOptions = {
+        specialFocus: options.specificFocus,
+        modelOverrides: options.modelOverrides
+      }
+
+      // Get Firebase Functions instance
+      const functions = getFunctions()
+
+      // Call the Firebase Cloud Function
+      const generateAnalysis = httpsCallable(functions, 'generateInfluenceAnalysis')
+
+      // Make the request to Firebase Function with map data instead of prompt
+      const result = await generateAnalysis({
+        mapData,
+        ...requestOptions
+      })
+
+      // Check if user has reached usage limits
+      if (result.data.limitReached) {
+        return this._getLimitReachedResponse(result.data.usageInfo)
+      }
+
+      return {
+        success: true,
+        analysis: result.data.text,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          model: result.data.usage?.model
+        }
+      }
+    } catch (error) {
+      console.error('Error getting influence network analysis:', error)
+
+      return {
+        error: true,
+        message: error.message,
+        metadata: {
+          generatedAt: new Date().toISOString()
+        }
+      }
+    }
+  }
+
+  /**
+   * Get issue-specific engagement recommendations
+   * @param {string|Object} mapIdOrMap - Map ID or object
+   * @param {string} issue - The specific issue to analyze
+   * @returns {Promise<Object>} Issue-specific recommendations
+   */
+  async getIssueSpecificRecommendations(mapIdOrMap, issue, options = {}) {
+    let map
+    try {
+      // Check if user is authenticated
+      const auth = getAuth()
+      const user = auth.currentUser
+
+      if (!user) {
+        return this._getAuthRequiredResponse()
+      }
+
+      if (!issue || typeof issue !== 'string') {
+        throw new Error('A specific issue must be provided')
+      }
+
+      // Get the map data
+      if (typeof mapIdOrMap === 'string') {
+        map = await stakeholderService.getMap(mapIdOrMap)
+      } else {
+        map = mapIdOrMap
+      }
+
+      if (!map) {
+        throw new Error('Map not found')
+      }
+
+      // Extract only the data needed for the issue-specific prompt
+      const mapData = this._prepareMapDataForAI(map)
+
+      // Prepare options for server-side prompt generation
+      const requestOptions = {
+        specialFocus: options.specificFocus,
+        modelOverrides: options.modelOverrides
+      }
+
+      // Get Firebase Functions instance
+      const functions = getFunctions()
+
+      // Call the Firebase Cloud Function
+      const generateRecommendations = httpsCallable(functions, 'generateIssueRecommendations')
+
+      // Make the request to Firebase Function with map data and issue instead of prompt
+      const result = await generateRecommendations({
+        mapData,
+        issue,
+        ...requestOptions
+      })
+
+      // Check if user has reached usage limits
+      if (result.data.limitReached) {
+        return this._getLimitReachedResponse(result.data.usageInfo)
+      }
+
+      return {
+        success: true,
+        recommendations: result.data.text,
+        issue: issue,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          model: result.data.usage?.model
+        }
+      }
+    } catch (error) {
+      console.error('Error getting issue-specific recommendations:', error)
+
+      return {
+        error: true,
+        message: error.message,
+        metadata: {
+          generatedAt: new Date().toISOString()
+        }
+      }
+    }
+  }
+
+  /**
+   * Prepare map data for AI processing
+   * Extracts only the relevant fields needed for the server-side prompt
+   * @param {StakeholderMap} map - The stakeholder map
+   * @returns {Object} Trimmed map data for AI processing
+   * @private
+   */
+  _prepareMapDataForAI(map) {
+    // Extract basic map information
+    const { id, name, description, projectName, projectGoals, projectScope } = map
+
+    // Extract and prepare stakeholder data
+    const stakeholders = map.stakeholders.map(s => ({
+      name: s.name,
+      category: s.category,
+      position: s.position,
+      organization: s.organization,
+      influence: s.influence,
+      impact: s.impact,
+      relationship: s.relationship,
+      quadrant: s.quadrant,
+      interests: s.interests,
+      contribution: s.contribution,
+      risk: s.risk,
+      communication: s.communication,
+      strategy: s.strategy,
+      // Only include the 3 most recent interactions
+      interactions: (s.interactions || [])
+        .slice(0, 3)
+        .map(i => ({
+          date: i.date.toISOString().split('T')[0],
+          type: i.type,
+          notes: i.notes
+        }))
+    }))
+
+    return {
+      id,
+      name,
+      description,
+      projectName,
+      projectGoals,
+      projectScope,
+      stakeholders
+    }
+  }
+
+  /**
+   * Prepare stakeholder data for AI processing
+   * @param {Stakeholder} stakeholder - The stakeholder
+   * @returns {Object} Prepared stakeholder data
+   * @private
+   */
+  _prepareStakeholderDataForAI(stakeholder) {
+    // Extract only the data needed for the advice
+    const {
+      id, name, category, position, organization,
+      influence, impact, relationship, quadrant,
+      interests, contribution, risk, communication, strategy
+    } = stakeholder
+
+    // Format the interactions
+    const interactions = (stakeholder.interactions || [])
+      .slice(0, 5) // Only use the 5 most recent interactions
+      .map(i => ({
+        date: i.date.toISOString().split('T')[0],
+        type: i.type,
+        notes: i.notes
+      }))
+
+    return {
+      id,
+      name,
+      category,
+      position,
+      organization,
+      influence,
+      impact,
+      relationship,
+      quadrant,
+      interests,
+      contribution,
+      risk,
+      communication,
+      strategy,
+      interactions
     }
   }
 
@@ -137,110 +456,6 @@ class AIService {
   }
 
   /**
-   * Build a detailed prompt for stakeholder recommendations
-   * @param {StakeholderMap} map - The stakeholder map
-   * @param {Object} options - Options for customizing the prompt
-   * @returns {string} Formatted prompt string
-   * @private
-   */
-  _buildStakeholderRecommendationsPrompt(map, options = {}) {
-    // Extract relevant information from the map
-    const { stakeholders, name, description, projectName, projectGoals, projectScope } = map
-
-    // Format stakeholder data for the prompt
-    const stakeholderData = stakeholders.map(s => {
-      // Get recent interactions (limited to 3)
-      const recentInteractions = s.interactions
-        .slice(0, 3)
-        .map(i => `- Date: ${i.date.toISOString().split('T')[0]}, Type: ${i.type}, Notes: ${i.notes}`)
-        .join('\n')
-
-      return `
-Stakeholder: ${s.name}
-Category: ${s.category}
-Influence: ${s.influence}/10
-Impact: ${s.impact}/10
-Current Relationship: ${s.relationship}/10
-Quadrant: ${s.quadrant}
-Interests: ${s.interests}
-Contribution: ${s.contribution}
-Risk: ${s.risk}
-Current Communication Strategy: ${s.communication}
-Current Engagement Strategy: ${s.strategy}
-Recent Interactions:
-${recentInteractions || '- No recent interactions recorded'}`
-    }).join('\n\n')
-
-    // Build the complete prompt
-    const prompt = `As an expert stakeholder engagement analyst, please provide strategic recommendations for the following stakeholder map:
-
-MAP INFORMATION:
-Name: ${name}
-Description: ${description}
-${projectName ? `Project Name: ${projectName}` : ''}
-${projectGoals ? `Project Goals: ${projectGoals}` : ''}
-${projectScope ? `Project Scope: ${projectScope}` : ''}
-
-STAKEHOLDERS:
-${stakeholderData}
-
-${options.specificFocus ? `Please focus specifically on: ${options.specificFocus}` : ''}
-
-Based on this information, please provide the following in JSON format:
-1. Overall engagement strategy recommendations for the project
-2. Specific recommendations for each stakeholder's engagement approach
-3. Communication priorities and key messages
-4. Risk management strategies
-5. Potential opportunities for improving stakeholder relationships
-
-Your response should be in valid JSON format with the following structure:
-{
-  "overallStrategy": {
-    "summary": "Brief summary of overall strategy",
-    "keyPriorities": ["Priority 1", "Priority 2", ...],
-    "criticalStakeholders": ["Stakeholder 1", "Stakeholder 2", ...],
-    "recommendedActions": ["Action 1", "Action 2", ...]
-  },
-  "stakeholderSpecificRecommendations": {
-    "stakeholderName1": {
-      "engagementApproach": "Description of approach",
-      "communicationChannels": ["Channel 1", "Channel 2", ...],
-      "keyMessages": ["Message 1", "Message 2", ...],
-      "riskMitigation": "Risk mitigation strategy"
-    },
-    "stakeholderName2": {
-      ...
-    }
-  },
-  "communicationPriorities": [
-    "Priority 1",
-    "Priority 2",
-    ...
-  ],
-  "riskManagement": {
-    "topRisks": [
-      {
-        "description": "Risk description",
-        "stakeholdersInvolved": ["Stakeholder 1", ...],
-        "mitigationStrategy": "Strategy description"
-      },
-      ...
-    ]
-  },
-  "opportunityAreas": [
-    {
-      "description": "Opportunity description",
-      "stakeholdersInvolved": ["Stakeholder 1", ...],
-      "potentialApproach": "Approach description"
-    },
-    ...
-  ]
-}`
-
-    return prompt
-  }
-
-  /**
    * Process and format the AI response
    * @param {Object} response - Raw API response
    * @param {StakeholderMap} map - The stakeholder map
@@ -275,7 +490,7 @@ Your response should be in valid JSON format with the following structure:
         ...parsedContent,
         metadata: {
           generatedAt: new Date().toISOString(),
-          model: response.model || this.defaultOptions.model,
+          model: response.model || response.usage?.model,
           mapId: map.id,
           mapName: map.name
         }
@@ -416,6 +631,5 @@ Your response should be in valid JSON format with the following structure:
   }
 }
 
-// Create singleton instance
-const aiService = new AIService()
-export default aiService
+// Export a singleton instance
+export const aiService = new AIService()

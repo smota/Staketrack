@@ -237,3 +237,83 @@ To ensure the secure configuration loading works properly:
 3. Test PRD environment with the deployed PRD Cloud Function
 4. Verify Firebase services initialize correctly in each environment
 5. Test the fallback mechanism for when configuration fails to load 
+
+## AI Configuration
+
+The StakeTrack application uses a serverless AI implementation with the following configuration:
+
+### Prompt Templates
+
+The AI functionality uses server-side prompt templates for security and flexibility:
+
+1. **Template Files**:
+   - `functions/src/config/promptTemplates.default.js` - Default templates
+   - `functions/src/config/promptTemplates.production.js` - Production-specific templates
+   - `functions/src/config/promptTemplates.development.js` - Development-specific templates
+
+2. **Environment Selection**:
+   The system selects the appropriate template file based on the `NODE_ENV` environment variable:
+   ```javascript
+   // Get environment from environment variable or default to local
+   const ENV = process.env.NODE_ENV || 'local'
+   ```
+
+3. **Template Structure**:
+   Each template file exports:
+   ```javascript
+   module.exports = {
+     templates: {
+       // Template definitions
+       stakeholderRecommendationsJSON: { ... },
+       stakeholderAdvice: { ... },
+       // etc.
+     },
+     modelConfigs: {
+       // Model parameter configurations
+       default: { ... },
+       analytical: { ... },
+       // etc.
+     },
+     safetySettings: [
+       // Safety filter settings
+     ]
+   }
+   ```
+
+### AI Environment Variables
+
+The AI functionality is configured using these environment variables:
+
+```
+# Basic AI configuration
+APP_AI_ENABLED=true              # Enable/disable AI features
+APP_AI_MODEL=gemini-1.5-pro      # Default AI model to use
+APP_AI_WEEKLY_LIMIT=10           # Default user weekly request limit
+APP_AI_ADMIN_LIMIT=100           # Default admin weekly request limit
+
+# Firebase Functions Config (set via firebase functions:config:set)
+firebase functions:config:set ai.enabled=true ai.model="gemini-1.5-pro" ai.weekly_limit=10
+```
+
+### Cloud Functions Configuration
+
+The Cloud Functions for AI use the following secure deployment process:
+
+1. **Configuration Update**:
+   ```bash
+   npm run firebase:update-config:dev   # For development environment
+   npm run firebase:update-config:prod  # For production environment
+   ```
+
+2. **Prompt Template Deployment**:
+   ```bash
+   npm run deploy:development
+   # or
+   npm run deploy:production
+   ```
+
+3. **Testing Configuration**:
+   You can test the current configuration with:
+   ```bash
+   firebase functions:config:get
+   ``` 

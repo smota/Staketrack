@@ -7,7 +7,10 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "deploy:production": "node deploy-prompts.js production && firebase deploy --only functions",
+    "deploy:development": "node deploy-prompts.js development && firebase deploy --only functions",
+    "deploy:local": "node deploy-prompts.js local && firebase functions:config:get > .runtimeconfig.json && firebase emulators:start --only functions"
   },
   "engines": {
     "node": "18"

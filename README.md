@@ -212,3 +212,25 @@ If you encounter environment-related issues:
 ## License
 
 This project is licensed under the MIT License.
+
+## Documentation
+
+Comprehensive documentation is available in the `docs` directory:
+
+- [Setup Guide](docs/SETUP.md) - Getting started with the project
+- [Configuration Guide](docs/CONFIGURATION.md) - Environment configuration
+- [Deployment Guide](docs/DEPLOYMENT.md) - Deployment to various environments
+- [Firebase Configuration](docs/FIREBASE_CONFIG.md) - Firebase-specific setup
+- [Testing Guide](docs/TESTING.md) - Running and writing tests
+- [AI Features](docs/spec/EPIC-05-AI-Recommendations.md) - AI recommendation functionality
+
+### AI Features
+
+StakeTrack includes AI-powered recommendation features that use server-side prompt templates:
+
+- **Stakeholder Engagement Advice**: Personalized recommendations for engaging with specific stakeholders
+- **Next Best Action Recommendations**: Prioritized action suggestions based on stakeholder data
+- **Influence Network Analysis**: AI-driven analysis of stakeholder relationships
+- **Issue-Specific Recommendations**: Topic-focused engagement strategies
+
+See [AI Recommendations Documentation](docs/spec/EPIC-05-AI-Recommendations.md) for details on implementation and usage.

@@ -184,6 +184,59 @@ StakeTrack includes a GitHub Actions workflow (`env-validate.yml`) that validate
 - Checks Firebase configuration files
 - Ensures proper targets are set up for each environment
 
+## AI Features Deployment
+
+### AI Configuration
+
+AI functionality uses Firebase Vertex AI with Gemini models, configured with environment variables:
+
+```
+APP_AI_MODEL=gemini-1.5-pro
+APP_AI_ENABLED=true
+APP_AI_WEEKLY_LIMIT=10
+```
+
+No additional API keys are needed as Firebase service accounts handle the authentication.
+
+### Prompt Templates Deployment
+
+The system uses environment-specific prompt templates:
+
+1. Deploy with prompt template configuration:
+   ```bash
+   # Deploy to development with development templates
+   npm run deploy:development
+   
+   # Deploy to production with production templates
+   npm run deploy:production
+   
+   # Deploy for local testing
+   npm run deploy:local
+   ```
+
+2. The deployment process:
+   - Selects appropriate prompt template file based on environment
+   - Sets the NODE_ENV variable for functions environment
+   
+3. The `deploy-prompts.js` script:
+   - Automatically manages prompt templates during deployment
+   - Copies environment-specific template files to the correct location
+   - Usage: `node functions/deploy-prompts.js [environment]`
+   - Supported environments: `production`, `development`, `local`
+   - Creates a `.env` file with the correct NODE_ENV setting
+
+### AI Functions
+
+Deploy Cloud Functions for AI features:
+
+```bash
+# Deploy all functions
+firebase deploy --only functions
+
+# Deploy specific AI functions
+firebase deploy --only functions:generateStakeholderRecommendations
+```
+
 ## Troubleshooting
 
 If you encounter issues during deployment:
