@@ -26,6 +26,18 @@
           </v-chip>
         </div>
         <div class="header-actions">
+          <v-btn
+            color="accent"
+            class="mr-2"
+            :loading="aiLoading"
+            :disabled="aiLoading"
+            @click="getStakeholderRecommendations"
+          >
+            <v-icon left>
+              mdi-lightbulb
+            </v-icon>
+            Get Recommendations
+          </v-btn>
           <v-btn color="primary" class="mr-2" @click="editStakeholder">
             <v-icon left>
               mdi-pencil
@@ -460,274 +472,455 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Recommendation Dialog -->
+    <v-dialog v-model="showRecommendationDialog" max-width="800px">
+      <v-card>
+        <v-card-title>
+          Stakeholder Recommendations for {{ stakeholder?.name }}
+        </v-card-title>
+        <v-card-text>
+          <div v-if="!recommendationData" class="text-center py-4">
+            <v-progress-circular v-if="aiLoading" indeterminate color="primary" />
+            <p v-else>
+              No recommendations found.
+            </p>
+          </div>
+
+          <!-- Authentication Required Message -->
+          <div v-else-if="recommendationData.authRequired" class="auth-required-container text-center py-5">
+            <v-icon size="large" color="warning" class="mb-3">
+              mdi-account-lock
+            </v-icon>
+            <h3 class="text-h5 mb-3">
+              Authentication Required
+            </h3>
+            <p class="mb-4">
+              {{ recommendationData.message }}
+            </p>
+            <v-btn color="primary" @click="navigateToLogin">
+              Log In
+            </v-btn>
+          </div>
+
+          <!-- Usage Limit Reached Message -->
+          <div v-else-if="recommendationData.limitReached" class="limit-reached-container text-center py-5">
+            <v-icon size="large" color="warning" class="mb-3">
+              mdi-counter
+            </v-icon>
+            <h3 class="text-h5 mb-3">
+              Usage Limit Reached
+            </h3>
+            <p class="mb-4">
+              {{ recommendationData.message }}
+            </p>
+            <div class="usage-stats mb-3">
+              <v-progress-linear
+                :model-value="(recommendationData.usageInfo.currentUsage / recommendationData.usageInfo.limit) * 100"
+                height="20"
+                color="warning"
+                rounded
+              >
+                <template #default="{ value }">
+                  <span class="white--text">
+                    {{ recommendationData.usageInfo.currentUsage }} / {{ recommendationData.usageInfo.limit }} ({{ Math.ceil(value) }}%)
+                  </span>
+                </template>
+              </v-progress-linear>
+            </div>
+            <p class="text-caption">
+              Contact your administrator if you need unlimited access.
+            </p>
+          </div>
+
+          <div v-else class="recommendation-content">
+            <!-- Specific recommendations for this stakeholder -->
+            <v-card v-if="recommendationData.stakeholderSpecificRecommendations && recommendationData.stakeholderSpecificRecommendations[stakeholder.name]" class="mb-4 pa-3">
+              <h3 class="text-h5 mb-2">
+                Engagement Recommendations
+              </h3>
+              <div class="recommendation-section">
+                <h4 class="text-subtitle-1 font-weight-bold">
+                  Approach
+                </h4>
+                <p>{{ recommendationData.stakeholderSpecificRecommendations[stakeholder.name].engagementApproach }}</p>
+              </div>
+
+              <div class="recommendation-section">
+                <h4 class="text-subtitle-1 font-weight-bold">
+                  Recommended Communication Channels
+                </h4>
+                <ul>
+                  <li v-for="(channel, i) in recommendationData.stakeholderSpecificRecommendations[stakeholder.name].communicationChannels" :key="i">
+                    {{ channel }}
+                  </li>
+                </ul>
+              </div>
+
+              <div class="recommendation-section">
+                <h4 class="text-subtitle-1 font-weight-bold">
+                  Key Messages
+                </h4>
+                <ul>
+                  <li v-for="(message, i) in recommendationData.stakeholderSpecificRecommendations[stakeholder.name].keyMessages" :key="i">
+                    {{ message }}
+                  </li>
+                </ul>
+              </div>
+
+              <div class="recommendation-section">
+                <h4 class="text-subtitle-1 font-weight-bold">
+                  Risk Mitigation
+                </h4>
+                <p>{{ recommendationData.stakeholderSpecificRecommendations[stakeholder.name].riskMitigation }}</p>
+              </div>
+            </v-card>
+
+            <!-- Next Best Actions -->
+            <v-card class="mb-4 pa-3">
+              <h3 class="text-h5 mb-2">
+                Next Best Actions
+              </h3>
+              <v-list>
+                <v-list-item v-for="(action, i) in recommendationData.overallStrategy?.recommendedActions" :key="i">
+                  <template #prepend>
+                    <v-icon color="primary">
+                      mdi-checkbox-marked-circle-outline
+                    </v-icon>
+                  </template>
+                  <v-list-item-title>{{ action }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card>
+
+            <!-- Opportunities -->
+            <v-card v-if="recommendationData.opportunityAreas" class="mb-4 pa-3">
+              <h3 class="text-h5 mb-2">
+                Opportunities
+              </h3>
+              <div v-for="(opportunity, i) in recommendationData.opportunityAreas" :key="i" class="mb-3">
+                <h4 class="text-subtitle-1 font-weight-bold">
+                  {{ opportunity.description }}
+                </h4>
+                <p v-if="opportunity.potentialApproach" class="ml-3">
+                  <strong>Approach:</strong> {{ opportunity.potentialApproach }}
+                </p>
+              </div>
+            </v-card>
+
+            <!-- Metadata -->
+            <div class="text-caption text-right text-grey">
+              Generated at {{ new Date(recommendationData.metadata?.generatedAt).toLocaleString() }}
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" @click="closeRecommendationDialog">
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
-import { mapService } from '@/services/mapService'
-import { stakeholderService } from '@/services/stakeholderService'
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useNotificationStore } from '@/stores/notificationStore'
+import { formatDate } from '@/utils/dateUtils'
+import { categoryOptions, getCategoryColor, getCategoryLabel } from '@/config/categories'
+import { interactionTypes, getInteractionTypeLabel, getInteractionTypeIcon, getInteractionColor } from '@/config/interactionTypes'
+import { stakeholderService } from '@/services'
+import aiService from '@/services/aiService'
 import { interactionService } from '@/services/interactionService'
 import { documentService } from '@/services/documentService'
-import { categoryOptions, getCategoryColor } from '@/config/categories'
+import { getAuth } from 'firebase/auth'
 
 export default {
   name: 'StakeholderDetail',
-
-  data() {
-    return {
-      // State management
-      loading: true,
-      stakeholder: null,
-      interactions: [],
-      documents: [],
-      showInteractionDialog: false,
-      showDocumentDialog: false,
-      showDeleteDialog: false,
-      editingInteraction: null,
-      editingDocument: null,
-
-      // Form data
-      interactionForm: {
-        title: '',
-        type: 'meeting',
-        date: new Date().toISOString().substr(0, 10),
-        notes: ''
-      },
-
-      documentForm: {
-        title: '',
-        type: 'note',
-        date: new Date().toISOString().substr(0, 10),
-        content: '',
-        file: null
-      },
-
-      // Options for forms
-      interactionTypes: [
-        { title: 'Meeting', value: 'meeting' },
-        { title: 'Call', value: 'call' },
-        { title: 'Email', value: 'email' },
-        { title: 'Social', value: 'social' },
-        { title: 'Other', value: 'other' }
-      ],
-
-      documentTypes: [
-        { title: 'Note', value: 'note' },
-        { title: 'Document', value: 'document' },
-        { title: 'Presentation', value: 'presentation' },
-        { title: 'Image', value: 'image' },
-        { title: 'Video', value: 'video' },
-        { title: 'Other', value: 'other' }
-      ]
-    }
+  components: {
+    // ... existing components ...
   },
+  setup() {
+    const route = useRoute()
+    const router = useRouter()
+    const notificationStore = useNotificationStore()
 
-  computed: {
+    // State
+    const loading = ref(true)
+    const stakeholder = ref(null)
+    const interactions = ref([])
+    const documents = ref([])
+    const showInteractionDialog = ref(false)
+    const showDocumentDialog = ref(false)
+    const showDeleteDialog = ref(false)
+    const editingInteraction = ref(null)
+    const editingDocument = ref(null)
+    const aiLoading = ref(false)
+    const showRecommendationDialog = ref(false)
+    const recommendationData = ref(null)
+
+    // Form data
+    const interactionForm = ref({
+      title: '',
+      type: 'meeting',
+      date: new Date().toISOString().substr(0, 10),
+      notes: ''
+    })
+
+    const documentForm = ref({
+      title: '',
+      type: 'note',
+      date: new Date().toISOString().substr(0, 10),
+      content: '',
+      file: null
+    })
+
+    // Options for forms
+    const interactionTypes = [
+      { title: 'Meeting', value: 'meeting' },
+      { title: 'Call', value: 'call' },
+      { title: 'Email', value: 'email' },
+      { title: 'Social', value: 'social' },
+      { title: 'Other', value: 'other' }
+    ]
+
+    const documentTypes = [
+      { title: 'Note', value: 'note' },
+      { title: 'Document', value: 'document' },
+      { title: 'Presentation', value: 'presentation' },
+      { title: 'Image', value: 'image' },
+      { title: 'Video', value: 'video' },
+      { title: 'Other', value: 'other' }
+    ]
+
     // Get map ID and stakeholder ID from route params
-    mapId() {
-      return this.$route.params.mapId
-    },
+    const mapId = route.params.mapId
+    const stakeholderId = route.params.id
 
-    stakeholderId() {
-      return this.$route.params.id
-    }
-  },
+    // Get AI recommendations for this stakeholder
+    const getStakeholderRecommendations = async () => {
+      if (!stakeholder.value) return
 
-  async created() {
-    // Load data when component is created
-    await this.loadStakeholderData()
-  },
-
-  methods: {
-    async loadStakeholderData() {
       try {
-        this.loading = true
+        aiLoading.value = true
+
+        // Call AI service with focus on this specific stakeholder
+        const response = await aiService.getStakeholderRecommendations(mapId, {
+          specificFocus: `stakeholder:${stakeholder.value.id}`
+        })
+
+        // Store the response and show dialog
+        recommendationData.value = response
+        showRecommendationDialog.value = true
+      } catch (error) {
+        console.error('Error getting stakeholder recommendations:', error)
+        notificationStore.showNotification({
+          message: 'Error getting recommendations: ' + error.message,
+          type: 'error'
+        })
+      } finally {
+        aiLoading.value = false
+      }
+    }
+
+    // Close recommendation dialog
+    const closeRecommendationDialog = () => {
+      showRecommendationDialog.value = false
+    }
+
+    // Load data when component is created
+    const loadStakeholderData = async () => {
+      try {
+        loading.value = true
 
         // Load stakeholder details
-        this.stakeholder = await stakeholderService.getStakeholder(this.mapId, this.stakeholderId)
+        stakeholder.value = await stakeholderService.getStakeholder(mapId, stakeholderId)
 
-        if (this.stakeholder) {
+        if (stakeholder.value) {
           // Load interactions for this stakeholder
-          this.interactions = await interactionService.getInteractions(this.mapId, this.stakeholderId)
+          interactions.value = await interactionService.getInteractions(mapId, stakeholderId)
 
           // Load documents for this stakeholder
-          this.documents = await documentService.getDocuments(this.mapId, this.stakeholderId)
+          documents.value = await documentService.getDocuments(mapId, stakeholderId)
         }
       } catch (error) {
         console.error('Error loading stakeholder data:', error)
         // Handle error (could show error message to user)
       } finally {
-        this.loading = false
+        loading.value = false
       }
-    },
+    }
 
     // Navigation methods
-    navigateBack() {
-      this.$router.push(`/maps/${this.mapId}`)
-    },
+    const navigateBack = () => {
+      router.push(`/maps/${mapId}`)
+    }
 
     // Stakeholder CRUD operations
-    async editStakeholder() {
-      this.$router.push(`/maps/${this.mapId}/stakeholders/${this.stakeholderId}/edit`)
-    },
+    const editStakeholder = () => {
+      router.push(`/maps/${mapId}/stakeholders/${stakeholderId}/edit`)
+    }
 
-    confirmDelete() {
-      this.showDeleteDialog = true
-    },
+    const confirmDelete = () => {
+      showDeleteDialog.value = true
+    }
 
-    async deleteStakeholder() {
+    const deleteStakeholder = async () => {
       try {
-        await stakeholderService.deleteStakeholder(this.mapId, this.stakeholderId)
-        this.showDeleteDialog = false
-        this.$router.push(`/maps/${this.mapId}`)
+        await stakeholderService.deleteStakeholder(mapId, stakeholderId)
+        showDeleteDialog.value = false
+        router.push(`/maps/${mapId}`)
       } catch (error) {
         console.error('Error deleting stakeholder:', error)
       }
-    },
+    }
 
     // Interaction CRUD operations
-    addInteraction() {
-      this.editingInteraction = null
-      this.interactionForm = {
+    const addInteraction = () => {
+      editingInteraction.value = null
+      interactionForm.value = {
         title: '',
         type: 'meeting',
         date: new Date().toISOString().substr(0, 10),
         notes: ''
       }
-      this.showInteractionDialog = true
-    },
+      showInteractionDialog.value = true
+    }
 
-    editInteraction(interaction) {
-      this.editingInteraction = interaction
-      this.interactionForm = {
+    const editInteraction = (interaction) => {
+      editingInteraction.value = interaction
+      interactionForm.value = {
         title: interaction.title,
         type: interaction.type,
         date: interaction.date,
         notes: interaction.notes
       }
-      this.showInteractionDialog = true
-    },
+      showInteractionDialog.value = true
+    }
 
-    async saveInteraction() {
+    const saveInteraction = async () => {
       // Validate form
-      const valid = await this.$refs.interactionForm.validate()
+      const valid = await interactionForm.value.$refs.interactionForm.validate()
 
       if (!valid) {
         return
       }
 
       try {
-        if (this.editingInteraction) {
+        if (editingInteraction.value) {
           // Update existing interaction
           await interactionService.updateInteraction(
-            this.mapId,
-            this.stakeholderId,
-            this.editingInteraction.id,
-            this.interactionForm
+            mapId,
+            stakeholderId,
+            editingInteraction.value.id,
+            interactionForm.value
           )
         } else {
           // Create new interaction
           await interactionService.addInteraction(
-            this.mapId,
-            this.stakeholderId,
-            this.interactionForm
+            mapId,
+            stakeholderId,
+            interactionForm.value
           )
         }
 
         // Reload interactions
-        this.interactions = await interactionService.getInteractions(this.mapId, this.stakeholderId)
-        this.showInteractionDialog = false
+        interactions.value = await interactionService.getInteractions(mapId, stakeholderId)
+        showInteractionDialog.value = false
       } catch (error) {
         console.error('Error saving interaction:', error)
       }
-    },
+    }
 
-    async deleteInteraction(interaction) {
+    const deleteInteraction = async (interaction) => {
       if (confirm('Are you sure you want to delete this interaction?')) {
         try {
           await interactionService.deleteInteraction(
-            this.mapId,
-            this.stakeholderId,
+            mapId,
+            stakeholderId,
             interaction.id
           )
 
           // Reload interactions
-          this.interactions = await interactionService.getInteractions(this.mapId, this.stakeholderId)
+          interactions.value = await interactionService.getInteractions(mapId, stakeholderId)
         } catch (error) {
           console.error('Error deleting interaction:', error)
         }
       }
-    },
+    }
 
     // Document CRUD operations
-    addDocument() {
-      this.editingDocument = null
-      this.documentForm = {
+    const addDocument = () => {
+      editingDocument.value = null
+      documentForm.value = {
         title: '',
         type: 'note',
         date: new Date().toISOString().substr(0, 10),
         content: '',
         file: null
       }
-      this.showDocumentDialog = true
-    },
+      showDocumentDialog.value = true
+    }
 
-    editDocument(document) {
-      this.editingDocument = document
-      this.documentForm = {
+    const editDocument = (document) => {
+      editingDocument.value = document
+      documentForm.value = {
         title: document.title,
         type: document.type,
         date: document.date,
         content: document.content || '',
         file: null
       }
-      this.showDocumentDialog = true
-    },
+      showDocumentDialog.value = true
+    }
 
-    async saveDocument() {
+    const saveDocument = async () => {
       // Validate form
-      const valid = await this.$refs.documentForm.validate()
+      const valid = await documentForm.value.$refs.documentForm.validate()
 
       if (!valid) {
         return
       }
 
       try {
-        if (this.editingDocument) {
+        if (editingDocument.value) {
           // Update existing document
           await documentService.updateDocument(
-            this.mapId,
-            this.stakeholderId,
-            this.editingDocument.id,
-            this.documentForm
+            mapId,
+            stakeholderId,
+            editingDocument.value.id,
+            documentForm.value
           )
         } else {
           // Create new document
           await documentService.addDocument(
-            this.mapId,
-            this.stakeholderId,
-            this.documentForm
+            mapId,
+            stakeholderId,
+            documentForm.value
           )
         }
 
         // Reload documents
-        this.documents = await documentService.getDocuments(this.mapId, this.stakeholderId)
-        this.showDocumentDialog = false
+        documents.value = await documentService.getDocuments(mapId, stakeholderId)
+        showDocumentDialog.value = false
       } catch (error) {
         console.error('Error saving document:', error)
       }
-    },
+    }
 
-    async viewDocument(document) {
+    const viewDocument = async (document) => {
       // If it's a note, show it in a dialog
       if (document.type === 'note') {
-        this.editDocument(document)
+        editDocument(document)
       } else {
         // Otherwise, try to download or open the file
         try {
           await documentService.getDocumentUrl(
-            this.mapId,
-            this.stakeholderId,
+            mapId,
+            stakeholderId,
             document.id
           ).then(url => {
             window.open(url, '_blank')
@@ -736,10 +929,10 @@ export default {
           console.error('Error accessing document:', error)
         }
       }
-    },
+    }
 
     // Utility methods
-    getPlotStyles(stakeholder) {
+    const getPlotStyles = (stakeholder) => {
       // Position based on influence (x) and impact (y)
       // Scale from 1-10 to percentage position (10-90% to avoid edges)
       const xPos = 10 + ((stakeholder.influence - 1) / 9) * 80
@@ -749,18 +942,9 @@ export default {
         left: `${xPos}%`,
         top: `${yPos}%`
       }
-    },
+    }
 
-    getCategoryColor(category) {
-      return getCategoryColor(category)
-    },
-
-    getCategoryLabel(categoryValue) {
-      const category = categoryOptions.find(c => c.value === categoryValue)
-      return category ? category.title : categoryValue
-    },
-
-    getInteractionColor(type) {
+    const getInteractionColor = (type) => {
       const colors = {
         meeting: 'indigo',
         call: 'blue',
@@ -769,9 +953,9 @@ export default {
         other: 'grey'
       }
       return colors[type] || colors.other
-    },
+    }
 
-    getDocumentColor(type) {
+    const getDocumentColor = (type) => {
       const colors = {
         note: 'amber',
         document: 'blue',
@@ -781,9 +965,9 @@ export default {
         other: 'grey'
       }
       return colors[type] || colors.other
-    },
+    }
 
-    getDocumentIcon(type) {
+    const getDocumentIcon = (type) => {
       const icons = {
         note: 'mdi-note-text',
         document: 'mdi-file-document',
@@ -793,11 +977,51 @@ export default {
         other: 'mdi-file'
       }
       return icons[type] || icons.other
-    },
+    }
 
-    formatDate(dateString) {
-      const date = new Date(dateString)
-      return date.toLocaleDateString()
+    // Navigate to login page
+    const navigateToLogin = () => {
+      router.push('/login')
+      showRecommendationDialog.value = false
+    }
+
+    return {
+      stakeholder,
+      interactions,
+      documents,
+      loading,
+      showInteractionDialog,
+      showDocumentDialog,
+      showDeleteDialog,
+      editingInteraction,
+      editingDocument,
+      aiLoading,
+      showRecommendationDialog,
+      recommendationData,
+      interactionForm,
+      documentForm,
+      interactionTypes,
+      documentTypes,
+      navigateBack,
+      editStakeholder,
+      confirmDelete,
+      deleteStakeholder,
+      addInteraction,
+      editInteraction,
+      saveInteraction,
+      deleteInteraction,
+      addDocument,
+      editDocument,
+      saveDocument,
+      viewDocument,
+      getPlotStyles,
+      getInteractionColor,
+      getDocumentColor,
+      getDocumentIcon,
+      formatDate,
+      getStakeholderRecommendations,
+      closeRecommendationDialog,
+      navigateToLogin
     }
   }
 }
@@ -954,5 +1178,18 @@ export default {
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+}
+
+.auth-required-container,
+.limit-reached-container {
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.usage-stats {
+  max-width: 400px;
+  margin: 0 auto;
 }
 </style>

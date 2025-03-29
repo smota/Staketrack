@@ -131,6 +131,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth'
+import { auth, storage } from '@/firebase'
 
 export default {
   name: 'LoginView',
@@ -220,7 +221,6 @@ export default {
 
     // Sign in anonymously
     const signInAnonymously = async () => {
-      const auth = getAuth()
       error.value = null
       isLoadingAnonymous.value = true
 
@@ -229,9 +229,9 @@ export default {
 
         // Redirect after successful authentication
         const redirectPath = route.query.redirect || '/dashboard'
-        router.push(redirectPath)
+        await router.push(redirectPath)
       } catch (err) {
-        error.value = err.message
+        error.value = err.message || 'An error occurred during anonymous sign-in'
         console.error('Anonymous auth error:', err)
       } finally {
         isLoadingAnonymous.value = false

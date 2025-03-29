@@ -1,47 +1,68 @@
 <template>
   <div class="dashboard">
-    <v-container>
+    <v-container fluid class="dashboard-container">
       <v-row>
         <v-col cols="12">
-          <v-card class="mb-5">
-            <v-card-title class="text-h4">
-              Your Dashboard
-              <v-spacer />
-              <v-btn color="primary" @click="createNewMap">
-                <v-icon left>
-                  mdi-plus
-                </v-icon>
-                New Map
+          <v-card v-if="loading" class="loading-card">
+            <v-card-text class="text-center">
+              <v-progress-circular
+                indeterminate
+                color="primary"
+              />
+            </v-card-text>
+          </v-card>
+
+          <v-card v-else-if="error" class="error-card">
+            <v-card-text class="text-center">
+              <v-icon color="error" size="48" class="mb-4" />
+              <h3 class="text-h6 mb-2">
+                Error Loading Maps
+              </h3>
+              <p class="text-body-1 mb-4">
+                {{ error }}
+              </p>
+              <v-btn
+                color="primary"
+                class="mt-4"
+                @click="retryLoading"
+              >
+                Retry
+              </v-btn>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-else-if="maps.length === 0" class="no-maps-card">
+            <v-card-text class="text-center">
+              <h3 class="text-h6 mb-2">
+                No Maps Found
+              </h3>
+              <p class="text-body-1 mb-4">
+                You don't have any stakeholder maps yet. Create your first map to get started!
+              </p>
+              <v-btn
+                color="primary"
+                class="mt-4"
+                @click="createNewMap"
+              >
+                Create First Map
+              </v-btn>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-else class="maps-card">
+            <v-card-title class="d-flex justify-space-between align-center">
+              <span>Your Stakeholder Maps ({{ maps.length }})</span>
+              <v-btn
+                color="primary"
+                class="ml-4"
+                @click="createNewMap"
+              >
+                Create New Map
               </v-btn>
             </v-card-title>
 
             <v-card-text>
-              <div v-if="isLoading" class="text-center my-5">
-                <v-progress-circular indeterminate color="primary" />
-                <p class="mt-3">
-                  Loading your stakeholder maps...
-                </p>
-              </div>
-
-              <div v-else-if="maps.length === 0" class="text-center my-5 py-5">
-                <v-icon x-large color="grey lighten-1">
-                  mdi-map-outline
-                </v-icon>
-                <h3 class="mt-3 text-h5 text-grey-darken-1">
-                  No Maps Found
-                </h3>
-                <p class="mt-2 text-grey-darken-1">
-                  Create your first stakeholder map to get started.
-                </p>
-                <v-btn color="primary" class="mt-4" @click="createNewMap">
-                  <v-icon left>
-                    mdi-plus
-                  </v-icon>
-                  Create New Map
-                </v-btn>
-              </div>
-
-              <v-row v-else>
+              <v-row>
                 <v-col
                   v-for="map in maps"
                   :key="map.id"
@@ -49,43 +70,44 @@
                   sm="6"
                   md="4"
                   lg="3"
+                  class="map-card-col"
                 >
-                  <v-card class="map-card" hover @click="openMap(map.id)">
-                    <v-card-title>
-                      <v-icon left color="primary">
-                        mdi-map
-                      </v-icon>
-                      {{ map.name }}
-                    </v-card-title>
-
-                    <v-card-subtitle>
-                      Created: {{ formatDate(map.createdAt) }}
-                    </v-card-subtitle>
-
+                  <v-card
+                    class="map-card"
+                    :class="{ 'current-map': map.id === currentMapId }"
+                    @click="selectMap(map)"
+                  >
+                    <v-card-title>{{ map.name }}</v-card-title>
                     <v-card-text>
-                      <p>{{ map.description }}</p>
-                      <div class="mt-2">
-                        <v-chip size="small" class="mr-2">
-                          {{ map.stakeholderCount }} stakeholders
-                        </v-chip>
-                        <v-chip v-if="map.lastUpdated" size="small">
-                          Updated {{ formatTimeAgo(map.lastUpdated) }}
-                        </v-chip>
-                      </div>
+                      <p class="text-body-2">
+                        {{ map.description || 'No description' }}
+                      </p>
+                      <p class="text-caption">
+                        Stakeholders: {{ map.stakeholderCount || 0 }}
+                      </p>
+                      <p class="text-caption">
+                        Last updated: {{ safeFormatDate(map.lastUpdated) }}
+                      </p>
                     </v-card-text>
-
-                    <v-card-actions>
-                      <v-spacer />
-                      <v-btn icon @click.stop="editMap(map.id)">
-                        <v-icon>mdi-pencil</v-icon>
-                      </v-btn>
-                      <v-btn icon @click.stop="confirmDeleteMap(map)">
-                        <v-icon>mdi-delete</v-icon>
-                      </v-btn>
-                    </v-card-actions>
                   </v-card>
                 </v-col>
               </v-row>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-if="isAnonymous" class="anonymous-mode-card mt-4">
+            <v-card-text class="text-center">
+              <p class="text-body-1 mb-4">
+                You're currently in anonymous mode. Maps will be stored in your browser's local storage.
+              </p>
+              <v-btn
+                outlined
+                color="secondary"
+                class="mt-2"
+                @click="goToLogin"
+              >
+                Sign In to Sync Maps
+              </v-btn>
             </v-card-text>
           </v-card>
         </v-col>
@@ -156,246 +178,179 @@
   </div>
 </template>
 
-<script>
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { getAuth } from 'firebase/auth'
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  serverTimestamp
-} from 'firebase/firestore'
+<script setup>
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { auth } from '@/firebase'
+import { mapService } from '@/services/mapService'
+import { formatDate } from '@/utils/dateUtils'
 
-export default {
-  name: 'DashboardView',
-  setup() {
-    const router = useRouter()
-    const maps = ref([])
-    const isLoading = ref(true)
-    const form = ref(null)
-    const isFormValid = ref(true)
+const router = useRouter()
+const route = useRoute()
+const maps = ref([])
+const loading = ref(true)
+const error = ref(null)
+const currentMapId = ref(null)
 
-    // Dialog controls
-    const dialogVisible = ref(false)
-    const dialogMode = ref('create')
-    const editedMap = reactive({
-      name: '',
-      description: '',
-      id: null
-    })
+const isAnonymous = computed(() => {
+  return !auth.currentUser || (auth.currentUser && auth.currentUser.isAnonymous) || false
+})
 
-    // Delete dialog controls
-    const deleteDialogVisible = ref(false)
-    const mapToDelete = ref(null)
+const handleError = (error) => {
+  console.error('Error:', error)
+  error.value = 'An error occurred while loading data. Please try again.'
+}
 
-    // Load user's maps from Firestore
-    const loadMaps = async () => {
-      isLoading.value = true
+const loadMaps = async () => {
+  loading.value = true
+  error.value = null
 
-      try {
-        const auth = getAuth()
-        const db = getFirestore()
+  try {
+    // Use mapService to get maps (will use localStorage in anonymous mode)
+    const retrievedMaps = await mapService.getMaps()
+    console.log('Raw retrieved maps:', retrievedMaps)
 
-        if (!auth.currentUser) {
-          isLoading.value = false
-          return
+    if (!Array.isArray(retrievedMaps)) {
+      console.error('Retrieved maps is not an array:', retrievedMaps)
+      maps.value = []
+    } else {
+      // Ensure each map has the expected properties in the correct format
+      maps.value = retrievedMaps.map(map => {
+        // Create a normalized map object that handles both property formats
+        return {
+          id: map.id || map._id,
+          name: map.name || map._name,
+          description: map.description || map._description,
+          stakeholderCount: map.stakeholderCount || map._stakeholderCount || 0,
+          lastUpdated: map.lastUpdated || map._lastUpdated,
+          createdAt: map.createdAt || map._createdAt
         }
+      })
 
-        const mapsRef = collection(db, 'maps')
-        const q = query(mapsRef, where('userId', '==', auth.currentUser.uid))
-        const querySnapshot = await getDocs(q)
-
-        maps.value = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          stakeholderCount: doc.data().stakeholderCount || 0,
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          lastUpdated: doc.data().lastUpdated?.toDate() || null
-        }))
-      } catch (error) {
-        console.error('Error loading maps:', error)
-      } finally {
-        isLoading.value = false
-      }
+      // Sort maps by last updated date for better user experience
+      maps.value.sort((a, b) => {
+        const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0)
+        const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0)
+        return dateB - dateA
+      })
     }
 
-    // Create a new map
-    const createNewMap = () => {
-      editedMap.name = ''
-      editedMap.description = ''
-      editedMap.id = null
-      dialogMode.value = 'create'
-      dialogVisible.value = true
-    }
+    currentMapId.value = mapService.getCurrentMapId()
+    console.log('Loaded maps:', maps.value, 'Count:', maps.value.length)
+  } catch (error) {
+    console.error('Error in loadMaps:', error)
+    handleError(error)
+  } finally {
+    loading.value = false
+  }
+}
 
-    // Edit existing map
-    const editMap = (mapId) => {
-      const map = maps.value.find(m => m.id === mapId)
-      if (map) {
-        editedMap.name = map.name
-        editedMap.description = map.description
-        editedMap.id = map.id
-        dialogMode.value = 'edit'
-        dialogVisible.value = true
-      }
-    }
+// Watch for changes in anonymous mode
+watch(isAnonymous, (newValue) => {
+  // Load maps regardless of anonymous state
+  loadMaps()
+})
 
-    // Save map (create or update)
-    const saveMap = async () => {
-      if (!form.value.validate()) return
+// Watch for route changes to reload maps
+watch(() => route.path, () => {
+  loadMaps()
+})
 
-      try {
-        const auth = getAuth()
-        const db = getFirestore()
+// Always reload maps when the dashboard is mounted or activated
+onMounted(() => {
+  loadMaps()
+})
 
-        if (!auth.currentUser) return
-
-        if (dialogMode.value === 'create') {
-          // Create new map
-          await addDoc(collection(db, 'maps'), {
-            name: editedMap.name,
-            description: editedMap.description,
-            userId: auth.currentUser.uid,
-            stakeholderCount: 0,
-            createdAt: serverTimestamp(),
-            lastUpdated: serverTimestamp()
-          })
-        } else {
-          // Update existing map
-          const mapRef = doc(db, 'maps', editedMap.id)
-          await updateDoc(mapRef, {
-            name: editedMap.name,
-            description: editedMap.description,
-            lastUpdated: serverTimestamp()
-          })
-        }
-
-        // Reload maps
-        await loadMaps()
-
-        // Close dialog
-        closeDialog()
-      } catch (error) {
-        console.error('Error saving map:', error)
-      }
-    }
-
-    // Open map detail view
-    const openMap = (mapId) => {
-      router.push(`/maps/${mapId}`)
-    }
-
-    // Show delete confirmation dialog
-    const confirmDeleteMap = (map) => {
-      mapToDelete.value = map
-      deleteDialogVisible.value = true
-    }
-
-    // Delete map
-    const deleteMap = async () => {
-      if (!mapToDelete.value) return
-
-      try {
-        const db = getFirestore()
-        const mapRef = doc(db, 'maps', mapToDelete.value.id)
-        await deleteDoc(mapRef)
-
-        // Reload maps
-        await loadMaps()
-
-        // Close dialog
-        deleteDialogVisible.value = false
-        mapToDelete.value = null
-      } catch (error) {
-        console.error('Error deleting map:', error)
-      }
-    }
-
-    // Close dialog
-    const closeDialog = () => {
-      dialogVisible.value = false
-      editedMap.name = ''
-      editedMap.description = ''
-      editedMap.id = null
-    }
-
-    // Format date
-    const formatDate = (date) => {
-      if (!date) return 'Unknown'
-      return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }).format(date)
-    }
-
-    // Format relative time
-    const formatTimeAgo = (date) => {
-      if (!date) return ''
-
-      const now = new Date()
-      const diffMs = now - date
-      const diffSec = Math.floor(diffMs / 1000)
-      const diffMin = Math.floor(diffSec / 60)
-      const diffHour = Math.floor(diffMin / 60)
-      const diffDay = Math.floor(diffHour / 24)
-
-      if (diffDay > 30) {
-        return formatDate(date)
-      } else if (diffDay > 0) {
-        return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`
-      } else if (diffHour > 0) {
-        return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`
-      } else if (diffMin > 0) {
-        return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`
-      } else {
-        return 'just now'
-      }
-    }
-
-    // Load maps when component is mounted
-    onMounted(() => {
-      loadMaps()
+// Create a new map
+const createNewMap = async () => {
+  try {
+    const newMap = await mapService.createMap({
+      name: 'New Stakeholder Map',
+      description: ''
     })
+    // Set current map ID first
+    await mapService.setCurrentMapId(newMap.id)
+    // Then navigate with proper path
+    router.push(`/maps/${newMap.id}`)
+  } catch (error) {
+    console.error('Error creating new map:', error)
+    error.value = 'Failed to create new map. Please try again.'
+  }
+}
 
-    return {
-      maps,
-      isLoading,
-      form,
-      isFormValid,
-      dialogVisible,
-      dialogMode,
-      editedMap,
-      deleteDialogVisible,
-      mapToDelete,
-      createNewMap,
-      editMap,
-      saveMap,
-      openMap,
-      confirmDeleteMap,
-      deleteMap,
-      closeDialog,
-      formatDate,
-      formatTimeAgo
-    }
+const selectMap = async (map) => {
+  try {
+    await mapService.setCurrentMapId(map.id)
+    currentMapId.value = map.id
+    router.push(`/maps/${map.id}`)
+  } catch (error) {
+    console.error('Error selecting map:', error)
+    error.value = 'Failed to select map. Please try again.'
+  }
+}
+
+const retryLoading = () => {
+  loadMaps()
+}
+
+const goToLogin = () => {
+  router.push('/login')
+}
+
+// Add a safe formatting function
+const safeFormatDate = (date) => {
+  if (!date) return 'Unknown date'
+  try {
+    return formatDate(date)
+  } catch (err) {
+    console.error('Error formatting date:', err, date)
+    return 'Invalid date'
   }
 }
 </script>
 
 <style scoped>
+.dashboard {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.dashboard-container {
+  padding: 24px;
+}
+
+.anonymous-mode-card,
+.loading-card,
+.error-card,
+.maps-card {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 .map-card {
-  transition: transform 0.2s;
   height: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
 .map-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-card.current-map {
+  border: 2px solid var(--v-primary-base);
+}
+
+.map-card-col {
+  margin-bottom: 24px;
+}
+
+.text-h4 {
+  color: var(--v-primary-base);
+}
+
+.text-body-1 {
+  color: var(--v-secondary-base);
 }
 </style>

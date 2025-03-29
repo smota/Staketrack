@@ -2,21 +2,52 @@
  * Application configuration
  * Contains environment-specific settings, validation rules, and defaults
  */
+
+// Check for required Firebase config and log warnings if missing
+const requiredFirebaseKeys = [
+  'APP_FIREBASE_API_KEY',
+  'APP_FIREBASE_AUTH_DOMAIN',
+  'APP_FIREBASE_PROJECT_ID'
+]
+
+// Log warning only in development mode
+if (process.env.NODE_ENV === 'development') {
+  requiredFirebaseKeys.forEach(key => {
+    if (!process.env[key]) {
+      console.warn(`Missing required Firebase configuration: ${key}`)
+    }
+  })
+}
+
 const config = {
+  // Version information
+  version: process.env.APP_VERSION || '1.0.0',
+
   // Environment-specific configuration
   env: {
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',
-    apiUrl: process.env.VUE_APP_API_URL || '',
+    apiUrl: process.env.APP_API_URL || '',
     firebaseConfig: {
-      apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
-      authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.VUE_APP_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.VUE_APP_FIREBASE_STORAGE_BUCKET,
-      messagingSenderId: process.env.VUE_APP_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.VUE_APP_FIREBASE_APP_ID
+      apiKey: process.env.APP_FIREBASE_API_KEY || '',
+      authDomain: process.env.APP_FIREBASE_AUTH_DOMAIN || '',
+      projectId: process.env.APP_FIREBASE_PROJECT_ID || '',
+      storageBucket: process.env.APP_FIREBASE_STORAGE_BUCKET || '',
+      messagingSenderId: process.env.APP_FIREBASE_MESSAGING_SENDER_ID || '',
+      appId: process.env.APP_FIREBASE_APP_ID || '',
+      measurementId: process.env.APP_FIREBASE_MEASUREMENT_ID || ''
     },
-    anthropicApiKey: process.env.VUE_APP_ANTHROPIC_API_KEY
+    useEmulators: process.env.APP_USE_EMULATORS === 'true',
+    firebase: {
+      functionsRegion: process.env.APP_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
+    }
+  },
+
+  // AI Configuration
+  ai: {
+    enabled: process.env.APP_AI_ENABLED === 'true',
+    model: process.env.APP_AI_MODEL || 'gemini-1.5-pro',
+    weeklyLimit: parseInt(process.env.APP_AI_WEEKLY_LIMIT || '10', 10)
   },
 
   // Validation rules
@@ -73,7 +104,6 @@ const config = {
   // Feature flags
   features: {
     enableAIRecommendations: true,
-    enableExport: true,
     enableSharing: true,
     enableTemplates: true
   },

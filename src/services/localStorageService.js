@@ -1,12 +1,32 @@
+import { Map } from '@/models/Map'
+import { Stakeholder } from '@/models/Stakeholder'
+
+const STORAGE_KEYS = {
+  MAPS: 'staketrack_maps',
+  CURRENT_MAP: 'staketrack_current_map',
+  VERSION: 'staketrack_data_version'
+}
+
+const CURRENT_VERSION = '1.0'
+
 /**
  * Local Storage Service - Manages data persistence in browser's local storage
  */
 class LocalStorageService {
   constructor() {
     this.prefix = 'staketrack_'
-    this.mapsKey = `${this.prefix}maps`
-    this.currentMapKey = `${this.prefix}current_map_id`
+    this.mapsKey = STORAGE_KEYS.MAPS
+    this.currentMapKey = STORAGE_KEYS.CURRENT_MAP
     this.settingsKey = `${this.prefix}settings`
+
+    // Initialize with static methods for backward compatibility
+    this.getMaps = this._getMaps.bind(this)
+    this.saveMaps = this._saveMaps.bind(this)
+    this.getMap = this._getMap.bind(this)
+    this.saveMap = this._saveMap.bind(this)
+    this.deleteMap = this._deleteMap.bind(this)
+    this.setCurrentMapId = this._setCurrentMapId.bind(this)
+    this.getCurrentMapId = this._getCurrentMapId.bind(this)
   }
 
   /**
@@ -82,20 +102,44 @@ class LocalStorageService {
   }
 
   /**
-   * Get maps from local storage
-   * @returns {Array} - Array of map objects or empty array if not found
+   * Get all maps from local storage
+   * @returns {Map[]}
    */
-  getMaps() {
-    return this._getItem(this.mapsKey) || []
+  _getMaps() {
+    try {
+      const data = localStorage.getItem(this.mapsKey)
+      console.log('DEBUG: Raw data from localStorage:', data, 'using key:', this.mapsKey)
+      if (!data) return []
+
+      const maps = JSON.parse(data)
+      console.log('DEBUG: Parsed maps from localStorage:', maps)
+      return maps.map(map => new Map(map))
+    } catch (error) {
+      console.error('Error getting maps from local storage:', error)
+      return []
+    }
   }
 
   /**
    * Save maps to local storage
-   * @param {Array} maps - Array of map objects
-   * @returns {boolean} - True if successful, false otherwise
+   * @param {Map[]} maps
    */
-  saveMaps(maps) {
-    return this._setItem(this.mapsKey, maps)
+  _saveMaps(maps) {
+    try {
+      console.log('DEBUG: Saving maps array to localStorage:', maps, 'using key:', this.mapsKey)
+      const data = maps.map(map => map.toJSON ? map.toJSON() : map)
+      console.log('DEBUG: Serialized maps data:', data)
+      localStorage.setItem(this.mapsKey, JSON.stringify(data))
+
+      // Verify storage
+      const verification = localStorage.getItem(this.mapsKey)
+      console.log('DEBUG: Verification from localStorage after save:', verification)
+
+      return true
+    } catch (error) {
+      console.error('Error saving maps to local storage:', error)
+      return false
+    }
   }
 
   /**
@@ -104,7 +148,24 @@ class LocalStorageService {
    * @returns {Array} - Array of stakeholder objects or empty array if not found
    */
   getStakeholders(mapId) {
-    return this._getItem(`${this.prefix}stakeholders_${mapId}`) || []
+    try {
+      const key = `${this.prefix}stakeholders_${mapId}`
+      console.log(`DEBUG: Getting stakeholders from localStorage with key: ${key}`)
+      const data = localStorage.getItem(key)
+      console.log('DEBUG: Raw stakeholder data from localStorage:', data)
+
+      if (!data) return []
+
+      // Parse the JSON data
+      const stakeholderData = JSON.parse(data)
+      console.log('DEBUG: Parsed stakeholder data:', stakeholderData)
+
+      // Convert plain objects to Stakeholder instances
+      return stakeholderData.map(data => new Stakeholder(data))
+    } catch (error) {
+      console.error('Error getting stakeholders from localStorage:', error)
+      return []
+    }
   }
 
   /**
@@ -114,7 +175,36 @@ class LocalStorageService {
    * @returns {boolean} - True if successful, false otherwise
    */
   saveStakeholders(mapId, stakeholders) {
-    return this._setItem(`${this.prefix}stakeholders_${mapId}`, stakeholders)
+    try {
+      const key = `${this.prefix}stakeholders_${mapId}`
+      console.log(`DEBUG: Saving stakeholders to localStorage with key: ${key}`)
+
+      // Convert Stakeholder instances to plain objects
+      const data = stakeholders.map(stakeholder => {
+        // If stakeholder has toObject or toJSON method, use it
+        if (stakeholder.toObject) {
+          return stakeholder.toObject()
+        } else if (stakeholder.toJSON) {
+          return stakeholder.toJSON()
+        } else {
+          // Otherwise use as is
+          return stakeholder
+        }
+      })
+
+      console.log('DEBUG: Serialized stakeholder data:', data)
+
+      localStorage.setItem(key, JSON.stringify(data))
+
+      // Verify storage
+      const verification = localStorage.getItem(key)
+      console.log('DEBUG: Verification from localStorage after save:', verification)
+
+      return true
+    } catch (error) {
+      console.error('Error saving stakeholders to localStorage:', error)
+      return false
+    }
   }
 
   /**
@@ -127,20 +217,100 @@ class LocalStorageService {
   }
 
   /**
-   * Get current map ID from local storage
-   * @returns {string|null} - Current map ID or null if not found
+   * Get a map by ID from local storage
+   * @param {string} id
+   * @returns {Map|null}
    */
-  getCurrentMapId() {
-    return this._getItem(this.currentMapKey)
+  _getMap(id) {
+    try {
+      const maps = this._getMaps()
+      const map = maps.find(m => m.id === id)
+      return map || null
+    } catch (error) {
+      console.error('Error getting map from local storage:', error)
+      return null
+    }
   }
 
   /**
-   * Save current map ID to local storage
-   * @param {string} mapId - Map ID
+   * Save a map to local storage
+   * @param {Map} map
+   */
+  _saveMap(map) {
+    try {
+      console.log('DEBUG: Saving map to localStorage:', map)
+      const maps = this._getMaps()
+      const index = maps.findIndex(m => m.id === map.id)
+
+      if (index === -1) {
+        console.log('DEBUG: Adding new map to array')
+        maps.push(map)
+      } else {
+        console.log('DEBUG: Updating existing map at index', index)
+        maps[index] = map
+      }
+
+      const result = this._saveMaps(maps)
+      console.log('DEBUG: Result of saving maps:', result)
+      return result
+    } catch (error) {
+      console.error('Error saving map to local storage:', error)
+      return false
+    }
+  }
+
+  /**
+   * Delete a map from local storage
+   * @param {string} id
+   */
+  _deleteMap(id) {
+    try {
+      const maps = this._getMaps().filter(map => map.id !== id)
+      this._saveMaps(maps)
+
+      // If this was the current map, clear it
+      if (this._getCurrentMapId() === id) {
+        this._setCurrentMapId(null)
+      }
+      return true
+    } catch (error) {
+      console.error('Error deleting map from local storage:', error)
+      return false
+    }
+  }
+
+  /**
+   * Set current map ID in local storage
+   * @param {string} id
    * @returns {boolean} - True if successful, false otherwise
    */
-  saveCurrentMapId(mapId) {
-    return this._setItem(this.currentMapKey, mapId)
+  _setCurrentMapId(id) {
+    try {
+      console.log('DEBUG: Saving current map ID to localStorage:', id, 'using key:', this.currentMapKey)
+      if (id) {
+        return this._setItem(this.currentMapKey, id)
+      } else {
+        return this._removeItem(this.currentMapKey)
+      }
+    } catch (error) {
+      console.error('Error setting current map ID in local storage:', error)
+      return false
+    }
+  }
+
+  /**
+   * Get current map ID from local storage
+   * @returns {string|null} - Map ID or null if not found
+   */
+  _getCurrentMapId() {
+    try {
+      const id = this._getItem(this.currentMapKey)
+      console.log('DEBUG: Retrieved current map ID from localStorage:', id, 'using key:', this.currentMapKey)
+      return id
+    } catch (error) {
+      console.error('Error getting current map ID from local storage:', error)
+      return null
+    }
   }
 
   /**
@@ -249,6 +419,32 @@ class LocalStorageService {
     } else {
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     }
+  }
+
+  /**
+   * Initialize local storage
+   */
+  static init() {
+    try {
+      // Check version and migrate if needed
+      const version = localStorage.getItem(STORAGE_KEYS.VERSION)
+      if (version !== CURRENT_VERSION) {
+        this._migrateData(version)
+      }
+    } catch (error) {
+      console.error('Error initializing local storage:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Migrate data to new version
+   * @private
+   * @param {string|null} fromVersion
+   */
+  static _migrateData(fromVersion) {
+    // Implement migration strategies here
+    localStorage.setItem(STORAGE_KEYS.VERSION, CURRENT_VERSION)
   }
 }
 

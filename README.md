@@ -46,14 +46,14 @@ Create `.env.development.local` and `.env.production.local` files for your envir
 
 ```
 # .env.development.local example
-VUE_APP_FIREBASE_API_KEY=your-dev-api-key
-VUE_APP_FIREBASE_AUTH_DOMAIN=your-project-dev.firebaseapp.com
-VUE_APP_FIREBASE_PROJECT_ID=your-project-dev
-VUE_APP_FIREBASE_STORAGE_BUCKET=your-project-dev.appspot.com
-VUE_APP_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
-VUE_APP_FIREBASE_APP_ID=your-app-id
-VUE_APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
-VUE_APP_ANTHROPIC_API_KEY=your-anthropic-api-key
+APP_FIREBASE_API_KEY=your-dev-api-key
+APP_FIREBASE_AUTH_DOMAIN=your-project-dev.firebaseapp.com
+APP_FIREBASE_PROJECT_ID=your-project-dev
+APP_FIREBASE_STORAGE_BUCKET=your-project-dev.appspot.com
+APP_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+APP_FIREBASE_APP_ID=your-app-id
+APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
+APP_ANTHROPIC_API_KEY=your-anthropic-api-key
 ```
 
 ### Development
@@ -150,6 +150,64 @@ staketrack-vue/
 - **Local Development**: Uses `.env.development.local` (gitignored)
 - **Production**: Secrets are stored in Firebase Functions environment variables
 - **CI/CD**: Secrets are stored in GitHub Actions secrets
+
+## Environment Setup
+
+The application uses environment variables for configuration. Follow these steps to set up your development environment:
+
+### 1. Environment Files Structure
+
+The project uses the following environment files:
+
+- `.env.local.example` - Template file with placeholder values (committed to git)
+- `.env.development` - Development environment configuration (committed to git)
+- `.env.staging` - Staging environment configuration (committed to git)
+- `.env.development.local` - Local development secrets (not committed)
+- `.env.staging.local` - Staging environment secrets (not committed)
+- `.env.production.local` - Production environment secrets (not committed)
+
+### 2. Setting Up Local Development
+
+1. Copy the example file to create your local environment:
+   ```bash
+   cp .env.local.example .env.development.local
+   ```
+
+2. Update `.env.development.local` with your actual values:
+   - Get Firebase configuration from your Firebase Console
+   - Add your Anthropic API key
+   - Keep other values as they are for local development
+
+3. The application will automatically use the correct environment based on:
+   - The hostname (localhost, staging, or production)
+   - The presence of `.env.[environment].local` files
+
+### 3. Environment Variables
+
+Key environment variables:
+
+- `APP_ENVIRONMENT`: Current environment (DEV, STAGING, PRD)
+- `APP_USE_EMULATORS`: Enable/disable Firebase emulators
+- `APP_ENABLE_ANALYTICS`: Enable/disable analytics
+- `APP_API_BASE_URL`: Base URL for API endpoints
+- Firebase configuration variables (API keys, project IDs, etc.)
+- External service API keys
+
+### 4. Security Notes
+
+- Never commit `.env.*.local` files containing real secrets
+- Keep your API keys and secrets secure
+- Use different API keys for development and production
+- The application uses Firebase Functions to securely provide configuration
+
+### 5. Troubleshooting
+
+If you encounter environment-related issues:
+
+1. Check that your `.env.development.local` file exists and has all required variables
+2. Verify that the Firebase emulators are running if using local development
+3. Check the browser console for environment loading errors
+4. Ensure you're using the correct Firebase project configuration
 
 ## License
 

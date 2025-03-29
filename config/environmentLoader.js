@@ -58,7 +58,7 @@ async function fetchFirebaseConfig() {
       const config = await response.json()
 
       // Make sure the config has the required fields
-      if (!config.FIREBASE_API_KEY || !config.FIREBASE_PROJECT_ID) {
+      if (!config.APP_FIREBASE_API_KEY || !config.APP_FIREBASE_PROJECT_ID) {
         throw new Error('Incomplete configuration received from server')
       }
 
@@ -66,7 +66,7 @@ async function fetchFirebaseConfig() {
       Object.assign(window.ENV, config)
       Object.assign(envData, config)
 
-      console.log(`Environment loaded: ${config.ENVIRONMENT || envName}`)
+      console.log(`Environment loaded: ${config.APP_ENVIRONMENT || envName}`)
 
       // Dispatch event to signal environment has been loaded
       window.dispatchEvent(new CustomEvent('env:loaded', { detail: config }))
@@ -88,7 +88,7 @@ async function fetchFirebaseConfig() {
           Object.assign(window.ENV, fallbackConfig)
           Object.assign(envData, fallbackConfig)
 
-          console.log(`Environment loaded from fallback: ${fallbackConfig.ENVIRONMENT}`)
+          console.log(`Environment loaded from fallback: ${fallbackConfig.APP_ENVIRONMENT}`)
 
           // Dispatch event with fallback config
           window.dispatchEvent(new CustomEvent('env:loaded', { detail: fallbackConfig }))
@@ -101,31 +101,31 @@ async function fetchFirebaseConfig() {
       // If we're in staging environment, use hardcoded staging values
       if (envName === 'staging' || hostname.includes('staketrack-dev')) {
         const stagingConfig = {
-          ENVIRONMENT: 'STAGING',
-          FIREBASE_API_KEY: 'AIzaSyDX_QLoBYkAX9o-_9RE4QJjZt47VrQDNFM',
-          FIREBASE_AUTH_DOMAIN: 'staketrack-dev.firebaseapp.com',
-          FIREBASE_PROJECT_ID: 'staketrack-dev',
-          FIREBASE_STORAGE_BUCKET: 'staketrack-dev.appspot.com',
-          FIREBASE_MESSAGING_SENDER_ID: '376336482298',
-          FIREBASE_APP_ID: '1:376336482298:web:fecd532b9c13e3c94f1321',
-          FIREBASE_MEASUREMENT_ID: 'G-XXXXXXXXXX',
-          USE_EMULATORS: 'false',
-          CONFIG_INCOMPLETE: false
+          APP_ENVIRONMENT: 'STAGING',
+          APP_FIREBASE_API_KEY: '',
+          APP_FIREBASE_AUTH_DOMAIN: 'staketrack-dev.firebaseapp.com',
+          APP_FIREBASE_PROJECT_ID: 'staketrack-dev',
+          APP_FIREBASE_STORAGE_BUCKET: 'staketrack-dev.appspot.com',
+          APP_FIREBASE_MESSAGING_SENDER_ID: '',
+          APP_FIREBASE_APP_ID: '',
+          APP_FIREBASE_MEASUREMENT_ID: 'G-XXXXXXXXXX',
+          APP_USE_EMULATORS: 'false',
+          CONFIG_INCOMPLETE: true
         }
 
         Object.assign(window.ENV, stagingConfig)
         Object.assign(envData, stagingConfig)
 
-        console.log('Using hardcoded staging configuration')
+        console.log('Using fallback staging configuration with incomplete credentials')
         window.dispatchEvent(new CustomEvent('env:loaded', { detail: stagingConfig }))
         return
       }
 
       // For all environments, create minimal configuration without sensitive data
       const defaultEmptyConfig = {
-        ENVIRONMENT: hostname.includes('localhost') ? 'DEV' :
+        APP_ENVIRONMENT: hostname.includes('localhost') ? 'DEV' :
           (hostname.includes('staketrack-dev') ? 'STAGING' : 'PRD'),
-        USE_EMULATORS: hostname.includes('localhost') ? 'true' : 'false',
+        APP_USE_EMULATORS: hostname.includes('localhost') ? 'true' : 'false',
         CONFIG_INCOMPLETE: true
       }
 
@@ -147,8 +147,8 @@ async function fetchFirebaseConfig() {
 
     // Create minimal default configuration without sensitive data
     const defaultEmptyConfig = {
-      ENVIRONMENT: 'UNKNOWN',
-      USE_EMULATORS: 'false',
+      APP_ENVIRONMENT: 'UNKNOWN',
+      APP_USE_EMULATORS: 'false',
       CONFIG_INCOMPLETE: true
     }
 

@@ -1,75 +1,88 @@
 // Update to use global Firebase variables
 // import { auth, firestore, analytics } from '../../firebase/firebaseConfig.js';
-import { EventBus } from '../utils/eventBus.js';
+import { EventBus } from '../utils/eventBus.js'
 
 /**
  * Authentication Service - Handles user authentication operations
  */
 export class AuthService {
   constructor() {
-    this.currentUser = null;
-    this.initialized = false;
-    this.initializationError = null;
+    this.currentUser = null
+    this.initialized = false
+    this.initializationError = null
 
-    // Get Firebase objects from window
-    this.auth = window.firebaseAuth;
-    this.firestore = window.firebaseFirestore;
-    this.analytics = window.firebaseAnalytics;
+    // Wait for Firebase initialization
+    this._waitForFirebaseInit()
+  }
 
-    // Check if Firebase is configured properly
-    if (!this.auth || !this.firestore) {
-      this.initializationError = new Error('Firebase services not available');
-      console.warn('Firebase services are not properly initialized:', this.initializationError);
-      // Mark as initialized to prevent waiting indefinitely
-      this.initialized = true;
-      // Emit initialized event
-      setTimeout(() => {
-        EventBus.emit('auth:initialized', null);
-        EventBus.emit('auth:error', this.initializationError);
-      }, 0);
+  /**
+   * Wait for Firebase to be initialized before setting up auth
+   * @private
+   */
+  _waitForFirebaseInit() {
+    if (window.firebaseAuth && window.firebaseFirestore) {
+      this._initAuth()
     } else {
-      // Initialize authentication state
-      this._initAuth();
+      // Wait for Firebase initialization event
+      const initListener = () => {
+        window.removeEventListener('firebase:initialized', initListener)
+        this._initAuth()
+      }
+
+      const errorListener = (event) => {
+        window.removeEventListener('firebase:error', errorListener)
+        this.initializationError = event.detail.error
+        console.error('Firebase initialization error:', this.initializationError)
+        this.initialized = true
+        EventBus.emit('auth:error', this.initializationError)
+      }
+
+      window.addEventListener('firebase:initialized', initListener)
+      window.addEventListener('firebase:error', errorListener)
+
+      // Fallback timeout
+      setTimeout(() => {
+        window.removeEventListener('firebase:initialized', initListener)
+        window.removeEventListener('firebase:error', errorListener)
+        this.initializationError = new Error('Firebase initialization timeout')
+        console.error('Firebase initialization timeout')
+        this.initialized = true
+        EventBus.emit('auth:error', this.initializationError)
+      }, 5000)
     }
   }
 
   /**
-   * Initialize the authentication state listener
+   * Initialize authentication state
    * @private
    */
   _initAuth() {
-    try {
-      this.auth.onAuthStateChanged(user => {
-        this.currentUser = user;
-        this.initialized = true;
-
-        // Notify the application of auth state change
-        if (user) {
-          EventBus.emit('auth:login', user);
-          if (this.analytics && typeof this.analytics.logEvent === 'function') {
-            this.analytics.setUserId(user.uid);
-            this.analytics.logEvent('login');
-          }
-        } else {
-          EventBus.emit('auth:logout');
-        }
-
-        // Emit initialized event once
-        EventBus.emit('auth:initialized', user);
-      }, error => {
-        console.error('Auth state change error:', error);
-        this.initialized = true;
-        this.initializationError = error;
-        EventBus.emit('auth:error', error);
-        EventBus.emit('auth:initialized', null);
-      });
-    } catch (error) {
-      console.error('Failed to initialize auth state listener:', error);
-      this.initialized = true;
-      this.initializationError = error;
-      EventBus.emit('auth:error', error);
-      EventBus.emit('auth:initialized', null);
+    if (!window.firebaseAuth) {
+      this.initializationError = new Error('Firebase Auth not available')
+      console.error('Firebase Auth not available')
+      this.initialized = true
+      EventBus.emit('auth:error', this.initializationError)
+      return
     }
+
+    // Get Firebase objects from window
+    this.auth = window.firebaseAuth
+    this.firestore = window.firebaseFirestore
+    this.analytics = window.firebaseAnalytics
+
+    // Set up auth state listener
+    this.auth.onAuthStateChanged(
+      (user) => {
+        this.currentUser = user
+        this.initialized = true
+        EventBus.emit('auth:stateChanged', user)
+      },
+      (error) => {
+        console.error('Auth state change error:', error)
+        this.initializationError = error
+        EventBus.emit('auth:error', error)
+      }
+    )
   }
 
   /**
@@ -77,7 +90,7 @@ export class AuthService {
    * @returns {Object|null} - Firebase user object or null if not authenticated
    */
   getCurrentUser() {
-    return this.currentUser;
+    return this.currentUser
   }
 
   /**
@@ -85,7 +98,7 @@ export class AuthService {
    * @returns {boolean} - True if user is authenticated, false otherwise
    */
   isAuthenticated() {
-    return !!this.currentUser;
+    return !!this.currentUser
   }
 
   /**
@@ -96,20 +109,20 @@ export class AuthService {
    */
   async signInWithEmailPassword(email, password) {
     if (!this.auth) {
-      const error = new Error('Firebase authentication is not available');
-      error.code = 'auth/service-unavailable';
-      throw error;
+      const error = new Error('Firebase authentication is not available')
+      error.code = 'auth/service-unavailable'
+      throw error
     }
 
     try {
-      const result = await this.auth.signInWithEmailAndPassword(email, password);
+      const result = await this.auth.signInWithEmailAndPassword(email, password)
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('login_method', { method: 'email' });
+        this.analytics.logEvent('login_method', { method: 'email' })
       }
-      return result.user;
+      return result.user
     } catch (error) {
-      console.error('Email sign in error:', error);
-      throw error;
+      console.error('Email sign in error:', error)
+      throw error
     }
   }
 
@@ -121,26 +134,26 @@ export class AuthService {
    */
   async createUserWithEmailPassword(email, password) {
     if (!this.auth) {
-      const error = new Error('Firebase authentication is not available');
-      error.code = 'auth/service-unavailable';
-      throw error;
+      const error = new Error('Firebase authentication is not available')
+      error.code = 'auth/service-unavailable'
+      throw error
     }
 
     try {
-      const result = await this.auth.createUserWithEmailAndPassword(email, password);
+      const result = await this.auth.createUserWithEmailAndPassword(email, password)
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('sign_up', { method: 'email' });
+        this.analytics.logEvent('sign_up', { method: 'email' })
       }
 
       // Create user document in Firestore if available
       if (this.firestore && result.user) {
-        await this._createUserDocument(result.user);
+        await this._createUserDocument(result.user)
       }
 
-      return result.user;
+      return result.user
     } catch (error) {
-      console.error('Create account error:', error);
-      throw error;
+      console.error('Create account error:', error)
+      throw error
     }
   }
 
@@ -150,27 +163,27 @@ export class AuthService {
    */
   async signInWithGoogle() {
     if (!this.auth || !window.firebase || !window.firebase.auth) {
-      const error = new Error('Firebase authentication is not available');
-      error.code = 'auth/service-unavailable';
-      throw error;
+      const error = new Error('Firebase authentication is not available')
+      error.code = 'auth/service-unavailable'
+      throw error
     }
 
     try {
-      const provider = new window.firebase.auth.GoogleAuthProvider();
-      const result = await this.auth.signInWithPopup(provider);
+      const provider = new window.firebase.auth.GoogleAuthProvider()
+      const result = await this.auth.signInWithPopup(provider)
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('login_method', { method: 'google' });
+        this.analytics.logEvent('login_method', { method: 'google' })
       }
 
       // Create user document if it doesn't exist
       if (this.firestore && result.user) {
-        await this._createUserDocument(result.user);
+        await this._createUserDocument(result.user)
       }
 
-      return result.user;
+      return result.user
     } catch (error) {
-      console.error('Google sign in error:', error);
-      throw error;
+      console.error('Google sign in error:', error)
+      throw error
     }
   }
 
@@ -180,27 +193,27 @@ export class AuthService {
    */
   async signInWithMicrosoft() {
     if (!this.auth || !window.firebase || !window.firebase.auth) {
-      const error = new Error('Firebase authentication is not available');
-      error.code = 'auth/service-unavailable';
-      throw error;
+      const error = new Error('Firebase authentication is not available')
+      error.code = 'auth/service-unavailable'
+      throw error
     }
 
     try {
-      const provider = new window.firebase.auth.OAuthProvider('microsoft.com');
-      const result = await this.auth.signInWithPopup(provider);
+      const provider = new window.firebase.auth.OAuthProvider('microsoft.com')
+      const result = await this.auth.signInWithPopup(provider)
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('login_method', { method: 'microsoft' });
+        this.analytics.logEvent('login_method', { method: 'microsoft' })
       }
 
       // Create user document if it doesn't exist
       if (this.firestore && result.user) {
-        await this._createUserDocument(result.user);
+        await this._createUserDocument(result.user)
       }
 
-      return result.user;
+      return result.user
     } catch (error) {
-      console.error('Microsoft sign in error:', error);
-      throw error;
+      console.error('Microsoft sign in error:', error)
+      throw error
     }
   }
 
@@ -210,17 +223,17 @@ export class AuthService {
    */
   async signOut() {
     if (!this.auth) {
-      return Promise.resolve();
+      return Promise.resolve()
     }
 
     try {
       if (this.analytics && typeof this.analytics.logEvent === 'function') {
-        this.analytics.logEvent('logout');
+        this.analytics.logEvent('logout')
       }
-      return await this.auth.signOut();
+      return await this.auth.signOut()
     } catch (error) {
-      console.error('Sign out error:', error);
-      throw error;
+      console.error('Sign out error:', error)
+      throw error
     }
   }
 
@@ -232,13 +245,13 @@ export class AuthService {
    */
   async _createUserDocument(user) {
     if (!this.firestore || !window.firebase || !window.firebase.firestore) {
-      console.warn('Firestore is not available, skipping user document creation');
-      return Promise.resolve();
+      console.warn('Firestore is not available, skipping user document creation')
+      return Promise.resolve()
     }
 
     try {
       // Check if user document already exists
-      const userDoc = await this.firestore.collection('users').doc(user.uid).get();
+      const userDoc = await this.firestore.collection('users').doc(user.uid).get()
 
       if (!userDoc.exists) {
         // Create new user document
@@ -248,15 +261,15 @@ export class AuthService {
           photoURL: user.photoURL || '',
           createdAt: window.firebase.firestore.FieldValue.serverTimestamp(),
           lastLogin: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
+        })
       } else {
         // Update last login timestamp
         await this.firestore.collection('users').doc(user.uid).update({
           lastLogin: window.firebase.firestore.FieldValue.serverTimestamp()
-        });
+        })
       }
     } catch (error) {
-      console.error('Create user document error:', error);
+      console.error('Create user document error:', error)
       // Don't throw the error to prevent authentication from failing
       // just because the user document couldn't be created
     }
@@ -269,28 +282,28 @@ export class AuthService {
   waitForInitialization() {
     return new Promise(resolve => {
       if (this.initialized) {
-        resolve(this.currentUser);
+        resolve(this.currentUser)
       } else {
         const unsubscribe = EventBus.on('auth:initialized', user => {
-          unsubscribe();
-          resolve(user);
-        });
+          unsubscribe()
+          resolve(user)
+        })
 
         // Add a timeout to prevent waiting indefinitely
         setTimeout(() => {
           if (!this.initialized) {
-            console.warn('Authentication initialization timed out');
-            this.initialized = true;
-            this.initializationError = new Error('Authentication initialization timed out');
-            unsubscribe();
-            resolve(null);
-            EventBus.emit('auth:error', this.initializationError);
+            console.warn('Authentication initialization timed out')
+            this.initialized = true
+            this.initializationError = new Error('Authentication initialization timed out')
+            unsubscribe()
+            resolve(null)
+            EventBus.emit('auth:error', this.initializationError)
           }
-        }, 5000); // 5 seconds timeout
+        }, 5000) // 5 seconds timeout
       }
-    });
+    })
   }
 }
 
 // Singleton instance
-export default new AuthService();
+export default new AuthService()

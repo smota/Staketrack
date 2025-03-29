@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { getDoc, doc } from 'firebase/firestore'
+import { db } from '../firebase'
 
 // View components
 const Home = () => import('../views/Home.vue')
@@ -9,6 +11,7 @@ const StakeholderMap = () => import('../views/StakeholderMap.vue')
 const StakeholderDetail = () => import('../views/StakeholderDetail.vue')
 const Settings = () => import('../views/Settings.vue')
 const NotFound = () => import('../views/NotFound.vue')
+const AdminSettings = () => import('../views/AdminSettings.vue')
 
 // Routes configuration
 const routes = [
@@ -49,6 +52,15 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/admin/settings',
+    name: 'AdminSettings',
+    component: AdminSettings,
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound
@@ -56,28 +68,31 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(process.env.BASE_URL || '/'),
   routes
 })
 
-// Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+// Navigation Guard
+router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
   const auth = getAuth()
+  const currentUser = auth.currentUser
 
-  if (requiresAuth) {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe()
-      if (user) {
-        next()
+  if (requiresAuth && !currentUser) {
+    next('/login')
+  } else if (requiresAdmin) {
+    // Check if user is admin
+    if (!currentUser) {
+      next('/login')
+    } else {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+      if (userDoc.exists() && userDoc.data().isAdmin === true) {
+        next() // User is admin, allow access
       } else {
-        // Redirect to login and save intended destination
-        next({
-          path: '/login',
-          query: { redirect: to.fullPath }
-        })
+        next('/') // Not admin, redirect to home
       }
-    })
+    }
   } else {
     next()
   }

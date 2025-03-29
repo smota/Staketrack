@@ -20,9 +20,19 @@ import {
 } from 'firebase/firestore'
 import { Stakeholder } from '@/models/Stakeholder'
 import { StakeholderMap } from '@/models/StakeholderMap'
+import { localStorageService } from './localStorageService'
 import aiService from './aiService'
 
 class StakeholderService {
+  /**
+   * Check if using local storage mode
+   * @private
+   * @returns {boolean}
+   */
+  _isLocalMode() {
+    return !auth.currentUser || auth.currentUser.isAnonymous
+  }
+
   /**
    * Collection references
    */
@@ -449,6 +459,53 @@ class StakeholderService {
   }
 
   /**
+   * Get stakeholders for a map
+   * @param {string} mapId - The map ID
+   * @returns {Promise<Array>} Array of stakeholders
+   */
+  async getStakeholders(mapId) {
+    try {
+      if (this._isLocalMode()) {
+        console.log('Using localStorage for stakeholder retrieval (anonymous mode)')
+        const stakeholders = localStorageService.getStakeholders(mapId) || []
+        console.log('Retrieved stakeholders from localStorage:', stakeholders)
+
+        // Ensure each stakeholder is a Stakeholder instance
+        const validStakeholders = stakeholders.map(s => {
+          if (!(s instanceof Stakeholder)) {
+            console.log('Converting plain object to Stakeholder instance:', s)
+            return new Stakeholder(s)
+          }
+          return s
+        })
+
+        console.log('Final stakeholders array for anonymous mode:', validStakeholders)
+        return validStakeholders
+      }
+
+      // Check access
+      const hasAccess = await this.hasMapAccess(mapId)
+      if (!hasAccess) {
+        throw new Error('Access denied to this stakeholder map')
+      }
+
+      // Get the stakeholders collection
+      const stakeholdersCollection = this.getStakeholdersCollection(mapId)
+      const stakeholderDocs = await getDocs(stakeholdersCollection)
+
+      // Transform to Stakeholder instances
+      return stakeholderDocs.docs.map(doc => {
+        const data = this._prepareDocData(doc.data(), doc.id)
+        return new Stakeholder(data)
+      })
+    } catch (error) {
+      console.error('Error getting stakeholders:', error)
+      // Return empty array instead of throwing in case of error
+      return []
+    }
+  }
+
+  /**
    * Add a stakeholder to a map
    * @param {string} mapId - The map ID
    * @param {Object} stakeholderData - Stakeholder data
@@ -456,19 +513,36 @@ class StakeholderService {
    */
   async addStakeholder(mapId, stakeholderData) {
     try {
+      if (this._isLocalMode()) {
+        // Handle localStorage implementation
+        const stakeholders = await this.getStakeholders(mapId)
+
+        // Generate a unique ID and create stakeholder with that ID
+        const newId = Date.now().toString()
+        // Create the stakeholder with the ID already set
+        const stakeholder = new Stakeholder({
+          ...stakeholderData,
+          id: newId,
+          mapId
+        })
+
+        stakeholders.push(stakeholder)
+        localStorageService.saveStakeholders(mapId, stakeholders)
+        return stakeholder
+      }
+
+      // Create stakeholder instance for Firebase
+      const stakeholder = new Stakeholder({
+        ...stakeholderData,
+        mapId
+      })
+
       // Check access
       const hasAccess = await this.hasMapAccess(mapId)
 
       if (!hasAccess) {
         throw new Error('Access denied to this stakeholder map')
       }
-
-      // Create stakeholder model
-      const stakeholder = new Stakeholder({
-        ...stakeholderData,
-        mapId,
-        createdBy: this.currentUserId
-      })
 
       // Prepare data for Firestore (without interactions)
       const { interactions, ...stakeholderForStore } = stakeholder.toObject()
@@ -504,7 +578,7 @@ class StakeholderService {
         updatedAt: serverTimestamp()
       })
 
-      // Return the created stakeholder with the new ID
+      // Return the created stakeholder with the new ID by creating a new instance
       return new Stakeholder({
         ...stakeholder.toObject(),
         id: stakeholderDocRef.id
@@ -563,11 +637,30 @@ class StakeholderService {
    * Update a stakeholder
    * @param {string} mapId - The map ID
    * @param {string} stakeholderId - The stakeholder ID
-   * @param {Object} updates - Stakeholder updates
+   * @param {Object} updates - Updates to apply
    * @returns {Promise<Stakeholder>} Updated stakeholder
    */
   async updateStakeholder(mapId, stakeholderId, updates) {
     try {
+      if (this._isLocalMode()) {
+        const stakeholders = await this.getStakeholders(mapId)
+        const index = stakeholders.findIndex(s => s.id === stakeholderId)
+
+        if (index === -1) {
+          throw new Error('Stakeholder not found')
+        }
+
+        // Update the stakeholder
+        stakeholders[index] = {
+          ...stakeholders[index],
+          ...updates,
+          updatedAt: new Date()
+        }
+
+        localStorageService.saveStakeholders(mapId, stakeholders)
+        return stakeholders[index]
+      }
+
       // Check access
       const hasAccess = await this.hasMapAccess(mapId)
 
@@ -611,6 +704,18 @@ class StakeholderService {
    */
   async deleteStakeholder(mapId, stakeholderId) {
     try {
+      if (this._isLocalMode()) {
+        const stakeholders = await this.getStakeholders(mapId)
+        const filteredStakeholders = stakeholders.filter(s => s.id !== stakeholderId)
+
+        if (filteredStakeholders.length === stakeholders.length) {
+          throw new Error('Stakeholder not found')
+        }
+
+        localStorageService.saveStakeholders(mapId, filteredStakeholders)
+        return
+      }
+
       // Check access
       const hasAccess = await this.hasMapAccess(mapId)
 

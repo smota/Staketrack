@@ -231,142 +231,61 @@
       <v-window-item value="data">
         <v-card flat>
           <v-card-title>Data Management</v-card-title>
-          <v-card-subtitle>Import, export, and manage your data</v-card-subtitle>
+          <v-card-subtitle>Manage your data</v-card-subtitle>
 
           <v-card-text>
-            <v-expansion-panels variant="accordion">
-              <!-- Export Data -->
-              <v-expansion-panel>
-                <v-expansion-panel-title>
-                  <div class="d-flex align-center">
-                    <v-icon color="primary" class="mr-2">
-                      mdi-export
-                    </v-icon>
-                    Export Data
-                  </div>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <p class="mb-4">
-                    Export all your stakeholder maps and data for backup or transfer.
-                  </p>
-
-                  <v-checkbox
-                    v-model="exportOptions.includeStakeholders"
-                    label="Include Stakeholders"
-                    hide-details
-                  />
-
-                  <v-checkbox
-                    v-model="exportOptions.includeInteractions"
-                    label="Include Interaction History"
-                    hide-details
-                    class="mt-2"
-                  />
-
-                  <v-checkbox
-                    v-model="exportOptions.includeDocuments"
-                    label="Include Documents & Notes"
-                    hide-details
-                    class="mt-2"
-                  />
-
-                  <v-row class="mt-4">
-                    <v-col>
-                      <v-btn color="primary" :loading="exporting" @click="exportData">
-                        Export Data
-                      </v-btn>
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-
-              <!-- Import Data -->
-              <v-expansion-panel>
-                <v-expansion-panel-title>
-                  <div class="d-flex align-center">
-                    <v-icon color="primary" class="mr-2">
-                      mdi-import
-                    </v-icon>
-                    Import Data
-                  </div>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <p class="mb-4">
-                    Import stakeholder maps and data from a previously exported file.
-                  </p>
-
-                  <v-file-input
-                    v-model="importFile"
-                    label="Select Import File"
-                    variant="outlined"
-                    density="comfortable"
-                    accept=".json"
-                    prepend-icon="mdi-file-import"
-                  />
-
-                  <v-radio-group v-model="importOptions.conflictResolution">
-                    <template #label>
-                      <div>When conflicts are found:</div>
-                    </template>
-                    <v-radio value="keep" label="Keep existing data" />
-                    <v-radio value="replace" label="Replace with imported data" />
-                    <v-radio value="merge" label="Merge data (keep both versions)" />
-                  </v-radio-group>
-
-                  <v-row class="mt-4">
-                    <v-col>
-                      <v-btn
-                        color="primary"
-                        :loading="importing"
-                        :disabled="!importFile"
-                        @click="importData"
-                      >
-                        Import Data
-                      </v-btn>
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-
-              <!-- Data Cleanup -->
-              <v-expansion-panel>
-                <v-expansion-panel-title>
-                  <div class="d-flex align-center">
-                    <v-icon color="error" class="mr-2">
+            <v-row>
+              <!-- Clear Local Storage -->
+              <v-col cols="12">
+                <v-card variant="outlined" class="mb-3">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start color="warning">
                       mdi-delete-sweep
                     </v-icon>
-                    Data Cleanup
-                  </div>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <v-alert type="warning" variant="tonal" class="mb-4">
-                    Caution: These actions cannot be undone. Please export your data first if you want to keep a backup.
-                  </v-alert>
+                    Clear Local Storage
+                  </v-card-title>
+                  <v-card-text>
+                    <p class="mb-3">
+                      Clear locally stored application data and preferences.
+                      This does not affect cloud-saved stakeholder data.
+                    </p>
+                    <v-btn
+                      color="warning"
+                      :loading="clearingLocalData"
+                      @click="clearLocalData"
+                    >
+                      Clear Local Data
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-col>
 
-                  <v-row>
-                    <v-col>
-                      <v-btn color="error" variant="outlined" @click="showClearLocalDataDialog = true">
-                        Clear Local Data
-                      </v-btn>
-                      <div class="text-caption mt-1">
-                        Removes all data stored in your browser.
-                      </div>
-                    </v-col>
-                  </v-row>
-
-                  <v-row v-if="isAuthenticated" class="mt-4">
-                    <v-col>
-                      <v-btn color="error" variant="outlined" @click="showClearCloudDataDialog = true">
-                        Clear Cloud Data
-                      </v-btn>
-                      <div class="text-caption mt-1">
-                        Removes all data stored in your cloud account.
-                      </div>
-                    </v-col>
-                  </v-row>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
+              <!-- Account Data -->
+              <v-col cols="12">
+                <v-card variant="outlined" class="mb-3">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start color="error">
+                      mdi-account-remove
+                    </v-icon>
+                    Account Data
+                  </v-card-title>
+                  <v-card-text>
+                    <p class="mb-3">
+                      Remove all your stakeholder data and account information.
+                      Caution: This action cannot be undone.
+                    </p>
+                    <v-btn
+                      color="error"
+                      variant="outlined"
+                      :loading="deletingAccount"
+                      @click="confirmDeleteAccount"
+                    >
+                      Delete Account & Data
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -594,44 +513,18 @@
       </v-card>
     </v-dialog>
 
-    <!-- Clear Local Data Dialog -->
-    <v-dialog v-model="showClearLocalDataDialog" max-width="400px">
+    <!-- Delete Account Confirmation Dialog -->
+    <v-dialog v-model="confirmDialog.show" max-width="400px">
       <v-card>
-        <v-card-title>Clear Local Data?</v-card-title>
-        <v-card-text>
-          This will delete all data stored in your browser. This action cannot be undone.
-          <template v-if="isAuthenticated">
-            <p class="mt-2">
-              Your cloud data will remain unaffected.
-            </p>
-          </template>
-        </v-card-text>
+        <v-card-title>{{ confirmDialog.title }}</v-card-title>
+        <v-card-text>{{ confirmDialog.message }}</v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn color="primary" variant="text" @click="showClearLocalDataDialog = false">
+          <v-btn color="primary" variant="text" @click="confirmDialog.show = false">
             Cancel
           </v-btn>
-          <v-btn color="error" @click="clearLocalData">
-            Clear Local Data
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Clear Cloud Data Dialog -->
-    <v-dialog v-model="showClearCloudDataDialog" max-width="400px">
-      <v-card>
-        <v-card-title>Clear Cloud Data?</v-card-title>
-        <v-card-text>
-          This will delete all data stored in your cloud account. This action cannot be undone.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" variant="text" @click="showClearCloudDataDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn color="error" @click="clearCloudData">
-            Clear Cloud Data
+          <v-btn color="error" @click="confirmDialog.action">
+            {{ confirmDialog.confirmText }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -640,52 +533,64 @@
 </template>
 
 <script>
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { auth } from '@/firebase'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 import { settingsService } from '@/services/settingsService'
-import { dataService } from '@/services/dataService'
-import { appConfig } from '@/config'
+import config from '@/config'
 
 export default {
-  name: 'Settings',
-
+  name: 'SettingsView',
   data() {
     return {
-      activeTab: 'account',
-
-      // Account settings
-      isAuthenticated: false,
+      // User and auth state
       currentUser: null,
-      updating: false,
-      profileFormValid: false,
+      isAuthenticated: false,
+
+      // Form states
+      profileFormValid: true,
       profileForm: {
         displayName: '',
         photoFile: null
       },
+      updating: false,
       showSignOutDialog: false,
+      showDeleteAccountDialog: false,
 
-      // Appearance settings
+      // Export state
+      exporting: false,
+      exportOptions: {
+        includeStakeholders: true,
+        includeInteractions: true,
+        includeDocuments: true
+      },
+
+      // Import state
+      importing: false,
+      importFile: null,
+      importOptions: {
+        replaceExisting: false,
+        includeStakeholders: true,
+        includeInteractions: true,
+        includeDocuments: true
+      },
+
+      // Theme settings
       themeMode: 'light',
+      updatingAppearance: false,
+
+      // Matrix settings
       matrixSettings: {
         showLabels: true,
         showNames: false,
         influenceThreshold: 5.5,
         impactThreshold: 5.5
       },
-      updatingAppearance: false,
 
-      // Data management
-      exportOptions: {
-        includeStakeholders: true,
-        includeInteractions: true,
-        includeDocuments: true
-      },
-      importFile: null,
-      importOptions: {
-        conflictResolution: 'merge'
-      },
-      exporting: false,
-      importing: false,
+      // Clear data
+      clearingData: false,
       showClearLocalDataDialog: false,
       showClearCloudDataDialog: false,
 
@@ -700,8 +605,22 @@ export default {
       updatingNotifications: false,
 
       // About info
-      appVersion: appConfig.version || '1.0.0',
-      currentYear: new Date().getFullYear()
+      appVersion: config.version || '1.0.0',
+      currentYear: new Date().getFullYear(),
+
+      // Delete account
+      deletingAccount: false,
+      confirmDialog: {
+        show: false,
+        title: '',
+        message: '',
+        confirmText: '',
+        confirmColor: '',
+        action: null
+      },
+
+      // Local data
+      clearingLocalData: false
     }
   },
 
@@ -871,136 +790,58 @@ export default {
       }
     },
 
-    // Data management methods
-    async exportData() {
-      try {
-        this.exporting = true
-
-        const exportData = await dataService.exportData({
-          includeStakeholders: this.exportOptions.includeStakeholders,
-          includeInteractions: this.exportOptions.includeInteractions,
-          includeDocuments: this.exportOptions.includeDocuments
-        })
-
-        // Create and download a file
-        const dataStr = JSON.stringify(exportData, null, 2)
-        const dataBlob = new Blob([dataStr], { type: 'application/json' })
-        const url = URL.createObjectURL(dataBlob)
-
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `staketrack_export_${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-
-        this.$emit('showSnackbar', {
-          text: 'Data exported successfully',
-          color: 'success'
-        })
-      } catch (error) {
-        console.error('Error exporting data:', error)
-        this.$emit('showSnackbar', {
-          text: 'Error exporting data: ' + error.message,
-          color: 'error'
-        })
-      } finally {
-        this.exporting = false
-      }
-    },
-
-    async importData() {
-      if (!this.importFile) return
-
-      try {
-        this.importing = true
-
-        const fileReader = new FileReader()
-
-        fileReader.onload = async (event) => {
-          try {
-            const jsonData = JSON.parse(event.target.result)
-
-            await dataService.importData({
-              data: jsonData,
-              conflictResolution: this.importOptions.conflictResolution
-            })
-
-            this.$emit('showSnackbar', {
-              text: 'Data imported successfully',
-              color: 'success'
-            })
-
-            // Reset import form
-            this.importFile = null
-          } catch (parseError) {
-            console.error('Error parsing import data:', parseError)
-            this.$emit('showSnackbar', {
-              text: 'Invalid import file format',
-              color: 'error'
-            })
-          } finally {
-            this.importing = false
-          }
-        }
-
-        fileReader.onerror = () => {
-          this.importing = false
-          this.$emit('showSnackbar', {
-            text: 'Error reading import file',
-            color: 'error'
-          })
-        }
-
-        fileReader.readAsText(this.importFile[0])
-      } catch (error) {
-        console.error('Error importing data:', error)
-        this.$emit('showSnackbar', {
-          text: 'Error importing data: ' + error.message,
-          color: 'error'
-        })
-        this.importing = false
-      }
-    },
-
+    // Data Management Methods
     async clearLocalData() {
       try {
+        this.clearingLocalData = true
         await localStorageService.clearAll()
-
-        this.showClearLocalDataDialog = false
-
-        this.$emit('showSnackbar', {
-          text: 'Local data cleared successfully',
-          color: 'success'
+        this.showNotification({
+          type: 'success',
+          text: 'Local data cleared successfully'
         })
       } catch (error) {
         console.error('Error clearing local data:', error)
-        this.$emit('showSnackbar', {
-          text: 'Error clearing data: ' + error.message,
-          color: 'error'
+        this.showNotification({
+          type: 'error',
+          text: 'Error clearing local data: ' + error.message
         })
+      } finally {
+        this.clearingLocalData = false
       }
     },
 
-    async clearCloudData() {
-      if (!this.isAuthenticated) return
-
-      try {
-        await dataService.clearCloudData()
-
-        this.showClearCloudDataDialog = false
-
-        this.$emit('showSnackbar', {
-          text: 'Cloud data cleared successfully',
-          color: 'success'
-        })
-      } catch (error) {
-        console.error('Error clearing cloud data:', error)
-        this.$emit('showSnackbar', {
-          text: 'Error clearing data: ' + error.message,
-          color: 'error'
-        })
+    confirmDeleteAccount() {
+      this.confirmDialog = {
+        show: true,
+        title: 'Delete Account & Data',
+        message: 'This will permanently delete your account and all associated data. This action cannot be undone. Are you sure you want to continue?',
+        confirmText: 'Delete Forever',
+        confirmColor: 'error',
+        action: this.deleteAccount
       }
+    },
+
+    async deleteAccount() {
+      try {
+        this.deletingAccount = true
+
+        // Delete user account (Firebase handles account removal)
+        await authService.deleteAccount()
+
+        this.$router.push('/login')
+      } catch (error) {
+        console.error('Error deleting account:', error)
+        this.showNotification({
+          type: 'error',
+          text: 'Error deleting account: ' + error.message
+        })
+        this.deletingAccount = false
+      }
+    },
+
+    // Notification methods
+    showNotification(notification) {
+      this.$emit('showSnackbar', notification)
     }
   }
 }

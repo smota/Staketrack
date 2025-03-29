@@ -1,7 +1,8 @@
-import firebase from 'firebase/app'
-import 'firebase/auth'
-import 'firebase/firestore'
-import 'firebase/analytics'
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth'
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { auth } from '@/firebase'
+import { db } from '@/firebase'
+import { analytics } from '@/firebase'
 
 /**
  * Authentication Service - Handles user authentication operations
@@ -22,13 +23,13 @@ class AuthService {
    */
   _initAuth() {
     try {
-      firebase.auth().onAuthStateChanged(user => {
+      onAuthStateChanged(auth, user => {
         this.currentUser = user
         this.initialized = true
 
-        if (user && firebase.analytics) {
-          firebase.analytics().setUserId(user.uid)
-          firebase.analytics().logEvent('login')
+        if (user && analytics) {
+          // analytics.setUserId(user.uid)
+          // log analytics event if needed
         }
       }, error => {
         console.error('Auth state change error:', error)
@@ -66,10 +67,7 @@ class AuthService {
    */
   async signInWithEmailPassword(email, password) {
     try {
-      const result = await firebase.auth().signInWithEmailAndPassword(email, password)
-      if (firebase.analytics) {
-        firebase.analytics().logEvent('login_method', { method: 'email' })
-      }
+      const result = await signInWithEmailAndPassword(auth, email, password)
       return result.user
     } catch (error) {
       console.error('Email sign in error:', error)
@@ -85,10 +83,7 @@ class AuthService {
    */
   async createUserWithEmailPassword(email, password) {
     try {
-      const result = await firebase.auth().createUserWithEmailAndPassword(email, password)
-      if (firebase.analytics) {
-        firebase.analytics().logEvent('sign_up', { method: 'email' })
-      }
+      const result = await createUserWithEmailAndPassword(auth, email, password)
 
       // Create user document in Firestore
       if (result.user) {
@@ -108,11 +103,8 @@ class AuthService {
    */
   async signInWithGoogle() {
     try {
-      const provider = new firebase.auth.GoogleAuthProvider()
-      const result = await firebase.auth().signInWithPopup(provider)
-      if (firebase.analytics) {
-        firebase.analytics().logEvent('login_method', { method: 'google' })
-      }
+      const provider = new GoogleAuthProvider()
+      const result = await signInWithPopup(auth, provider)
 
       // Create user document if it doesn't exist
       if (result.user) {
@@ -132,10 +124,7 @@ class AuthService {
    */
   async signOut() {
     try {
-      if (firebase.analytics) {
-        firebase.analytics().logEvent('logout')
-      }
-      return await firebase.auth().signOut()
+      return await signOut(auth)
     } catch (error) {
       console.error('Sign out error:', error)
       throw error
@@ -151,21 +140,22 @@ class AuthService {
   async _createUserDocument(user) {
     try {
       // Check if user document already exists
-      const userDoc = await firebase.firestore().collection('users').doc(user.uid).get()
+      const userDocRef = doc(db, 'users', user.uid)
+      const userDoc = await getDoc(userDocRef)
 
-      if (!userDoc.exists) {
+      if (!userDoc.exists()) {
         // Create new user document
-        await firebase.firestore().collection('users').doc(user.uid).set({
+        await setDoc(userDocRef, {
           email: user.email,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp()
         })
       } else {
         // Update last login
-        await firebase.firestore().collection('users').doc(user.uid).update({
-          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+        await updateDoc(userDocRef, {
+          lastLogin: serverTimestamp()
         })
       }
     } catch (error) {

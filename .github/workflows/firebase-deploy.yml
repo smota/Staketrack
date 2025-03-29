@@ -49,17 +49,16 @@ jobs:
         
       - name: Create .env.development file
         run: |
-          echo "ENVIRONMENT=DEV" > .env.development
-          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .env.development
-          echo "FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}" >> .env.development
-          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.development
-          echo "FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}" >> .env.development
-          echo "FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" >> .env.development
-          echo "FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> .env.development
-          echo "FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}" >> .env.development
-          echo "USE_EMULATORS=false" >> .env.development
-          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env.development
-          echo "ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.development
+          echo "NODE_ENV=development" > .env.development
+          echo "APP_VERSION=1.0.0" >> .env.development
+          echo "APP_ENVIRONMENT=DEV" >> .env.development
+          echo "APP_USE_EMULATORS=false" >> .env.development
+          echo "APP_ENABLE_ANALYTICS=false" >> .env.development
+          echo "APP_API_BASE_URL=https://us-central1-${{ secrets.FIREBASE_PROJECT_ID }}.cloudfunctions.net" >> .env.development
+          echo "APP_FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}" >> .env.development
+          echo "APP_FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.development
+          echo "APP_FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}" >> .env.development
+          echo "APP_ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.development
         
       - name: Setup Firebase tools
         run: npm install -g firebase-tools
@@ -118,17 +117,16 @@ jobs:
         
       - name: Create .env.production file
         run: |
-          echo "ENVIRONMENT=PRD" > .env.production
-          echo "FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .env.production
-          echo "FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}" >> .env.production
-          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.production
-          echo "FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}" >> .env.production
-          echo "FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}" >> .env.production
-          echo "FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}" >> .env.production
-          echo "FIREBASE_MEASUREMENT_ID=${{ secrets.FIREBASE_MEASUREMENT_ID }}" >> .env.production
-          echo "USE_EMULATORS=false" >> .env.production
-          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env.production
-          echo "ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.production
+          echo "NODE_ENV=production" > .env.production
+          echo "APP_VERSION=1.0.0" >> .env.production
+          echo "APP_ENVIRONMENT=PRD" >> .env.production
+          echo "APP_USE_EMULATORS=false" >> .env.production
+          echo "APP_ENABLE_ANALYTICS=true" >> .env.production
+          echo "APP_API_BASE_URL=https://us-central1-${{ secrets.FIREBASE_PROJECT_ID }}.cloudfunctions.net" >> .env.production
+          echo "APP_FIREBASE_AUTH_DOMAIN=${{ secrets.FIREBASE_AUTH_DOMAIN }}" >> .env.production
+          echo "APP_FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.production
+          echo "APP_FIREBASE_STORAGE_BUCKET=${{ secrets.FIREBASE_STORAGE_BUCKET }}" >> .env.production
+          echo "APP_ANTHROPIC_API_ENDPOINT=${{ secrets.ANTHROPIC_API_ENDPOINT }}" >> .env.production
         
       - name: Setup Firebase tools
         run: npm install -g firebase-tools

@@ -1,34 +1,50 @@
 /**
  * AI Service
- * Handles interactions with the Anthropic Claude API for stakeholder recommendations
+ * Handles interactions with Firebase's GenAI service for stakeholder recommendations
  */
 import config from '@/config'
+import { stakeholderService } from '@/services'
+import { getAuth } from 'firebase/auth'
+import { getFunctions, httpsCallable } from 'firebase/functions'
 
 class AIService {
   /**
    * Default API options
    */
   defaultOptions = {
-    model: 'claude-3-opus-20240229',
+    model: 'gemini-1.5-pro',
     temperature: 0.7,
-    maxTokens: 1500,
-    apiVersion: '2023-06-01'
+    maxTokens: 1500
   }
 
   /**
    * Get AI-powered stakeholder engagement recommendations
-   * @param {StakeholderMap} map - The stakeholder map
+   * @param {string|Object} mapIdOrMap - The stakeholder map ID or map object
    * @param {Object} options - Options for the request
    * @returns {Promise<Object>} Recommendations data
    */
-  async getStakeholderRecommendations(map, options = {}) {
+  async getStakeholderRecommendations(mapIdOrMap, options = {}) {
+    // Get the map data if only the ID was provided
+    let map
     try {
-      // Check for API key
-      const apiKey = config.env.anthropicApiKey
+      // Check if user is authenticated
+      const auth = getAuth()
+      const user = auth.currentUser
 
-      if (!apiKey) {
-        console.error('Anthropic API key not found')
-        return this._getFallbackRecommendations(map)
+      if (!user) {
+        return this._getAuthRequiredResponse()
+      }
+
+      if (typeof mapIdOrMap === 'string') {
+        // Fetch the map using the stakeholder service
+        map = await stakeholderService.getMap(mapIdOrMap)
+      } else {
+        // Use the provided map object
+        map = mapIdOrMap
+      }
+
+      if (!map) {
+        throw new Error('Map not found')
       }
 
       // Build prompt from map data
@@ -40,41 +56,83 @@ class AIService {
         ...options
       }
 
-      // Make request to Anthropic API
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': requestOptions.apiVersion
-        },
-        body: JSON.stringify({
-          model: requestOptions.model,
-          temperature: requestOptions.temperature,
-          max_tokens: requestOptions.maxTokens,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          response_format: { type: 'json_object' }
-        })
+      // Get Firebase Functions instance
+      const functions = getFunctions()
+
+      // Call the Firebase Cloud Function
+      const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
+
+      // Make the request to Firebase Function
+      const result = await generateRecommendations({
+        prompt,
+        model: requestOptions.model,
+        temperature: requestOptions.temperature,
+        maxTokens: requestOptions.maxTokens
       })
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`)
+      // Check if user has reached usage limits
+      if (result.data.limitReached) {
+        return this._getLimitReachedResponse(result.data.usageInfo)
       }
 
-      const data = await response.json()
-
       // Process and format the AI response
-      return this._processAIResponse(data, map)
+      return this._processAIResponse(result.data, map)
     } catch (error) {
       console.error('Error getting AI recommendations:', error)
 
       // Provide fallback recommendations if something goes wrong
-      return this._getFallbackRecommendations(map)
+      if (map) {
+        return this._getFallbackRecommendations(map)
+      } else {
+        // If we couldn't even get the map, return a basic error response
+        return {
+          error: true,
+          message: error.message,
+          metadata: {
+            generatedAt: new Date().toISOString()
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate response for unauthenticated users
+   * @returns {Object} Authentication required response
+   * @private
+   */
+  _getAuthRequiredResponse() {
+    return {
+      authRequired: true,
+      message: 'This feature requires authentication. Please log in to access AI-powered recommendations.',
+      metadata: {
+        generatedAt: new Date().toISOString()
+      }
+    }
+  }
+
+  /**
+   * Generate response when usage limit is reached
+   * @param {Object} usageInfo - Usage information
+   * @returns {Object} Limit reached response
+   * @private
+   */
+  _getLimitReachedResponse(usageInfo) {
+    const resetDate = new Date(usageInfo.resetDate)
+    const formattedResetDate = resetDate.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+
+    return {
+      limitReached: true,
+      message: `You've reached your weekly limit of ${usageInfo.limit} AI-powered recommendations. Your limit will reset on ${formattedResetDate}.`,
+      usageInfo,
+      metadata: {
+        generatedAt: new Date().toISOString()
+      }
     }
   }
 
@@ -192,7 +250,7 @@ Your response should be in valid JSON format with the following structure:
   _processAIResponse(response, map) {
     try {
       // Get the AI-generated content
-      const content = response.content || response.choices?.[0]?.message?.content
+      const content = response.content || response.text || null
 
       if (!content) {
         throw new Error('No content found in AI response')
@@ -310,16 +368,16 @@ Your response should be in valid JSON format with the following structure:
    */
   _getBasicEngagementApproach(stakeholder) {
     switch (stakeholder.quadrant) {
-    case 'manage-closely':
-      return 'Regular personal meetings and proactive engagement'
-    case 'keep-satisfied':
-      return 'Regular updates and consultation on decisions'
-    case 'keep-informed':
-      return 'Regular communication and updates'
-    case 'monitor':
-      return 'Periodic updates and monitoring of needs'
-    default:
-      return 'Maintain appropriate level of communication'
+      case 'manage-closely':
+        return 'Regular personal meetings and proactive engagement'
+      case 'keep-satisfied':
+        return 'Regular updates and consultation on decisions'
+      case 'keep-informed':
+        return 'Regular communication and updates'
+      case 'monitor':
+        return 'Periodic updates and monitoring of needs'
+      default:
+        return 'Maintain appropriate level of communication'
     }
   }
 
@@ -358,4 +416,6 @@ Your response should be in valid JSON format with the following structure:
   }
 }
 
-export default new AIService()
+// Create singleton instance
+const aiService = new AIService()
+export default aiService

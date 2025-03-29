@@ -10,9 +10,6 @@ node_modules
 /build
 /dist
 
-# Environment variables
-.env.*
-
 # IDE
 .idea/
 .vscode/*
@@ -34,9 +31,9 @@ yarn-error.log*
 .firebase/hosting*
 /backup
 
-# local env files
-.env.local
+# env files
 .env.*.local
+!.env.local.example
 
 # Firebase files
 firebase-debug.log

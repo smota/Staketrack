@@ -1,14 +1,26 @@
-import firebase from 'firebase/app'
-import 'firebase/firestore'
+import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { db } from '@/firebase'
+import { auth } from '@/firebase'
 import { authService } from '@/services/authService'
+import { localStorageService } from './localStorageService'
+import { Map } from '@/models/Map'
 
 /**
  * Map Service - Handles operations related to stakeholder maps
  */
-class MapService {
+export class MapService {
   constructor() {
     this.maps = []
     this.currentMapId = null
+  }
+
+  /**
+   * Check if using local storage mode
+   * @private
+   * @returns {boolean}
+   */
+  _isLocalMode() {
+    return !auth.currentUser || auth.currentUser.isAnonymous
   }
 
   /**
@@ -17,21 +29,19 @@ class MapService {
    */
   async getMaps() {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      if (this._isLocalMode()) {
+        return localStorageService.getMaps()
       }
 
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
+      const userId = auth.currentUser.uid
+      const mapsRef = collection(db, 'users', userId, 'maps')
+      const q = query(mapsRef)
+      const snapshot = await getDocs(q)
 
-      const mapsRef = db.collection('users').doc(userId).collection('maps')
-      const snapshot = await mapsRef.get()
-
-      this.maps = snapshot.docs.map(doc => ({
+      this.maps = snapshot.docs.map(doc => new Map({
         id: doc.id,
         ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        lastUpdated: doc.data().lastUpdated?.toDate() || null
+        userId
       }))
 
       return this.maps
@@ -48,33 +58,39 @@ class MapService {
    */
   async getMap(mapId) {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      if (this._isLocalMode()) {
+        return localStorageService.getMap(mapId)
       }
 
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
+      const userId = auth.currentUser.uid
+      const mapRef = doc(db, 'users', userId, 'maps', mapId)
+      const mapDoc = await getDoc(mapRef)
 
-      const mapRef = db.collection('users').doc(userId).collection('maps').doc(mapId)
-      const doc = await mapRef.get()
-
-      if (!doc.exists) {
-        throw new Error('Map not found')
+      if (!mapDoc.exists()) {
+        return null
       }
 
-      const mapData = {
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        lastUpdated: doc.data().lastUpdated?.toDate() || null
-      }
-
-      this.currentMapId = mapId
-      return mapData
+      return new Map({
+        id: mapDoc.id,
+        ...mapDoc.data(),
+        userId
+      })
     } catch (error) {
       console.error('Error getting map:', error)
       throw error
     }
+  }
+
+  /**
+   * Get the current map
+   * @returns {Promise<Object>} - Promise resolving to current map object
+   */
+  async getCurrentMap() {
+    const mapId = this.getCurrentMapId()
+    if (!mapId) {
+      return null
+    }
+    return this.getMap(mapId)
   }
 
   /**
@@ -84,39 +100,28 @@ class MapService {
    */
   async createMap(mapData) {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      const map = new Map({
+        ...mapData,
+        userId: auth.currentUser?.uid
+      })
+
+      // Always store in localStorage for better UX and offline support,
+      // even if the user is logged in
+      if (this._isLocalMode()) {
+        // For anonymous users, just save to localStorage
+        localStorageService.saveMap(map)
+        return map
+      } else {
+        // For logged-in users, save to Firestore AND localStorage
+        const userId = auth.currentUser.uid
+        const mapsRef = collection(db, 'users', userId, 'maps')
+        const docRef = await addDoc(mapsRef, map.toJSON())
+
+        map._id = docRef.id
+        // Save to localStorage for faster loading in future
+        localStorageService.saveMap(map)
+        return map
       }
-
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
-
-      const mapRef = db.collection('users').doc(userId).collection('maps')
-
-      const newMapData = {
-        name: mapData.name,
-        description: mapData.description || '',
-        userId: userId,
-        stakeholderCount: 0,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      }
-
-      const docRef = await mapRef.add(newMapData)
-
-      // Get the created map with its ID
-      const createdMap = {
-        id: docRef.id,
-        ...newMapData,
-        createdAt: new Date(),
-        lastUpdated: new Date()
-      }
-
-      // Add to local cache
-      this.maps.push(createdMap)
-      this.currentMapId = docRef.id
-
-      return createdMap
     } catch (error) {
       console.error('Error creating map:', error)
       throw error
@@ -124,45 +129,36 @@ class MapService {
   }
 
   /**
-   * Update an existing map
+   * Update a map
    * @param {string} mapId - Map ID
-   * @param {Object} mapData - Map data to update
+   * @param {Object} mapData - Updated map data
    * @returns {Promise<Object>} - Promise resolving to updated map object
    */
   async updateMap(mapId, mapData) {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      const existingMap = await this.getMap(mapId)
+      if (!existingMap) {
+        throw new Error('Map not found')
       }
 
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
-
-      const mapRef = db.collection('users').doc(userId).collection('maps').doc(mapId)
-
-      const updateData = {
-        name: mapData.name,
-        description: mapData.description || '',
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      }
-
-      await mapRef.update(updateData)
-
-      // Update local cache
-      const index = this.maps.findIndex(m => m.id === mapId)
-      if (index !== -1) {
-        this.maps[index] = {
-          ...this.maps[index],
-          ...updateData,
-          lastUpdated: new Date()
-        }
-      }
-
-      return {
+      const updatedMap = new Map({
+        ...existingMap.toJSON(),
+        ...mapData,
         id: mapId,
-        ...updateData,
-        lastUpdated: new Date()
+        updatedAt: new Date()
+      })
+
+      // Always update localStorage for faster access
+      localStorageService.saveMap(updatedMap)
+
+      if (!this._isLocalMode()) {
+        // If user is logged in, update Firestore too
+        const userId = auth.currentUser.uid
+        const mapRef = doc(db, 'users', userId, 'maps', mapId)
+        await updateDoc(mapRef, updatedMap.toJSON())
       }
+
+      return updatedMap
     } catch (error) {
       console.error('Error updating map:', error)
       throw error
@@ -170,43 +166,21 @@ class MapService {
   }
 
   /**
-   * Delete a map and all its stakeholders
+   * Delete a map
    * @param {string} mapId - Map ID
    * @returns {Promise<void>}
    */
   async deleteMap(mapId) {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      if (this._isLocalMode()) {
+        localStorageService.deleteMap(mapId)
+        return
       }
 
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
+      const userId = auth.currentUser.uid
+      const mapRef = doc(db, 'users', userId, 'maps', mapId)
 
-      // First, remove all stakeholders and related data
-      // This would be better with a Firestore Function, but for simplicity:
-      const stakeholdersRef = db.collection('users').doc(userId)
-        .collection('maps').doc(mapId).collection('stakeholders')
-
-      const stakeholders = await stakeholdersRef.get()
-
-      // Batch delete all stakeholders
-      if (!stakeholders.empty) {
-        const batch = db.batch()
-        stakeholders.docs.forEach(doc => {
-          batch.delete(doc.ref)
-        })
-        await batch.commit()
-      }
-
-      // Delete the map itself
-      await db.collection('users').doc(userId).collection('maps').doc(mapId).delete()
-
-      // Update local cache
-      this.maps = this.maps.filter(m => m.id !== mapId)
-      if (this.currentMapId === mapId) {
-        this.currentMapId = null
-      }
+      await deleteDoc(mapRef)
     } catch (error) {
       console.error('Error deleting map:', error)
       throw error
@@ -221,25 +195,25 @@ class MapService {
    */
   async updateStakeholderCount(mapId, count) {
     try {
-      if (!authService.isAuthenticated()) {
-        throw new Error('User not authenticated')
+      const map = await this.getMap(mapId)
+      if (!map) {
+        throw new Error('Map not found')
       }
 
-      const userId = authService.getCurrentUser().uid
-      const db = firebase.firestore()
+      map.stakeholderCount = count
+      map.updatedAt = new Date()
 
-      const mapRef = db.collection('users').doc(userId).collection('maps').doc(mapId)
+      // Always update localStorage
+      localStorageService.saveMap(map)
 
-      await mapRef.update({
-        stakeholderCount: count,
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      })
-
-      // Update local cache
-      const index = this.maps.findIndex(m => m.id === mapId)
-      if (index !== -1) {
-        this.maps[index].stakeholderCount = count
-        this.maps[index].lastUpdated = new Date()
+      if (!this._isLocalMode()) {
+        // If user is logged in, update Firestore too
+        const userId = auth.currentUser.uid
+        const mapRef = doc(db, 'users', userId, 'maps', mapId)
+        await updateDoc(mapRef, {
+          stakeholderCount: count,
+          updatedAt: new Date()
+        })
       }
     } catch (error) {
       console.error('Error updating stakeholder count:', error)
@@ -250,16 +224,41 @@ class MapService {
   /**
    * Set the current map ID
    * @param {string} mapId - Map ID
+   * @returns {Promise<void>}
    */
-  setCurrentMapId(mapId) {
-    this.currentMapId = mapId
+  async setCurrentMapId(mapId) {
+    try {
+      this.currentMapId = mapId
+
+      // Always save to localStorage for offline access
+      localStorageService.setCurrentMapId(mapId)
+
+      // If user is logged in, update their preferences in Firestore
+      if (!this._isLocalMode() && auth.currentUser) {
+        const userId = auth.currentUser.uid
+        const userRef = doc(db, 'users', userId)
+        await updateDoc(userRef, {
+          currentMapId: mapId,
+          lastActivity: new Date()
+        })
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error setting current map ID:', error)
+      // Still set locally even if Firebase update fails
+      return true
+    }
   }
 
   /**
    * Get the current map ID
-   * @returns {string|null} - Current map ID
+   * @returns {string|null} Current map ID or null if not set
    */
   getCurrentMapId() {
+    if (this._isLocalMode()) {
+      return localStorageService.getCurrentMapId()
+    }
     return this.currentMapId
   }
 }

@@ -1,49 +1,58 @@
-# StakeTrack Specification Documentation
-
-This directory contains the detailed specifications for the StakeTrack application, organized in an EPIC → FEATURE → STORY structure.
+# StakeTrack Application Specification
 
 ## Overview
 
-StakeTrack is a comprehensive stakeholder management application that helps users track, visualize, and manage relationships with stakeholders. The application provides tools for mapping stakeholder influence and impact, recording interactions, and receiving AI-powered engagement recommendations.
+StakeTrack is a stakeholder management application designed to help organizations track, visualize, and manage their relationships with key stakeholders. This document outlines the high-level requirements and technical specifications for the application.
 
-## Specification Structure
+## Epics
 
-The specifications are organized in a hierarchical structure:
+The application functionality is organized into the following epics:
 
-- **EPIC**: A large body of work that can be broken down into features
-- **FEATURE**: A specific functionality that delivers value to users
-- **STORY**: A detailed description of a specific aspect of a feature from the user's perspective
+1. [User Management](EPIC-01-User-Management.md) - User registration, authentication, and profile management
+2. [Stakeholder Management](EPIC-02-Stakeholder-Management.md) - Creating, updating, and organizing stakeholders
+3. [Stakeholder Matrix](EPIC-03-Stakeholder-Matrix.md) - Visualizing stakeholders in an influence/impact matrix
+4. [Communication Tracking](EPIC-04-Communication-Tracking.md) - Recording and analyzing stakeholder interactions
+5. [AI Recommendations](EPIC-05-AI-Recommendations.md) - AI-powered engagement advice and insights
 
-## EPICs
+Each epic is further broken down into features and user stories with detailed acceptance criteria.
 
-StakeTrack includes the following EPICs, each with its own specification document:
+## Technical Architecture
 
-1. [User Authentication](EPIC-01-Authentication.md) - User registration, login, and session management
-2. [Stakeholder Management](EPIC-02-Stakeholder-Management.md) - Creating, editing, and organizing stakeholder profiles
-3. [Stakeholder Visualization](EPIC-03-Stakeholder-Visualization.md) - Matrix view and visual representation of stakeholders
-4. [Interaction Tracking](EPIC-04-Interaction-Tracking.md) - Recording and managing stakeholder interactions
-5. [AI Recommendations](EPIC-05-AI-Recommendations.md) - AI-powered advice for stakeholder engagement
-6. [Data Management](EPIC-06-Data-Management.md) - Import, export, and data persistence
+StakeTrack is built using the following technologies:
 
-## Story Format
+- **Frontend**: Vue.js with Vuetify for UI components
+- **Backend**: Firebase (Authentication, Firestore, Cloud Functions)
+- **AI Services**: Firebase Vertex AI with Gemini models
+- **Deployment**: Firebase Hosting
 
-Each user story follows this format:
+## Data Model
 
-```
-### [Story ID]: [Story Title]
+The application uses the following primary data entities:
 
-**As a** [type of user],
-**I want to** [perform an action],
-**So that** [achieve an outcome or goal].
+- **Users**: Application users with authentication and profile information
+- **Stakeholder Maps**: Collections of stakeholders organized by project, initiative, or category
+- **Stakeholders**: Individual or organizational stakeholders with attributes and relationships
+- **Interactions**: Communication events and touchpoints with stakeholders
+- **Documents**: Files and notes associated with stakeholders and interactions
 
-#### Acceptance Criteria:
-- [Criterion 1]
-- [Criterion 2]
-- [Criterion n]
+## Security Model
 
-#### Notes:
-- [Additional information or considerations]
-```
+StakeTrack implements the following security measures:
+
+- **Authentication**: Firebase Authentication with email/password and OAuth providers
+- **Authorization**: Role-based access control (user, admin)
+- **Data Access**: Firestore security rules to enforce ownership and sharing permissions
+- **Environment Isolation**: Separate development, staging, and production environments
+
+## Performance Requirements
+
+The application is designed to handle:
+
+- Up to 1,000 active users
+- Up to 500 stakeholders per map
+- Up to 1,000 interactions per stakeholder
+- Response times under 1 second for non-AI operations
+- Response times under 5 seconds for AI operations
 
 ## Relationship to Other Documentation
 

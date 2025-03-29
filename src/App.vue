@@ -87,7 +87,7 @@ export default {
     const drawer = ref(false)
     const isDarkMode = ref(false)
     const isLoggedIn = ref(false)
-    const appVersion = ref(process.env.VUE_APP_VERSION || '1.0.0')
+    const appVersion = ref(process.env.APP_VERSION || '1.0.0')
     const router = useRouter()
 
     onMounted(() => {
