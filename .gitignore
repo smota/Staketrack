@@ -29,6 +29,7 @@ yarn-debug.log*
 yarn-error.log*
 .vercel 
 .firebase/hosting*
+hosting.*.cache
 /backup
 
 # env files

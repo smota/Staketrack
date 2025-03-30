@@ -4,10 +4,7 @@
       <v-col cols="12">
         <v-card v-if="loading" class="loading-card">
           <v-card-text class="text-center">
-            <v-progress-circular
-              indeterminate
-              color="primary"
-            />
+            <v-progress-circular indeterminate color="primary" />
           </v-card-text>
         </v-card>
 
@@ -20,11 +17,7 @@
             <p class="text-body-1 mb-4">
               {{ error }}
             </p>
-            <v-btn
-              color="primary"
-              class="mt-4"
-              @click="retryLoading"
-            >
+            <v-btn color="primary" class="mt-4" @click="retryLoading">
               Retry
             </v-btn>
           </v-card-text>
@@ -41,11 +34,7 @@
             <p class="text-body-1 mb-4">
               Please create or select a map first.
             </p>
-            <v-btn
-              color="primary"
-              class="mt-4"
-              @click="createNewMap"
-            >
+            <v-btn color="primary" class="mt-4" @click="createNewMap">
               Create New Map
             </v-btn>
           </v-card-text>
@@ -63,11 +52,7 @@
                 <v-icon>mdi-arrow-left</v-icon>
               </v-btn>
               <span class="text-h5 mr-4">{{ currentMap.name }}</span>
-              <v-btn
-                icon
-                class="mr-2"
-                @click="editMapName"
-              >
+              <v-btn icon class="mr-2" @click="editMapName">
                 <v-icon>mdi-pencil</v-icon>
               </v-btn>
             </div>
@@ -82,10 +67,7 @@
               >
                 Next Best Action
               </v-btn>
-              <v-btn
-                color="primary"
-                @click="showAddStakeholderDialog"
-              >
+              <v-btn color="primary" @click="showAddStakeholderDialog">
                 Add Stakeholder
               </v-btn>
             </div>
@@ -133,11 +115,7 @@
                   >
                     <v-tooltip :text="stakeholder.name" location="top">
                       <template #activator="{ props }">
-                        <div
-                          class="plot-circle"
-                          v-bind="props"
-                          :style="getCircleStyles(stakeholder)"
-                        />
+                        <div class="plot-circle" v-bind="props" :style="getCircleStyles(stakeholder)" />
                       </template>
                     </v-tooltip>
                   </div>
@@ -345,9 +323,8 @@
     <!-- Stakeholder Detail Dialog -->
     <v-dialog v-model="showStakeholderDetail" max-width="600px">
       <v-card>
-        <v-card-title>
-          {{ selectedStakeholder ? selectedStakeholder.name : 'Stakeholder Details' }}
-          <v-spacer />
+        <v-card-title class="d-flex justify-space-between align-center">
+          <div>{{ selectedStakeholder ? selectedStakeholder.name : 'Stakeholder Details' }}</div>
           <v-btn icon @click="showStakeholderDetail = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
@@ -390,6 +367,13 @@
           <v-btn color="primary" @click="editStakeholder(selectedStakeholder)">
             Edit
           </v-btn>
+          <v-btn
+            color="accent"
+            prepend-icon="mdi-lightbulb"
+            @click="getStakeholderRecommendations(selectedStakeholder)"
+          >
+            Next Best Action
+          </v-btn>
           <v-btn color="error" @click="deleteStakeholder(selectedStakeholder)">
             Delete
           </v-btn>
@@ -402,7 +386,7 @@
     </v-dialog>
 
     <!-- Add Stakeholder Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="600px">
+    <v-dialog v-model="addDialog" max-width="600px">
       <v-card>
         <v-card-title>Add New Stakeholder</v-card-title>
         <v-card-text>
@@ -410,7 +394,7 @@
             ref="addForm"
             v-model="isAddFormValid"
             @keydown.enter.prevent="isAddFormValid && addStakeholder()"
-            @keydown.esc="showAddDialog = false"
+            @keydown.esc="addDialog = false"
           >
             <v-text-field
               v-model="newStakeholder.name"
@@ -453,48 +437,20 @@
               thumb-label
               ticks
             />
-            <v-textarea
-              v-model="newStakeholder.interests"
-              label="Interests"
-              rows="3"
-            />
-            <v-textarea
-              v-model="newStakeholder.contribution"
-              label="Contribution"
-              rows="3"
-            />
-            <v-textarea
-              v-model="newStakeholder.risk"
-              label="Risk"
-              rows="3"
-            />
-            <v-textarea
-              v-model="newStakeholder.communication"
-              label="Communication"
-              rows="3"
-            />
-            <v-textarea
-              v-model="newStakeholder.strategy"
-              label="Engagement Strategy"
-              rows="3"
-            />
-            <v-textarea
-              v-model="newStakeholder.measurement"
-              label="Measurement"
-              rows="3"
-            />
+            <v-textarea v-model="newStakeholder.interests" label="Interests" rows="3" />
+            <v-textarea v-model="newStakeholder.contribution" label="Contribution" rows="3" />
+            <v-textarea v-model="newStakeholder.risk" label="Risk" rows="3" />
+            <v-textarea v-model="newStakeholder.communication" label="Communication" rows="3" />
+            <v-textarea v-model="newStakeholder.strategy" label="Engagement Strategy" rows="3" />
+            <v-textarea v-model="newStakeholder.measurement" label="Measurement" rows="3" />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="showAddDialog = false">
+          <v-btn text @click="addDialog = false">
             Cancel
           </v-btn>
-          <v-btn
-            color="primary"
-            :disabled="!isAddFormValid"
-            @click="addStakeholder"
-          >
+          <v-btn color="primary" :disabled="!isAddFormValid" @click="addStakeholder">
             Save
           </v-btn>
         </v-card-actions>
@@ -502,7 +458,7 @@
     </v-dialog>
 
     <!-- Edit Map Dialog -->
-    <v-dialog v-model="showEditMapDialog" max-width="500px">
+    <v-dialog v-model="editMapDialog" max-width="500px">
       <v-card>
         <v-card-title>Edit Map</v-card-title>
         <v-card-text>
@@ -510,7 +466,7 @@
             ref="editMapForm"
             v-model="isEditMapFormValid"
             @keydown.enter.prevent="isEditMapFormValid && saveMapChanges()"
-            @keydown.esc="showEditMapDialog = false"
+            @keydown.esc="editMapDialog = false"
           >
             <v-text-field
               v-model="editedMapData.name"
@@ -519,23 +475,15 @@
               required
               autofocus
             />
-            <v-textarea
-              v-model="editedMapData.description"
-              label="Description"
-              rows="3"
-            />
+            <v-textarea v-model="editedMapData.description" label="Description" rows="3" />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="showEditMapDialog = false">
+          <v-btn text @click="editMapDialog = false">
             Cancel
           </v-btn>
-          <v-btn
-            color="primary"
-            :disabled="!isEditMapFormValid"
-            @click="saveMapChanges"
-          >
+          <v-btn color="primary" :disabled="!isEditMapFormValid" @click="saveMapChanges">
             Save
           </v-btn>
         </v-card-actions>
@@ -543,7 +491,7 @@
     </v-dialog>
 
     <!-- Edit Stakeholder Dialog -->
-    <v-dialog v-model="showEditDialog" max-width="600px">
+    <v-dialog v-model="editDialog" max-width="600px">
       <v-card>
         <v-card-title>Edit Stakeholder</v-card-title>
         <v-card-text>
@@ -551,7 +499,7 @@
             ref="editForm"
             v-model="isEditFormValid"
             @keydown.enter.prevent="isEditFormValid && updateStakeholder()"
-            @keydown.esc="showEditDialog = false"
+            @keydown.esc="editDialog = false"
           >
             <v-text-field
               v-model="editedStakeholder.name"
@@ -594,48 +542,20 @@
               thumb-label
               ticks
             />
-            <v-textarea
-              v-model="editedStakeholder.interests"
-              label="Interests"
-              rows="3"
-            />
-            <v-textarea
-              v-model="editedStakeholder.contribution"
-              label="Contribution"
-              rows="3"
-            />
-            <v-textarea
-              v-model="editedStakeholder.risk"
-              label="Risk"
-              rows="3"
-            />
-            <v-textarea
-              v-model="editedStakeholder.communication"
-              label="Communication"
-              rows="3"
-            />
-            <v-textarea
-              v-model="editedStakeholder.strategy"
-              label="Engagement Strategy"
-              rows="3"
-            />
-            <v-textarea
-              v-model="editedStakeholder.measurement"
-              label="Measurement"
-              rows="3"
-            />
+            <v-textarea v-model="editedStakeholder.interests" label="Interests" rows="3" />
+            <v-textarea v-model="editedStakeholder.contribution" label="Contribution" rows="3" />
+            <v-textarea v-model="editedStakeholder.risk" label="Risk" rows="3" />
+            <v-textarea v-model="editedStakeholder.communication" label="Communication" rows="3" />
+            <v-textarea v-model="editedStakeholder.strategy" label="Engagement Strategy" rows="3" />
+            <v-textarea v-model="editedStakeholder.measurement" label="Measurement" rows="3" />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="showEditDialog = false">
+          <v-btn text @click="editDialog = false">
             Cancel
           </v-btn>
-          <v-btn
-            color="primary"
-            :disabled="!isEditFormValid"
-            @click="updateStakeholder"
-          >
+          <v-btn color="primary" :disabled="!isEditFormValid" @click="updateStakeholder">
             Save
           </v-btn>
         </v-card-actions>
@@ -782,10 +702,7 @@ export default {
     const dialogContent = ref({})
     const showStakeholderDetail = ref(false)
 
-    // Additional dialog states for backwards compatibility
-    const showAddDialog = computed(() => addDialog.value)
-    const showEditDialog = computed(() => editDialog.value)
-    const showEditMapDialog = computed(() => editMapDialog.value)
+    // Form validation states
     const isEditMapFormValid = ref(false)
     const editedMapData = ref({
       name: '',
@@ -930,7 +847,7 @@ export default {
         console.log('Updated stakeholders array:', [...stakeholders.value])
         console.log('Filtered stakeholders:', [...filteredStakeholders.value])
 
-        showAddDialog.value = false
+        addDialog.value = false
 
         // Update stakeholder count in the map and ensure it's saved
         currentMap.value.stakeholderCount = stakeholders.value.length
@@ -990,7 +907,7 @@ export default {
         strategy: stakeholder.strategy,
         measurement: stakeholder.measurement
       }
-      showEditDialog.value = true
+      editDialog.value = true
     }
 
     const updateStakeholder = async () => {
@@ -1028,7 +945,7 @@ export default {
           updatedAt: new Date()
         })
 
-        showEditDialog.value = false
+        editDialog.value = false
       } catch (err) {
         console.error('Error updating stakeholder:', err)
         error.value = 'Failed to update stakeholder. Please try again.'
@@ -1061,6 +978,9 @@ export default {
     }
 
     const showAddStakeholderDialog = () => {
+      console.log('showAddStakeholderDialog called')
+
+      // Initialize the new stakeholder with default values
       newStakeholder.value = {
         name: '',
         category: 'external',
@@ -1074,16 +994,24 @@ export default {
         communication: '',
         measurement: ''
       }
-      showAddDialog.value = true
+
+      // Show the dialog - update the source ref, not the computed property
+      addDialog.value = true
+      console.log('addDialog value set to:', addDialog.value)
     }
 
     const editMapName = () => {
+      console.log('editMapName called')
+
       if (currentMap.value) {
         editedMapData.value = {
           name: currentMap.value.name,
           description: currentMap.value.description || ''
         }
-        showEditMapDialog.value = true
+
+        // Show the dialog - update the source ref, not the computed property
+        editMapDialog.value = true
+        console.log('editMapDialog value set to:', editMapDialog.value)
       }
     }
 
@@ -1102,7 +1030,7 @@ export default {
         currentMap.value.description = editedMapData.value.description
         currentMap.value.updatedAt = new Date()
 
-        showEditMapDialog.value = false
+        editMapDialog.value = false
       } catch (err) {
         console.error('Error updating map:', err)
         error.value = 'Failed to update map. Please try again.'
@@ -1124,7 +1052,8 @@ export default {
       const size = 10 + (stakeholder.relationship / 10) * 20
       return {
         width: `${size}px`,
-        height: `${size}px`      }
+        height: `${size}px`
+      }
     }
 
     const retryLoading = () => {
@@ -1181,6 +1110,10 @@ export default {
 
         aiLoading.value = true
 
+        if (!currentMap.value || !currentMap.value.id) {
+          throw new Error('Map data not available')
+        }
+
         // Call AI service to get recommendations
         const response = await aiService.getStakeholderRecommendations(currentMap.value.id)
 
@@ -1223,6 +1156,10 @@ export default {
         }
 
         aiLoading.value = true
+
+        if (!currentMap.value || !currentMap.value.id) {
+          throw new Error('Map data not available')
+        }
 
         // Call AI service with focus on this specific stakeholder
         const response = await aiService.getStakeholderRecommendations(currentMap.value.id, {
@@ -1301,15 +1238,15 @@ export default {
       formatQuadrantName,
       getQuadrantColor,
       // Existing properties
-      showAddDialog,
+      addDialog,
       isAddFormValid,
       newStakeholder,
       addStakeholder,
-      showEditMapDialog,
+      editMapDialog,
       isEditMapFormValid,
       editedMapData,
       saveMapChanges,
-      showEditDialog,
+      editDialog,
       isEditFormValid,
       editedStakeholder,
       updateStakeholder,
@@ -1468,4 +1405,3 @@ export default {
   margin: 0 auto;
 }
 </style>
-

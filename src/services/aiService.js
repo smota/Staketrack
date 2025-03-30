@@ -583,16 +583,16 @@ class AIService {
    */
   _getBasicEngagementApproach(stakeholder) {
     switch (stakeholder.quadrant) {
-      case 'manage-closely':
-        return 'Regular personal meetings and proactive engagement'
-      case 'keep-satisfied':
-        return 'Regular updates and consultation on decisions'
-      case 'keep-informed':
-        return 'Regular communication and updates'
-      case 'monitor':
-        return 'Periodic updates and monitoring of needs'
-      default:
-        return 'Maintain appropriate level of communication'
+    case 'manage-closely':
+      return 'Regular personal meetings and proactive engagement'
+    case 'keep-satisfied':
+      return 'Regular updates and consultation on decisions'
+    case 'keep-informed':
+      return 'Regular communication and updates'
+    case 'monitor':
+      return 'Periodic updates and monitoring of needs'
+    default:
+      return 'Maintain appropriate level of communication'
     }
   }
 
