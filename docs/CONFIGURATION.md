@@ -4,43 +4,74 @@ This guide covers how to configure StakeTrack for your environment.
 
 ## Environment Variables
 
-StakeTrack uses environment variables for configuration. There are two sets of environment variables:
+StakeTrack uses environment variables for configuration. There are two types of environment files:
 
-- `.env.development` - Used for local development
-- `.env.production` - Used for production builds
+- `.env.[environment]` - Contains **non-sensitive** configuration, committed to git
+- `.env.[environment].local` - Contains **sensitive** configuration like API keys, NOT committed to git
+
+### Secret Management
+
+**Important**: Never store secrets or API keys in the main environment files (`.env.development`, `.env.staging`, `.env.production`) as these are committed to the repository.
+
+Instead:
+- Store all sensitive values in `.env.[environment].local` files
+- These files are in `.gitignore` and won't be committed to the repository
+- Each developer needs to create these files locally
+- For CI/CD, the build process uses GitHub Secrets instead
 
 ### Development Environment
 
-The `.env.development` file should contain:
+The non-sensitive configuration in `.env.development` should contain:
 
 ```
-ENVIRONMENT=DEV
-FIREBASE_API_KEY=your-dev-api-key
-FIREBASE_AUTH_DOMAIN=your-dev-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-dev-project
-FIREBASE_STORAGE_BUCKET=your-dev-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=your-messaging-id
-FIREBASE_APP_ID=your-app-id
-FIREBASE_MEASUREMENT_ID=your-measurement-id
+NODE_ENV=development
+APP_VERSION=1.0.0
+APP_ENVIRONMENT=DEVELOPMENT
+APP_FIREBASE_AUTH_DOMAIN=your-dev-project.firebaseapp.com
+APP_FIREBASE_PROJECT_ID=your-dev-project
+APP_FIREBASE_STORAGE_BUCKET=your-dev-project.appspot.com
+APP_FIREBASE_FUNCTIONS_REGION=europe-west1
+APP_USE_EMULATORS=true
+APP_EMULATOR_AUTH_PORT=9099
+APP_EMULATOR_FIRESTORE_PORT=8080
+APP_EMULATOR_FUNCTIONS_PORT=5001
+```
+
+The sensitive configuration in `.env.development.local` should contain:
+
+```
+# IMPORTANT: Never commit this file to git!
+APP_FIREBASE_API_KEY=your-dev-api-key
+APP_FIREBASE_MESSAGING_SENDER_ID=your-messaging-id
+APP_FIREBASE_APP_ID=your-app-id
+APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
 ANTHROPIC_API_KEY=your-anthropic-api-key
-ANTHROPIC_API_ENDPOINT=https://api.anthropic.com/v1/messages
 ```
 
 ### Production Environment
 
-The `.env.production` file should contain the same variables but configured for your production environment:
+The non-sensitive configuration in `.env.production` should contain:
 
 ```
-ENVIRONMENT=PRD
-FIREBASE_API_KEY=your-prod-api-key
-FIREBASE_AUTH_DOMAIN=your-prod-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-prod-project
-FIREBASE_STORAGE_BUCKET=your-prod-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=your-messaging-id
-FIREBASE_APP_ID=your-app-id
-FIREBASE_MEASUREMENT_ID=your-measurement-id
+NODE_ENV=production
+APP_VERSION=1.0.0
+APP_ENVIRONMENT=PRODUCTION
+APP_FIREBASE_AUTH_DOMAIN=your-prod-project.firebaseapp.com
+APP_FIREBASE_PROJECT_ID=your-prod-project
+APP_FIREBASE_STORAGE_BUCKET=your-prod-project.appspot.com
+APP_FIREBASE_FUNCTIONS_REGION=europe-west1
+APP_USE_EMULATORS=false
+```
+
+The sensitive configuration in `.env.production.local` should contain:
+
+```
+# IMPORTANT: Never commit this file to git!
+APP_FIREBASE_API_KEY=your-prod-api-key
+APP_FIREBASE_MESSAGING_SENDER_ID=your-messaging-id
+APP_FIREBASE_APP_ID=your-app-id
+APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
 ANTHROPIC_API_KEY=your-anthropic-api-key
-ANTHROPIC_API_ENDPOINT=https://api.anthropic.com/v1/messages
 ```
 
 ### Environment Validation
@@ -57,6 +88,17 @@ This workflow runs automatically when:
 - Can be manually triggered from GitHub Actions
 
 If the validation fails, it indicates that your environment configuration needs attention before deployment.
+
+## Runtime Configuration Loading
+
+In production environments, StakeTrack uses a secure approach to load configuration:
+
+1. The application calls the Firebase Function `getConfig` to retrieve configuration
+2. This function securely provides necessary configuration from Firebase environment variables
+3. The application never directly accesses sensitive values from client-side code
+4. If the API call fails, a fallback mechanism with minimal configuration is used
+
+For local development, the values from `.env.development` and `.env.development.local` are used directly.
 
 ## GitHub Actions Secrets
 
@@ -116,9 +158,31 @@ The `.firebaserc` file defines your Firebase project configurations:
 
 Firestore security rules are defined in `firebase/firestore.rules.ts`. Review and modify these rules according to your security requirements.
 
-### Firebase Web SDK Configuration
+### Firebase Functions
 
-Update `firebase/firebaseConfig.js` with your Firebase project details. The configuration is automatically populated with values from your environment variables.
+The Firebase Function `getConfig` provides runtime configuration securely:
+
+1. It retrieves sensitive values from Firebase environment variables 
+2. These values are set using `firebase functions:config:set` command
+3. The function never exposes hard-coded secret values
+
+To update Firebase Functions config:
+
+```bash
+# For development environment
+firebase use development
+firebase functions:config:set \
+  firebase.api_key="YOUR_DEV_API_KEY" \
+  firebase.auth_domain="YOUR_DEV_AUTH_DOMAIN" \
+  # Add other configuration as needed
+
+# For production environment
+firebase use production
+firebase functions:config:set \
+  firebase.api_key="YOUR_PROD_API_KEY" \
+  firebase.auth_domain="YOUR_PROD_AUTH_DOMAIN" \
+  # Add other configuration as needed
+```
 
 ## Build Configuration
 
@@ -129,7 +193,7 @@ The webpack configuration determines how your application is bundled:
 - Development build: `npm run build:dev`
 - Production build: `npm run build:prod`
 
-These commands use the corresponding environment variables from `.env.development` or `.env.production`.
+These commands use the corresponding environment variables from both `.env.[environment]` and `.env.[environment].local` files.
 
 ## Application Configuration
 

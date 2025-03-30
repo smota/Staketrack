@@ -5,10 +5,7 @@
         <v-col cols="12">
           <v-card v-if="loading" class="loading-card">
             <v-card-text class="text-center">
-              <v-progress-circular
-                indeterminate
-                color="primary"
-              />
+              <v-progress-circular indeterminate color="primary" />
             </v-card-text>
           </v-card>
 
@@ -21,11 +18,7 @@
               <p class="text-body-1 mb-4">
                 {{ error }}
               </p>
-              <v-btn
-                color="primary"
-                class="mt-4"
-                @click="retryLoading"
-              >
+              <v-btn color="primary" class="mt-4" @click="retryLoading">
                 Retry
               </v-btn>
             </v-card-text>
@@ -39,11 +32,7 @@
               <p class="text-body-1 mb-4">
                 You don't have any stakeholder maps yet. Create your first map to get started!
               </p>
-              <v-btn
-                color="primary"
-                class="mt-4"
-                @click="createNewMap"
-              >
+              <v-btn color="primary" class="mt-4" @click="createNewMap">
                 Create First Map
               </v-btn>
             </v-card-text>
@@ -52,31 +41,15 @@
           <v-card v-else class="maps-card">
             <v-card-title class="d-flex justify-space-between align-center">
               <span>Your Stakeholder Maps ({{ maps.length }})</span>
-              <v-btn
-                color="primary"
-                class="ml-4"
-                @click="createNewMap"
-              >
+              <v-btn color="primary" class="ml-4" @click="createNewMap">
                 Create New Map
               </v-btn>
             </v-card-title>
 
             <v-card-text>
               <v-row>
-                <v-col
-                  v-for="map in maps"
-                  :key="map.id"
-                  cols="12"
-                  sm="6"
-                  md="4"
-                  lg="3"
-                  class="map-card-col"
-                >
-                  <v-card
-                    class="map-card"
-                    :class="{ 'current-map': map.id === currentMapId }"
-                    @click="selectMap(map)"
-                  >
+                <v-col v-for="map in maps" :key="map.id" cols="12" sm="6" md="4" lg="3" class="map-card-col">
+                  <v-card class="map-card" :class="{ 'current-map': map.id === currentMapId }" @click="selectMap(map)">
                     <v-card-title>{{ map.name }}</v-card-title>
                     <v-card-text>
                       <p class="text-body-2">
@@ -100,12 +73,7 @@
               <p class="text-body-1 mb-4">
                 You're currently in anonymous mode. Maps will be stored in your browser's local storage.
               </p>
-              <v-btn
-                outlined
-                color="secondary"
-                class="mt-2"
-                @click="goToLogin"
-              >
+              <v-btn outlined color="secondary" class="mt-2" @click="goToLogin">
                 Sign In to Sync Maps
               </v-btn>
             </v-card-text>
@@ -119,18 +87,10 @@
 
           <v-card-text>
             <v-form ref="form" v-model="isFormValid">
-              <v-text-field
-                v-model="editedMap.name"
-                label="Map Name"
-                :rules="[v => !!v || 'Name is required']"
-                required
-              />
+              <v-text-field v-model="editedMap.name" label="Map Name" :rules="[v => !!v || 'Name is required']"
+                required />
 
-              <v-textarea
-                v-model="editedMap.description"
-                label="Description"
-                rows="3"
-              />
+              <v-textarea v-model="editedMap.description" label="Description" rows="3" />
             </v-form>
           </v-card-text>
 
@@ -139,11 +99,7 @@
             <v-btn text @click="closeDialog">
               Cancel
             </v-btn>
-            <v-btn
-              color="primary"
-              :disabled="!isFormValid"
-              @click="saveMap"
-            >
+            <v-btn color="primary" :disabled="!isFormValid" @click="saveMap">
               Save
             </v-btn>
           </v-card-actions>
@@ -165,10 +121,7 @@
             <v-btn text @click="deleteDialogVisible = false">
               Cancel
             </v-btn>
-            <v-btn
-              color="error"
-              @click="deleteMap"
-            >
+            <v-btn color="error" @click="deleteMap">
               Delete
             </v-btn>
           </v-card-actions>
@@ -294,7 +247,10 @@ const retryLoading = () => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  router.push({
+    path: '/login',
+    query: { redirect: '/dashboard' }
+  })
 }
 
 // Add a safe formatting function

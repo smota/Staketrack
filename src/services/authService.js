@@ -182,6 +182,28 @@ class AuthService {
       }, 100)
     })
   }
+
+  /**
+   * Link an anonymous account to a credential (email or social provider)
+   * @param {AuthCredential} credential - The credential to link
+   * @returns {Promise<UserCredential>} Authentication promise
+   */
+  async linkAnonymousAccount(credential) {
+    if (!auth.currentUser) {
+      throw new Error('No authenticated user to upgrade')
+    }
+
+    if (!auth.currentUser.isAnonymous) {
+      throw new Error('Current user is not anonymous')
+    }
+
+    try {
+      return await auth.currentUser.linkWithCredential(credential)
+    } catch (error) {
+      console.error('Error linking anonymous account:', error)
+      throw error
+    }
+  }
 }
 
 // Export singleton instance

@@ -3,8 +3,8 @@
  * Firebase Cloud Functions for secure configuration and API endpoints
  */
 
-const { https, logger } = require('firebase-functions')
-const functions = require('firebase-functions')
+const { https, logger } = require('firebase-functions').region('europe-west1')
+const functions = require('firebase-functions').region('europe-west1')
 const admin = require('firebase-admin')
 const cors = require('cors')({ origin: true })
 const { VertexAI } = require('@google-cloud/vertexai')
@@ -17,7 +17,7 @@ if (!admin.apps.length) {
 
 // Initialize Vertex AI
 const projectId = process.env.GCLOUD_PROJECT
-const location = 'us-central1'
+const location = 'europe-west1'
 const vertexAI = new VertexAI({ project: projectId, location })
 
 /**
@@ -33,76 +33,113 @@ const SafetySettings = promptTemplates.safetySettings
  */
 exports.getConfig = functions.https.onRequest((request, response) => {
   cors(request, response, () => {
-    // Get environment from query params
-    const env = request.query.env || 'local'
-    const isFallback = request.query.fallback === 'true'
+    try {
+      // Get environment from query params
+      const env = request.query.env || 'local'
+      const isFallback = request.query.fallback === 'true'
 
-    let config
+      logger.info(`getConfig called with env: ${env}, fallback: ${isFallback}`)
 
-    // For production, use runtime config from environment variables
-    // No hard-coded secrets
-    if (env === 'production') {
-      // Production environment config
-      config = {
-        APP_ENVIRONMENT: 'PRD',
-        APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
-        APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
-        APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-        APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-        APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-        APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
-        APP_USE_EMULATORS: 'false',
-        CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
+      // Log environment variables for debugging
+      logger.info(`Current environment variables: FIREBASE_API_KEY exists: ${!!process.env.FIREBASE_API_KEY}`)
+
+      // Log Firebase config
+      const firebaseConfig = functions.config()
+      logger.info(`Firebase config available: ${!!firebaseConfig}`)
+      logger.info(`App config available: ${!!(firebaseConfig.app)}`)
+
+      if (firebaseConfig.app) {
+        logger.info(`App config keys: ${Object.keys(firebaseConfig.app).join(', ')}`)
       }
-    } else if (env === 'development') {
-      // Development environment config
-      config = {
-        APP_ENVIRONMENT: 'DEV',
-        APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
-        APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
-        APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-        APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-        APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-        APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
-        APP_USE_EMULATORS: 'false',
-        CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
-      }
-    } else {
-      // Local development config
-      config = {
-        APP_ENVIRONMENT: 'LOCAL',
-        APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
-        APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
-        APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
-        APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
-        APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
-        APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
-        APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
-        APP_USE_EMULATORS: 'true',
-        CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
-      }
-    }
 
-    // If config is incomplete and this is not a fallback request, provide minimal info
-    if (config.CONFIG_INCOMPLETE && !isFallback) {
-      functions.logger.warn(`Incomplete configuration requested for ${env} environment`)
+      let config
 
+      // For production, use runtime config from environment variables
+      // No hard-coded secrets
+      if (env === 'production') {
+        // Production environment config
+        config = {
+          APP_ENVIRONMENT: 'PRD',
+          APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
+          APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
+          APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+          APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
+          APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
+          APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
+          APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
+          APP_USE_EMULATORS: 'false',
+          CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
+        }
+      } else if (env === 'staging') {
+        // Staging environment config
+        config = {
+          APP_ENVIRONMENT: 'STG',
+          APP_FIREBASE_API_KEY: firebaseConfig.app?.api_key || '',
+          APP_FIREBASE_AUTH_DOMAIN: firebaseConfig.app?.auth_domain || '',
+          APP_FIREBASE_PROJECT_ID: firebaseConfig.app?.project_id || '',
+          APP_FIREBASE_STORAGE_BUCKET: firebaseConfig.app?.storage_bucket || '',
+          APP_FIREBASE_MESSAGING_SENDER_ID: firebaseConfig.app?.messaging_sender_id || '',
+          APP_FIREBASE_APP_ID: firebaseConfig.app?.app_id || '',
+          APP_FIREBASE_MEASUREMENT_ID: firebaseConfig.app?.measurement_id || '',
+          APP_USE_EMULATORS: 'false',
+          CONFIG_INCOMPLETE: !firebaseConfig.app?.api_key
+        }
+      } else if (env === 'development') {
+        // Development environment config
+        config = {
+          APP_ENVIRONMENT: 'DEV',
+          APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
+          APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
+          APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+          APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
+          APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
+          APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
+          APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
+          APP_USE_EMULATORS: 'false',
+          CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
+        }
+      } else {
+        // Local development config
+        config = {
+          APP_ENVIRONMENT: 'LOCAL',
+          APP_FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
+          APP_FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
+          APP_FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+          APP_FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
+          APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
+          APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
+          APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
+          APP_USE_EMULATORS: 'true',
+          CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY
+        }
+      }
+
+      // If config is incomplete and this is not a fallback request, provide minimal info
+      if (config.CONFIG_INCOMPLETE && !isFallback) {
+        logger.warn(`Incomplete configuration requested for ${env} environment`)
+
+        response.status(500).json({
+          error: 'Configuration incomplete',
+          message: 'The requested configuration is incomplete. Please check Firebase Function environment variables.',
+          APP_ENVIRONMENT: config.APP_ENVIRONMENT,
+          CONFIG_INCOMPLETE: true
+        })
+        return
+      }
+
+      // Add timestamp for debugging
+      config.TIMESTAMP = new Date().toISOString()
+
+      // Return config
+      response.json(config)
+    } catch (error) {
+      logger.error('Error in getConfig function:', error)
       response.status(500).json({
-        error: 'Configuration incomplete',
-        message: 'The requested configuration is incomplete. Please check Firebase Function environment variables.',
-        APP_ENVIRONMENT: config.APP_ENVIRONMENT,
-        CONFIG_INCOMPLETE: true
+        error: 'Server error',
+        message: 'An error occurred while retrieving configuration.',
+        timestamp: new Date().toISOString()
       })
-      return
     }
-
-    // Add timestamp for debugging
-    config.TIMESTAMP = new Date().toISOString()
-
-    // Return config
-    response.json(config)
   })
 })
 

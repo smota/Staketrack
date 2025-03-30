@@ -33,21 +33,33 @@ export class MapService {
         return localStorageService.getMaps()
       }
 
-      const userId = auth.currentUser.uid
-      const mapsRef = collection(db, 'users', userId, 'maps')
-      const q = query(mapsRef)
-      const snapshot = await getDocs(q)
+      // Check if user is authenticated and Firestore is available
+      if (!auth.currentUser || !db) {
+        console.warn('Firebase services not fully available, falling back to local storage')
+        return localStorageService.getMaps()
+      }
 
-      this.maps = snapshot.docs.map(doc => new Map({
-        id: doc.id,
-        ...doc.data(),
-        userId
-      }))
+      try {
+        const userId = auth.currentUser.uid
+        const mapsRef = collection(db, 'users', userId, 'maps')
+        const q = query(mapsRef)
+        const snapshot = await getDocs(q)
 
-      return this.maps
+        this.maps = snapshot.docs.map(doc => new Map({
+          id: doc.id,
+          ...doc.data(),
+          userId
+        }))
+
+        return this.maps
+      } catch (firestoreError) {
+        console.error('Firestore error, falling back to local storage:', firestoreError)
+        return localStorageService.getMaps()
+      }
     } catch (error) {
       console.error('Error getting maps:', error)
-      throw error
+      // Return empty array as fallback to prevent UI errors
+      return []
     }
   }
 

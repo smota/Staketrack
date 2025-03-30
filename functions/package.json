@@ -7,15 +7,12 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log",
-    "deploy:production": "node deploy-prompts.js production && firebase deploy --only functions",
-    "deploy:development": "node deploy-prompts.js development && firebase deploy --only functions",
-    "deploy:local": "node deploy-prompts.js local && firebase functions:config:get > .runtimeconfig.json && firebase emulators:start --only functions"
+    "logs": "firebase functions:log"
   },
   "engines": {
     "node": "18"
   },
-  "main": "src/index.js",
+  "main": "index.js",
   "dependencies": {
     "@google-cloud/vertexai": "^0.4.0",
     "cors": "^2.8.5",

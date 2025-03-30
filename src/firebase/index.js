@@ -48,7 +48,7 @@ let analytics = null
 // Only initialize analytics in production to avoid unnecessary data collection
 if (process.env.NODE_ENV === 'production') {
   isSupported().then(supported => {
-    if (supported) {
+    if (supported && firebaseConfig.measurementId) {
       analytics = getAnalytics(app)
     }
   }).catch(error => {
@@ -59,10 +59,13 @@ export { analytics }
 
 // Initialize Storage (optional, only for authenticated users)
 let storage = null
-try {
-  storage = getStorage(app)
-} catch (error) {
-  console.warn('Firebase Storage initialization failed:', error)
+if (firebaseConfig.storageBucket) {
+  try {
+    storage = getStorage(app)
+  } catch (error) {
+    console.warn('Firebase Storage initialization failed:', error)
+    // Don't throw the error - allow the app to continue without storage
+  }
 }
 export { storage }
 
