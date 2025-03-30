@@ -115,34 +115,55 @@ npm run firebase:deploy:functions:prod
 ## Project Structure
 
 ```
-staketrack-vue/
-├── public/                # Static assets
+staketrack/
+├── .firebase/             # Firebase cache directory
+├── .github/               # GitHub configuration files
+├── .husky/                # Git hooks configuration
+├── .vscode/               # VS Code configuration
+├── assets/                # Static assets
+├── config/                # Configuration files
+├── coverage/              # Test coverage reports
+├── dist/                  # Production build output
+├── docs/                  # Documentation
+├── firebase/              # Firebase configuration
+├── functions/             # Firebase Cloud Functions
+├── js/                    # JavaScript files
+├── node_modules/          # Node.js dependencies
+├── playwright-report/     # Playwright test reports
+├── scripts/               # Utility scripts
 ├── src/                   # Source code
-│   ├── assets/            # Assets (images, fonts, etc.)
 │   ├── components/        # Vue components
-│   ├── config/            # Configuration
+│   ├── config/            # Application configuration
+│   ├── firebase/          # Firebase integration
 │   ├── models/            # Data models
-│   ├── plugins/           # Vue plugins
 │   ├── router/            # Vue Router configuration
 │   ├── services/          # Services for API, auth, etc.
-│   ├── store/             # Global state management
+│   ├── stores/            # Global state management (Pinia)
 │   ├── styles/            # Global CSS
 │   ├── utils/             # Utility functions
 │   ├── views/             # Page components
 │   ├── App.vue            # Root component
 │   └── main.js            # Entry point
-├── functions/             # Firebase Cloud Functions
 ├── tests/                 # Tests
 │   ├── e2e/               # End-to-end tests
 │   └── unit/              # Unit tests
+├── .babelrc               # Babel configuration
 ├── .env.development       # Development environment variables (non-secret)
 ├── .env.production        # Production environment variables (non-secret)
+├── .env.staging           # Staging environment variables (non-secret)
 ├── .env.development.local # Local dev secrets (gitignored)
+├── .env.staging.local     # Staging secrets (gitignored)
+├── .env.production.local  # Production secrets (gitignored)
+├── .env.local.example     # Example environment variables file
 ├── .eslintrc.js           # ESLint configuration
 ├── babel.config.js        # Babel configuration
 ├── firebase.json          # Firebase configuration
+├── index.html             # HTML entry point
+├── jest.config.js         # Jest configuration
 ├── package.json           # Project dependencies and scripts
-└── README.md              # Project documentation
+├── playwright.config.js   # Playwright configuration
+├── vue.config.js          # Vue configuration
+└── webpack.config.js      # Webpack configuration
 ```
 
 ## Secret Management
