@@ -282,7 +282,7 @@
                       size="small"
                       color="accent"
                       title="Get Recommendations"
-                      @click="getStakeholderRecommendations(item)"
+                      @click="handleNextBestAction(item)"
                     >
                       <v-icon>mdi-lightbulb</v-icon>
                     </v-btn>
@@ -367,11 +367,7 @@
           <v-btn color="primary" @click="editStakeholder(selectedStakeholder)">
             Edit
           </v-btn>
-          <v-btn
-            color="accent"
-            prepend-icon="mdi-lightbulb"
-            @click="getStakeholderRecommendations(selectedStakeholder)"
-          >
+          <v-btn color="accent" prepend-icon="mdi-lightbulb" @click="handleNextBestAction(selectedStakeholder)">
             Next Best Action
           </v-btn>
           <v-btn color="error" @click="deleteStakeholder(selectedStakeholder)">
@@ -1115,6 +1111,10 @@ export default {
         }
 
         // Call AI service to get recommendations
+        if (typeof aiService.getStakeholderRecommendations !== 'function') {
+          throw new Error('AI service is not available in anonymous mode')
+        }
+
         const response = await aiService.getStakeholderRecommendations(currentMap.value.id)
 
         // Show modal with recommendations
@@ -1162,6 +1162,10 @@ export default {
         }
 
         // Call AI service with focus on this specific stakeholder
+        if (typeof aiService.getStakeholderRecommendations !== 'function') {
+          throw new Error('AI service is not available in anonymous mode')
+        }
+
         const response = await aiService.getStakeholderRecommendations(currentMap.value.id, {
           specificFocus: `stakeholder:${stakeholder.id}`
         })
@@ -1185,6 +1189,53 @@ export default {
     const navigateToLogin = () => {
       router.push('/login')
       actionsDialog.value = false
+    }
+
+    const handleNextBestAction = async (stakeholder) => {
+      try {
+        // Check authentication first
+        const auth = getAuth()
+        const user = auth.currentUser
+
+        if (!user || user.isAnonymous) {
+          // Show login required dialog
+          dialogTitle.value = 'Authentication Required'
+          dialogContent.value = {
+            authRequired: true,
+            message: 'This feature requires authentication. Please log in to access AI-powered recommendations.'
+          }
+          actionsDialog.value = true
+          return
+        }
+
+        aiLoading.value = true
+
+        if (!currentMap.value || !currentMap.value.id) {
+          throw new Error('Map data not available')
+        }
+
+        // Call AI service with focus on this specific stakeholder
+        if (typeof aiService.getStakeholderRecommendations !== 'function') {
+          throw new Error('AI service is not available in anonymous mode')
+        }
+
+        const response = await aiService.getStakeholderRecommendations(currentMap.value.id, {
+          specificFocus: `stakeholder:${stakeholder.id}`
+        })
+
+        // Show modal with recommendations
+        dialogTitle.value = `Recommendations for ${stakeholder.name}`
+        dialogContent.value = response
+        actionsDialog.value = true
+      } catch (error) {
+        console.error('Error getting stakeholder recommendations:', error)
+        notificationStore.showNotification({
+          message: 'Error getting recommendations: ' + error.message,
+          type: 'error'
+        })
+      } finally {
+        aiLoading.value = false
+      }
     }
 
     onMounted(() => {
@@ -1256,7 +1307,8 @@ export default {
       actionsDialog,
       dialogTitle,
       dialogContent,
-      navigateToLogin
+      navigateToLogin,
+      handleNextBestAction
     }
   }
 }
