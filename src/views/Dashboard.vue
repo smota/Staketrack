@@ -48,7 +48,15 @@
 
             <v-card-text>
               <v-row>
-                <v-col v-for="map in maps" :key="map.id" cols="12" sm="6" md="4" lg="3" class="map-card-col">
+                <v-col
+                  v-for="map in maps"
+                  :key="map.id"
+                  cols="12"
+                  sm="6"
+                  md="4"
+                  lg="3"
+                  class="map-card-col"
+                >
                   <v-card class="map-card" :class="{ 'current-map': map.id === currentMapId }" @click="selectMap(map)">
                     <v-card-title>{{ map.name }}</v-card-title>
                     <v-card-text>
@@ -73,7 +81,12 @@
               <p class="text-body-1 mb-4">
                 You're currently in anonymous mode. Maps will be stored in your browser's local storage.
               </p>
-              <v-btn outlined color="secondary" class="mt-2" @click="goToLogin">
+              <v-btn
+                outlined
+                color="secondary"
+                class="mt-2"
+                @click="goToLogin"
+              >
                 Sign In to Sync Maps
               </v-btn>
             </v-card-text>
@@ -87,8 +100,12 @@
 
           <v-card-text>
             <v-form ref="form" v-model="isFormValid">
-              <v-text-field v-model="editedMap.name" label="Map Name" :rules="[v => !!v || 'Name is required']"
-                required />
+              <v-text-field
+                v-model="editedMap.name"
+                label="Map Name"
+                :rules="[v => !!v || 'Name is required']"
+                required
+              />
 
               <v-textarea v-model="editedMap.description" label="Description" rows="3" />
             </v-form>
