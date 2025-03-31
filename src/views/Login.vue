@@ -2,7 +2,12 @@
   <div class="login">
     <v-container>
       <v-row justify="center" align="center">
-        <v-col cols="12" sm="10" md="8" lg="6">
+        <v-col
+          cols="12"
+          sm="10"
+          md="8"
+          lg="6"
+        >
           <v-card class="mt-5">
             <v-card-title class="text-h4 text-center">
               Sign In to StakeTrack
@@ -12,18 +17,43 @@
             </v-card-subtitle>
 
             <v-card-text>
-              <v-form ref="form" v-model="isFormValid" lazy-validation @submit.prevent="submitForm">
-                <v-text-field v-if="authMethod === 'email'" v-model="email" :rules="emailRules" label="Email"
-                  prepend-icon="mdi-email" required />
+              <v-form
+                ref="form"
+                v-model="isFormValid"
+                lazy-validation
+                @submit.prevent="submitForm"
+              >
+                <v-text-field
+                  v-if="authMethod === 'email'"
+                  v-model="email"
+                  :rules="emailRules"
+                  label="Email"
+                  prepend-icon="mdi-email"
+                  required
+                />
 
-                <v-text-field v-if="authMethod === 'email'" v-model="password" :rules="passwordRules" label="Password"
-                  prepend-icon="mdi-lock" :type="showPassword ? 'text' : 'password'" required
+                <v-text-field
+                  v-if="authMethod === 'email'"
+                  v-model="password"
+                  :rules="passwordRules"
+                  label="Password"
+                  prepend-icon="mdi-lock"
+                  :type="showPassword ? 'text' : 'password'"
+                  required
                   :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                  @click:append="showPassword = !showPassword" />
+                  @click:append="showPassword = !showPassword"
+                />
 
                 <div class="text-center">
-                  <v-btn v-if="authMethod === 'email'" color="primary" block :loading="isLoading"
-                    :disabled="!isFormValid || isLoading" type="submit" class="mb-4">
+                  <v-btn
+                    v-if="authMethod === 'email'"
+                    color="primary"
+                    block
+                    :loading="isLoading"
+                    :disabled="!isFormValid || isLoading"
+                    type="submit"
+                    class="mb-4"
+                  >
                     Sign In with Email
                   </v-btn>
                 </div>
@@ -33,16 +63,28 @@
                     Or continue with
                   </p>
 
-                  <v-btn block color="red darken-1" class="white--text mb-3" prepend-icon="mdi-google"
-                    :loading="isLoadingGoogle" @click="signInWithGoogle">
+                  <v-btn
+                    block
+                    color="red darken-1"
+                    class="white--text mb-3"
+                    prepend-icon="mdi-google"
+                    :loading="isLoadingGoogle"
+                    @click="signInWithGoogle"
+                  >
                     <v-icon left>
                       mdi-google
                     </v-icon>
                     Google
                   </v-btn>
 
-                  <v-btn block color="primary" variant="outlined" class="mb-3" :loading="isLoadingAnonymous"
-                    @click="signInAnonymously">
+                  <v-btn
+                    block
+                    color="primary"
+                    variant="outlined"
+                    class="mb-3"
+                    :loading="isLoadingAnonymous"
+                    @click="signInAnonymously"
+                  >
                     <v-icon left>
                       mdi-incognito
                     </v-icon>
