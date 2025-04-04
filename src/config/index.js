@@ -39,15 +39,26 @@ const config = {
     },
     useEmulators: process.env.APP_USE_EMULATORS === 'true',
     firebase: {
-      functionsRegion: process.env.APP_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
+      functionsRegion: process.env.APP_FIREBASE_FUNCTIONS_REGION
+    }
+  },
+
+  // Debug information - log emulator configuration
+  debug: {
+    emulators: {
+      enabled: process.env.APP_USE_EMULATORS === 'true',
+      authPort: process.env.APP_EMULATOR_AUTH_PORT,
+      firestorePort: process.env.APP_EMULATOR_FIRESTORE_PORT,
+      functionsPort: process.env.APP_EMULATOR_FUNCTIONS_PORT,
+      storagePort: process.env.APP_EMULATOR_STORAGE_PORT
     }
   },
 
   // AI Configuration
   ai: {
     enabled: process.env.APP_AI_ENABLED === 'true',
-    model: process.env.APP_AI_MODEL || 'gemini-1.5-pro',
-    weeklyLimit: parseInt(process.env.APP_AI_WEEKLY_LIMIT || '10', 10)
+    model: process.env.APP_AI_MODEL,
+    weeklyLimit: parseInt(process.env.APP_AI_WEEKLY_LIMIT, 10)
   },
 
   // Validation rules

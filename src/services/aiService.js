@@ -58,8 +58,28 @@ class AIService {
         modelOverrides: options.modelOverrides
       }
 
-      // Get Firebase Functions instance
-      const functions = getFunctionsInstance()
+      // Try to get Firebase Functions instance
+      let functions
+      try {
+        // Check if we're in emulator mode and Functions might not be available
+        if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
+          console.log('Running in emulator mode, checking Functions availability')
+          functions = getFunctionsInstance()
+          if (!functions) {
+            console.warn('Firebase Functions not available in emulator mode, using fallback')
+            return this._getEmulatorFallbackResponse(map)
+          }
+        } else {
+          functions = getFunctionsInstance()
+        }
+      } catch (functionsError) {
+        console.error('Error getting Functions instance:', functionsError)
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Functions unavailable in development, using fallback')
+          return this._getEmulatorFallbackResponse(map)
+        }
+        throw functionsError
+      }
 
       // Call the Firebase Cloud Function
       const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
@@ -73,6 +93,12 @@ class AIService {
         })
       } catch (callError) {
         console.error('Error calling Firebase Function:', callError)
+
+        // Special handling for emulator mode
+        if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
+          return this._getEmulatorFallbackResponse(map)
+        }
+
         throw new Error('Failed to get recommendations from AI service: ' + callError.message)
       }
 
@@ -660,6 +686,34 @@ class AIService {
     }
 
     return channels
+  }
+
+  /**
+   * Get fallback recommendations when running in emulator mode and Functions service is unavailable
+   * @param {Object} map - The stakeholder map
+   * @returns {Object} Fallback recommendation data
+   * @private
+   */
+  _getEmulatorFallbackResponse(map) {
+    console.log('Providing emulator fallback recommendations for map:', map.id)
+    return {
+      success: true,
+      recommendations: [
+        {
+          title: '[EMULATOR FALLBACK] Stakeholder Engagement Recommendations',
+          content: 'This is a fallback recommendation provided when running in emulator mode. Firebase Functions service is not available. To get real recommendations, please ensure your Functions emulator is running correctly.'
+        },
+        {
+          title: 'Next Steps',
+          content: 'Please check that:\n1. Firebase emulators are running\n2. Functions emulator is properly initialized\n3. Cloud functions are deployed to the emulator\n4. Environment variables are correctly set'
+        }
+      ],
+      stakeholderMap: map.name,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        isEmulatorFallback: true
+      }
+    }
   }
 }
 

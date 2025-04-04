@@ -79,13 +79,13 @@ export const getFunctionsInstance = () => {
   }
 
   try {
-    console.log('Initializing Firebase Functions with region:', config.env.firebase.functionsRegion || 'default')
+    console.log('Initializing Firebase Functions with region:', config.env.firebase.functionsRegion)
     _functions = getFunctions(app, config.env.firebase.functionsRegion)
 
     // Connect to emulator in development mode
     if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
-      console.log('Connecting Firebase Functions to emulator')
-      connectFunctionsEmulator(_functions, 'localhost', 5001)
+      console.log('Connecting Firebase Functions to emulator on port:', process.env.APP_EMULATOR_FUNCTIONS_PORT)
+      connectFunctionsEmulator(_functions, 'localhost', parseInt(process.env.APP_EMULATOR_FUNCTIONS_PORT, 10))
     }
 
     return _functions
@@ -102,8 +102,8 @@ let storage = null
 if (config.env.useEmulators) {
   console.log('Using Firebase emulators for development')
   try {
-    connectAuthEmulator(auth, `http://localhost:${process.env.APP_EMULATOR_AUTH_PORT || 9099}`)
-    connectFirestoreEmulator(db, 'localhost', process.env.APP_EMULATOR_FIRESTORE_PORT || 8080)
+    connectAuthEmulator(auth, `http://localhost:${process.env.APP_EMULATOR_AUTH_PORT}`)
+    connectFirestoreEmulator(db, 'localhost', parseInt(process.env.APP_EMULATOR_FIRESTORE_PORT, 10))
   } catch (error) {
     console.error('Error connecting to emulators:', error)
   }
@@ -143,7 +143,7 @@ export const getFirebaseStorage = () => {
 
       // Connect to emulator if configured
       if (config.env.useEmulators) {
-        connectStorageEmulator(storage, 'localhost', process.env.APP_EMULATOR_STORAGE_PORT || 9199)
+        connectStorageEmulator(storage, 'localhost', parseInt(process.env.APP_EMULATOR_STORAGE_PORT, 10))
       }
 
       return storage
