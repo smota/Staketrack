@@ -66,3 +66,4 @@ pnpm-debug.log*
 /playwright-report/
 /tests-examples/
 /playwright/.cache/
+firestore-debug.log

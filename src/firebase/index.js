@@ -93,17 +93,32 @@ if (process.env.NODE_ENV === 'production') {
 }
 export { analytics }
 
-// Initialize Storage with proper error handling
+// Cache for lazy-loaded Storage instance
 let storage = null
-if (firebaseConfig.storageBucket) {
-  try {
-    storage = getStorage(app)
-  } catch (error) {
-    console.error('Firebase Storage initialization failed:', error)
-    // Log the error but don't throw - storage is optional
+
+/**
+ * Get Firebase Storage instance, initializing it only when needed and when user is logged in
+ * @returns {Object|null} Firebase Storage instance or null if unavailable
+ */
+export const getFirebaseStorage = () => {
+  // If storage is already initialized, return the cached instance
+  if (storage) {
+    return storage
   }
+
+  // Only initialize Storage if user is logged in
+  if (auth.currentUser && firebaseConfig.storageBucket) {
+    try {
+      storage = getStorage(app)
+      return storage
+    } catch (error) {
+      console.error('Firebase Storage initialization failed:', error)
+      return null
+    }
+  }
+
+  return null
 }
-export { storage }
 
 // Enable offline persistence for Firestore (only when not using emulators)
 if (!(process.env.NODE_ENV === 'development' && config.env.useEmulators)) {

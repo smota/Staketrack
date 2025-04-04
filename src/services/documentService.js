@@ -4,10 +4,11 @@
  */
 
 import { getFirestore } from 'firebase/firestore'
-import { getStorage, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 import { v4 as uuidv4 } from 'uuid'
+import { getFirebaseStorage } from '@/firebase'
 
 class DocumentService {
   /**
@@ -68,7 +69,11 @@ class DocumentService {
       if (document.type !== 'note' && document.file) {
         if (authService.isAuthenticated()) {
           const userId = authService.getCurrentUser().uid
-          const fileRef = getStorage()
+          const storage = getFirebaseStorage()
+          if (!storage) {
+            throw new Error('Storage not available or user not authenticated')
+          }
+          const fileRef = storage
             .ref()
             .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${newDocument.id}`)
 
@@ -128,7 +133,11 @@ class DocumentService {
       if (documentData.type !== 'note' && documentData.file) {
         if (authService.isAuthenticated()) {
           const userId = authService.getCurrentUser().uid
-          const fileRef = getStorage()
+          const storage = getFirebaseStorage()
+          if (!storage) {
+            throw new Error('Storage not available or user not authenticated')
+          }
+          const fileRef = storage
             .ref()
             .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 
@@ -178,11 +187,14 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         try {
           const userId = authService.getCurrentUser().uid
-          const fileRef = getStorage()
-            .ref()
-            .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
+          const storage = getFirebaseStorage()
+          if (storage) {
+            const fileRef = storage
+              .ref()
+              .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 
-          await deleteObject(fileRef)
+            await deleteObject(fileRef)
+          }
         } catch (storageError) {
           // Ignore errors if the file doesn't exist
           console.log('No file to delete or error deleting file:', storageError)
@@ -239,7 +251,11 @@ class DocumentService {
         }
 
         // If URL not in document, try to get it from storage
-        const fileRef = getStorage()
+        const storage = getFirebaseStorage()
+        if (!storage) {
+          throw new Error('Storage not available or user not authenticated')
+        }
+        const fileRef = storage
           .ref()
           .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 

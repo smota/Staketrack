@@ -48,7 +48,7 @@ service cloud.firestore {
       // No deletes allowed
       allow delete: if false;
       
-      // Maps subcollection rules
+      // Maps subcollection rules - KEEP THIS FOR COMPATIBILITY
       match /maps/{mapId} {
         // Allow read by owner
         allow read: if isOwner(userId);
@@ -72,41 +72,32 @@ service cloud.firestore {
         
         // Allow delete by owner
         allow delete: if isOwner(userId);
-        
-        // Stakeholders subcollection rules
-        match /stakeholders/{stakeholderId} {
-          // Allow read by map owner
-          allow read: if isOwner(userId);
-          
-          // Allow create with valid fields by map owner
-          allow create: if isOwner(userId) &&
-                          hasValidFields(
-                            ['name', 'created', 'updated'], 
-                            [
-                              'influence', 'impact', 'relationship', 'interests',
-                              'contribution', 'risk', 'communication', 'strategy',
-                              'measurement', 'category', 'interactions', 'mapId'
-                            ]
-                          ) &&
-                          isValidTimestamp('created') &&
-                          isValidTimestamp('updated');
-          
-          // Allow update with valid fields by map owner
-          allow update: if isOwner(userId) &&
-                          hasValidFields(
-                            ['name', 'created', 'updated'], 
-                            [
-                              'influence', 'impact', 'relationship', 'interests',
-                              'contribution', 'risk', 'communication', 'strategy',
-                              'measurement', 'category', 'interactions', 'mapId'
-                            ]
-                          ) &&
-                          isValidTimestamp('updated');
-          
-          // Allow delete by map owner
-          allow delete: if isOwner(userId);
-        }
       }
+    }
+    
+    // Add direct Maps collection rules - NEW SECTION
+    match /maps/{mapId} {
+      // Allow read by owner
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+      
+      // Allow create with valid fields and current user as owner
+      allow create: if isSignedIn() &&
+                      request.resource.data.userId == request.auth.uid &&
+                      hasValidFields(
+                        ['name', 'userId', 'id'], 
+                        ['description', 'stakeholderCount', 'createdAt', 'updatedAt']
+                      );
+      
+      // Allow update with valid fields by owner
+      allow update: if isSignedIn() &&
+                      resource.data.userId == request.auth.uid &&
+                      hasValidFields(
+                        ['name', 'userId', 'id'], 
+                        ['description', 'stakeholderCount', 'createdAt', 'updatedAt']
+                      );
+      
+      // Allow delete by owner
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
     
     // Deny access to all other documents
