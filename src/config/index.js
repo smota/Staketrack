@@ -10,8 +10,8 @@ const requiredFirebaseKeys = [
   'APP_FIREBASE_PROJECT_ID'
 ]
 
-// Log warning only in development mode
-if (process.env.NODE_ENV === 'development') {
+// Log warning only in development mode without emulators
+if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS !== 'true') {
   requiredFirebaseKeys.forEach(key => {
     if (!process.env[key]) {
       console.warn(`Missing required Firebase configuration: ${key}`)

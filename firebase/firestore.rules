@@ -29,7 +29,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) &&
                       hasValidFields(
                         ['email'], 
-                        ['displayName', 'photoURL', 'createdAt', 'lastLogin']
+                        ['displayName', 'photoURL', 'createdAt', 'lastLogin', 'currentMapId', 'lastActivity']
                       ) &&
                       isValidTimestamp('createdAt') &&
                       isValidTimestamp('lastLogin');
@@ -38,7 +38,7 @@ service cloud.firestore {
       allow update: if isOwner(userId) &&
                       hasValidFields(
                         [], 
-                        ['displayName', 'photoURL', 'lastLogin', 'settings']
+                        ['displayName', 'photoURL', 'lastLogin', 'settings', 'currentMapId', 'lastActivity']
                       ) &&
                       (
                         !('lastLogin' in request.resource.data) || 
