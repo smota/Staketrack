@@ -16,7 +16,8 @@ import {
   orderBy,
   _limit,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  setDoc
 } from 'firebase/firestore'
 import { Stakeholder } from '@/models/Stakeholder'
 import { StakeholderMap } from '@/models/StakeholderMap'
@@ -138,19 +139,29 @@ class StakeholderService {
         return false
       }
 
+      // First, try to get the map from the stakeholderMaps collection
       const mapDoc = await getDoc(this.getMapRef(mapId))
 
-      if (!mapDoc.exists()) {
-        return false
+      if (mapDoc.exists()) {
+        const mapData = mapDoc.data()
+        // Check if user is the owner or has explicit access
+        return (
+          mapData.createdBy === userId ||
+          (mapData.sharedWith && mapData.sharedWith.includes(userId))
+        )
       }
 
-      const mapData = mapDoc.data()
+      // If not found, try to get from the main maps collection as fallback
+      const mainMapRef = doc(collection(db, 'maps'), mapId)
+      const mainMapDoc = await getDoc(mainMapRef)
 
-      // Check if user is the owner or has explicit access
-      return (
-        mapData.createdBy === userId ||
-        (mapData.sharedWith && mapData.sharedWith.includes(userId))
-      )
+      if (mainMapDoc.exists()) {
+        const mainMapData = mainMapDoc.data()
+        // Check if user is the owner
+        return mainMapData.userId === userId
+      }
+
+      return false
     } catch (error) {
       console.error('Error checking map access:', error)
       return false
@@ -460,12 +471,75 @@ class StakeholderService {
   }
 
   /**
-   * Get stakeholders for a map
+   * Migrate a map from the main maps collection to the stakeholderMaps collection
    * @param {string} mapId - The map ID
-   * @returns {Promise<Array>} Array of stakeholders
+   * @returns {Promise<boolean>} Whether the migration was successful
+   */
+  async migrateMapFromMainCollection(mapId) {
+    try {
+      const userId = this.currentUserId
+
+      if (!userId) {
+        return false
+      }
+
+      // Check if the map already exists in stakeholderMaps collection
+      const stakeholderMapDoc = await getDoc(this.getMapRef(mapId))
+      if (stakeholderMapDoc.exists()) {
+        // Map already exists, no need to migrate
+        return true
+      }
+
+      // Get the map from the main maps collection
+      const mainMapRef = doc(collection(db, 'maps'), mapId)
+      const mainMapDoc = await getDoc(mainMapRef)
+
+      if (!mainMapDoc.exists()) {
+        console.warn(`Map ${mapId} not found in main collection, cannot migrate`)
+        return false
+      }
+
+      const mainMapData = mainMapDoc.data()
+
+      // Ensure the user is the owner
+      if (mainMapData.userId !== userId) {
+        console.warn(`User ${userId} is not the owner of map ${mapId}, cannot migrate`)
+        return false
+      }
+
+      // Create a new document in the stakeholderMaps collection
+      const stakeholderMapData = {
+        name: mainMapData.name,
+        description: mainMapData.description || '',
+        createdBy: userId,
+        createdAt: mainMapData.createdAt || serverTimestamp(),
+        updatedAt: mainMapData.updatedAt || serverTimestamp(),
+        stakeholderCount: mainMapData.stakeholderCount || 0,
+        isArchived: false
+      }
+
+      // If the map ID is a randomly generated UUID, keep it; otherwise, generate a new one
+      const mapDocRef = doc(this.mapsCollection, mapId)
+      await setDoc(mapDocRef, stakeholderMapData)
+
+      console.log(`Successfully migrated map ${mapId} to stakeholderMaps collection`)
+      return true
+    } catch (error) {
+      console.error('Error migrating map:', error)
+      return false
+    }
+  }
+
+  /**
+   * Get all stakeholders for a map
+   * @param {string} mapId - The map ID
+   * @returns {Promise<Array<Stakeholder>>} Array of stakeholders
    */
   async getStakeholders(mapId) {
     try {
+      // Try to migrate the map if needed
+      await this.migrateMapFromMainCollection(mapId)
+
       if (this._isLocalMode()) {
         console.log('Using localStorage for stakeholder retrieval (anonymous mode)')
         const stakeholders = localStorageService.getStakeholders(mapId) || []
@@ -487,22 +561,34 @@ class StakeholderService {
       // Check access
       const hasAccess = await this.hasMapAccess(mapId)
       if (!hasAccess) {
-        throw new Error('Access denied to this stakeholder map')
+        throw new Error('Access denied to this map')
       }
 
-      // Get the stakeholders collection
+      // Get all stakeholders for the map
       const stakeholdersCollection = this.getStakeholdersCollection(mapId)
       const stakeholderDocs = await getDocs(stakeholdersCollection)
 
-      // Transform to Stakeholder instances
-      return stakeholderDocs.docs.map(doc => {
-        const data = this._prepareDocData(doc.data(), doc.id)
-        return new Stakeholder(data)
-      })
+      const stakeholders = await Promise.all(
+        stakeholderDocs.docs.map(async doc => {
+          const stakeholderData = this._prepareDocData(doc.data(), doc.id)
+
+          // Get the interactions for this stakeholder
+          const interactionsCollection = this.getInteractionsCollection(mapId, doc.id)
+          const interactionsQuery = query(interactionsCollection, orderBy('date', 'desc'))
+          const interactionDocs = await getDocs(interactionsQuery)
+
+          stakeholderData.interactions = interactionDocs.docs.map(interactionDoc =>
+            this._prepareDocData(interactionDoc.data(), interactionDoc.id)
+          )
+
+          return new Stakeholder(stakeholderData)
+        })
+      )
+
+      return stakeholders
     } catch (error) {
       console.error('Error getting stakeholders:', error)
-      // Return empty array instead of throwing in case of error
-      return []
+      throw error
     }
   }
 

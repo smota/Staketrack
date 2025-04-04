@@ -1,4 +1,4 @@
-import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, where } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { auth } from '@/firebase'
 import { localStorageService } from './localStorageService'
@@ -47,8 +47,8 @@ export class MapService {
 
       try {
         const userId = auth.currentUser.uid
-        const mapsRef = collection(db, 'users', userId, 'maps')
-        const q = query(mapsRef)
+        const mapsRef = collection(db, 'maps')
+        const q = query(mapsRef, where('userId', '==', userId))
         const snapshot = await getDocs(q)
 
         this.maps = snapshot.docs.map(doc => new Map({
@@ -81,10 +81,17 @@ export class MapService {
       }
 
       const userId = auth.currentUser.uid
-      const mapRef = doc(db, 'users', userId, 'maps', mapId)
+      const mapRef = doc(db, 'maps', mapId)
       const mapDoc = await getDoc(mapRef)
 
       if (!mapDoc.exists()) {
+        return null
+      }
+
+      // Ensure the map belongs to the current user
+      const mapData = mapDoc.data()
+      if (mapData.userId !== userId) {
+        console.error('Map does not belong to current user')
         return null
       }
 
@@ -142,11 +149,14 @@ export class MapService {
         const userId = auth.currentUser.uid
         console.log('User ID for map creation:', userId)
 
-        const mapsRef = collection(db, 'users', userId, 'maps')
+        const mapsRef = collection(db, 'maps')
         const mapData = map.toJSON()
-        console.log('Map data being sent to Firestore:', mapData)
 
-        const docRef = await addDoc(mapsRef, mapData)
+        // Don't include ID in Firestore document data
+        const { id, ...firestoreData } = mapData
+        console.log('Map data being sent to Firestore:', firestoreData)
+
+        const docRef = await addDoc(mapsRef, firestoreData)
 
         map._id = docRef.id
         console.log('Map created with ID:', docRef.id)
@@ -187,8 +197,13 @@ export class MapService {
       if (!this._isLocalMode()) {
         // If user is logged in, update Firestore too
         const userId = auth.currentUser.uid
-        const mapRef = doc(db, 'users', userId, 'maps', mapId)
-        await updateDoc(mapRef, updatedMap.toJSON())
+        const mapRef = doc(db, 'maps', mapId)
+
+        // Get the map data but remove the id field
+        const mapData = updatedMap.toJSON()
+        const { id, ...firestoreData } = mapData
+
+        await updateDoc(mapRef, firestoreData)
       }
 
       return updatedMap
@@ -211,7 +226,17 @@ export class MapService {
       }
 
       const userId = auth.currentUser.uid
-      const mapRef = doc(db, 'users', userId, 'maps', mapId)
+      const mapRef = doc(db, 'maps', mapId)
+
+      // Verify the map belongs to the current user before deleting
+      const mapDoc = await getDoc(mapRef)
+      if (!mapDoc.exists()) {
+        throw new Error('Map not found')
+      }
+
+      if (mapDoc.data().userId !== userId) {
+        throw new Error('You do not have permission to delete this map')
+      }
 
       await deleteDoc(mapRef)
     } catch (error) {
@@ -242,7 +267,7 @@ export class MapService {
       if (!this._isLocalMode()) {
         // If user is logged in, update Firestore too
         const userId = auth.currentUser.uid
-        const mapRef = doc(db, 'users', userId, 'maps', mapId)
+        const mapRef = doc(db, 'maps', mapId)
         await updateDoc(mapRef, {
           stakeholderCount: count,
           updatedAt: new Date()
