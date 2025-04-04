@@ -161,6 +161,15 @@ const maps = ref([])
 const loading = ref(true)
 const error = ref(null)
 const currentMapId = ref(null)
+const dialogVisible = ref(false)
+const deleteDialogVisible = ref(false)
+const dialogMode = ref('create')
+const isFormValid = ref(false)
+const editedMap = ref({
+  name: '',
+  description: ''
+})
+const mapToDelete = ref(null)
 
 const isAnonymous = computed(() => {
   return !auth.currentUser || (auth.currentUser && auth.currentUser.isAnonymous) || false
@@ -216,7 +225,7 @@ const loadMaps = async () => {
 }
 
 // Watch for changes in anonymous mode
-watch(isAnonymous, (newValue) => {
+watch(isAnonymous, () => {
   // Load maps regardless of anonymous state
   loadMaps()
 })
@@ -234,17 +243,32 @@ onMounted(() => {
 // Create a new map
 const createNewMap = async () => {
   try {
+    console.log('Starting map creation process')
+    console.log('Current auth state:', auth.currentUser)
+
+    // Check if we're in anonymous mode
+    if (isAnonymous.value) {
+      console.log('User is in anonymous mode, using local storage')
+    } else {
+      console.log('User is authenticated, using Firestore')
+    }
+
     const newMap = await mapService.createMap({
       name: 'New Stakeholder Map',
       description: ''
     })
+
+    console.log('Map created successfully:', newMap)
+
     // Set current map ID first
     await mapService.setCurrentMapId(newMap.id)
+    console.log('Current map ID set to:', newMap.id)
+
     // Then navigate with proper path
     router.push(`/maps/${newMap.id}`)
   } catch (error) {
     console.error('Error creating new map:', error)
-    error.value = 'Failed to create new map. Please try again.'
+    error.value = `Failed to create new map: ${error.message}. Please try again.`
   }
 }
 

@@ -626,17 +626,16 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { formatDate } from '@/utils/dateUtils'
 import { categoryOptions, getCategoryColor, getCategoryLabel } from '@/config/categories'
 import { interactionTypes, getInteractionTypeLabel, getInteractionTypeIcon, getInteractionColor } from '@/config/interactionTypes'
 import { stakeholderService } from '@/services'
-import aiService from '@/services/aiService'
+import { aiService } from '@/services/aiService'
 import { interactionService } from '@/services/interactionService'
 import { documentService } from '@/services/documentService'
-import { getAuth } from 'firebase/auth'
 
 export default {
   name: 'StakeholderDetail',
@@ -942,17 +941,6 @@ export default {
         left: `${xPos}%`,
         top: `${yPos}%`
       }
-    }
-
-    const getInteractionColor = (type) => {
-      const colors = {
-        meeting: 'indigo',
-        call: 'blue',
-        email: 'green',
-        social: 'purple',
-        other: 'grey'
-      }
-      return colors[type] || colors.other
     }
 
     const getDocumentColor = (type) => {

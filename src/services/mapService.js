@@ -1,7 +1,6 @@
-import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { auth } from '@/firebase'
-import { authService } from '@/services/authService'
 import { localStorageService } from './localStorageService'
 import { Map } from '@/models/Map'
 
@@ -20,6 +19,13 @@ export class MapService {
    * @returns {boolean}
    */
   _isLocalMode() {
+    // In development with emulators, we might want to force local mode for testing
+    if (process.env.NODE_ENV === 'development' && !auth.currentUser) {
+      console.log('Development mode with no user, using local storage')
+      return true
+    }
+
+    // Normal check for anonymous or no user
     return !auth.currentUser || auth.currentUser.isAnonymous
   }
 
@@ -112,24 +118,39 @@ export class MapService {
    */
   async createMap(mapData) {
     try {
+      console.log('Creating map with data:', mapData)
+      console.log('Current auth state:', auth.currentUser)
+
       const map = new Map({
         ...mapData,
-        userId: auth.currentUser?.uid
+        userId: auth.currentUser?.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        stakeholderCount: 0
       })
 
       // Always store in localStorage for better UX and offline support,
       // even if the user is logged in
       if (this._isLocalMode()) {
+        console.log('Using local mode, saving to localStorage')
         // For anonymous users, just save to localStorage
         localStorageService.saveMap(map)
         return map
       } else {
+        console.log('Using Firestore mode, saving to database')
         // For logged-in users, save to Firestore AND localStorage
         const userId = auth.currentUser.uid
+        console.log('User ID for map creation:', userId)
+
         const mapsRef = collection(db, 'users', userId, 'maps')
-        const docRef = await addDoc(mapsRef, map.toJSON())
+        const mapData = map.toJSON()
+        console.log('Map data being sent to Firestore:', mapData)
+
+        const docRef = await addDoc(mapsRef, mapData)
 
         map._id = docRef.id
+        console.log('Map created with ID:', docRef.id)
+
         // Save to localStorage for faster loading in future
         localStorageService.saveMap(map)
         return map

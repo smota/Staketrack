@@ -1,5 +1,5 @@
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth'
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { auth } from '@/firebase'
 import { db } from '@/firebase'
 import { analytics } from '@/firebase'
@@ -144,13 +144,17 @@ class AuthService {
       const userDoc = await getDoc(userDocRef)
 
       if (!userDoc.exists()) {
-        // Create new user document
+        // Create new user document with all required fields
         await setDoc(userDocRef, {
           email: user.email,
           displayName: user.displayName || '',
           photoURL: user.photoURL || '',
           createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp()
+          lastLogin: serverTimestamp(),
+          settings: {
+            theme: 'light',
+            notifications: true
+          }
         })
       } else {
         // Update last login

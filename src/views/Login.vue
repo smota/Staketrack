@@ -117,7 +117,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   getAuth,
@@ -127,7 +127,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth'
-import { auth, storage } from '@/firebase'
+import { auth } from '@/firebase'
 
 export default {
   name: 'LoginView',
@@ -178,6 +178,7 @@ export default {
 
       try {
         if (authMode.value === 'signin') {
+          const _credential = await signInWithEmailAndPassword(auth, email.value, password.value)
           await signInWithEmailAndPassword(auth, email.value, password.value)
         } else {
           await createUserWithEmailAndPassword(auth, email.value, password.value)

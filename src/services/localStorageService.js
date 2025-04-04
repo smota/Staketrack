@@ -374,15 +374,12 @@ class LocalStorageService {
     if (!this._isAvailable()) return { used: 0, total: 0, percentage: 0 }
 
     try {
-      let totalSize = 0
       let appSize = 0
 
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         const value = localStorage.getItem(key)
         const size = (key.length + value.length) * 2 // Approximate size in bytes
-
-        totalSize += size
 
         if (key.startsWith(this.prefix)) {
           appSize += size
@@ -440,7 +437,7 @@ class LocalStorageService {
   /**
    * Migrate data to new version
    * @private
-   * @param {string|null} fromVersion
+   * @param {string|null} fromVersion - Previous version
    */
   static _migrateData(fromVersion) {
     // Implement migration strategies here

@@ -52,16 +52,36 @@ if (!fs.existsSync(envFilePath)) {
   process.exit(1)
 }
 
+// Check for .local file with secrets
+const localEnvFilePath = path.join(process.cwd(), `${envFileName}.local`)
+const hasLocalEnv = fs.existsSync(localEnvFilePath)
+
 // Define which variables to extract from .env files and add to Firebase config
 const FIREBASE_CONFIG_VARS = [
-  'FIREBASE_API_KEY',
-  'FIREBASE_AUTH_DOMAIN',
-  'FIREBASE_PROJECT_ID',
-  'FIREBASE_STORAGE_BUCKET',
-  'FIREBASE_MESSAGING_SENDER_ID',
-  'FIREBASE_APP_ID',
-  'FIREBASE_MEASUREMENT_ID',
-  'USE_EMULATORS'
+  // Firebase configuration
+  'APP_FIREBASE_API_KEY',
+  'APP_FIREBASE_AUTH_DOMAIN',
+  'APP_FIREBASE_PROJECT_ID',
+  'APP_FIREBASE_STORAGE_BUCKET',
+  'APP_FIREBASE_MESSAGING_SENDER_ID',
+  'APP_FIREBASE_APP_ID',
+  'APP_FIREBASE_MEASUREMENT_ID',
+  'APP_FIREBASE_FUNCTIONS_REGION',
+
+  // Application settings
+  'APP_USE_EMULATORS',
+  'APP_AI_ENABLED',
+  'APP_AI_MODEL',
+  'APP_AI_WEEKLY_LIMIT',
+
+  // API Keys and secrets (usually in .local files)
+  'APP_API_KEY',
+  'APP_AUTH_SECRET',
+  'APP_EXTERNAL_API_TOKEN',
+  'APP_VERTEX_AI_API_KEY',
+  'APP_OPENAI_API_KEY',
+  'APP_DATABASE_URL',
+  'APP_STORAGE_API_KEY'
 ]
 
 // Create readline interface for user confirmation (not needed in CI environment)
@@ -107,6 +127,25 @@ function maskSensitiveInfo(command) {
     (match, type, prefix, middle, suffix) => `${type}="${prefix}${'*'.repeat(8)}${suffix}"`)
 }
 
+// Helper function to check if a key contains sensitive information
+function isSensitiveKey(key) {
+  return key.toLowerCase().includes('key') ||
+    key.toLowerCase().includes('secret') ||
+    key.toLowerCase().includes('token') ||
+    key.toLowerCase().includes('password') ||
+    key.toLowerCase().includes('auth') ||
+    key.toLowerCase().includes('api')
+}
+
+// Function to properly mask sensitive values for display
+function maskSensitiveValue(key, value) {
+  if (!value || typeof value !== 'string' || value.length < 8) {
+    return '********'
+  }
+
+  return `${value.substring(0, 3)}...${value.substring(value.length - 3)}`
+}
+
 /**
  * Update Firebase Functions configuration
  */
@@ -133,21 +172,30 @@ function updateFirebaseConfig() {
   // Load environment variables from .env file
   const envConfig = dotenv.parse(fs.readFileSync(envFilePath))
 
+  // Add local secret env vars if the file exists
+  if (hasLocalEnv) {
+    console.log(`\n📋 Including secrets from ${envFileName}.local`)
+    const localEnvConfig = dotenv.parse(fs.readFileSync(localEnvFilePath))
+    // Merge the configs, with local values taking precedence
+    Object.assign(envConfig, localEnvConfig)
+  }
+
   console.log('\n📋 Variables to be updated:')
 
   // Build Firebase Functions config commands
   for (const key of FIREBASE_CONFIG_VARS) {
     if (envConfig[key]) {
-      // Convert the key format from FIREBASE_API_KEY to firebase.api.key
+      // Convert the key format from APP_FIREBASE_API_KEY to app.api.key or firebase.api.key
       // Firebase Functions config uses lowercase with dots
-      const configKey = key.toLowerCase().replace(/_/g, '.')
+      const configKey = key.toLowerCase()
+        .replace('app_firebase_', 'firebase.')  // Convert APP_FIREBASE_ to firebase.
+        .replace('app_use_', 'app.')  // Convert APP_USE_ to app.
+        .replace(/_/g, '.')  // Convert remaining underscores to dots
 
-      // For Firebase Functions, we should only update Functions-specific configurations
-      // Firebase API keys and similar should not be set in Functions config
-      if (key.startsWith('FIREBASE_') &&
-        !key.includes('FUNCTIONS_') &&
-        !key.includes('USE_EMULATORS')) {
-        console.log(`  Skipping ${configKey} - not needed in Firebase Functions config`)
+      // For Firebase Functions, we should only update app config, not the firebase related ones
+      // Firebase API keys and similar should all go in the client config
+      if (key.startsWith('APP_FIREBASE_') || key.startsWith('APP_AI_')) {
+        console.log(`  Skipping ${configKey} - will include in client config section`)
         continue
       }
 
@@ -155,9 +203,8 @@ function updateFirebaseConfig() {
 
       // Print preview of the update (without revealing full values for sensitive data)
       let displayValue = configValue
-      if (key.includes('KEY') || key.includes('ID') || key.includes('SECRET')) {
-        // Show only part of sensitive values for preview
-        displayValue = `${configValue.substring(0, 3)}...${configValue.substring(configValue.length - 3)}`
+      if (isSensitiveKey(key)) {
+        displayValue = maskSensitiveValue(key, configValue)
       }
 
       console.log(`  ${configKey} = ${displayValue}`)
@@ -177,23 +224,82 @@ function updateFirebaseConfig() {
   if (!dryRun) {
     console.log('\n📋 Creating client config section...')
     try {
-      // Create a single config object with all Firebase client settings
-      const clientConfig = {}
+      // Create a flattened client config with all values as strings
+      const clientConfig = {
+        'environment': envConfig.ENVIRONMENT || projectEnv.toUpperCase(),
+        'use_emulators': envConfig.APP_USE_EMULATORS || 'false'
+      }
 
-      // Add environment
-      clientConfig.environment = envConfig.ENVIRONMENT || projectEnv.toUpperCase()
+      // Add Firebase configuration as string values with prefixes
+      if (envConfig.APP_FIREBASE_API_KEY) {
+        clientConfig['firebase_api_key'] = envConfig.APP_FIREBASE_API_KEY
+        clientConfig['firebase_auth_domain'] = envConfig.APP_FIREBASE_AUTH_DOMAIN
+        clientConfig['firebase_project_id'] = envConfig.APP_FIREBASE_PROJECT_ID
+        clientConfig['firebase_storage_bucket'] = envConfig.APP_FIREBASE_STORAGE_BUCKET
+        clientConfig['firebase_messaging_sender_id'] = envConfig.APP_FIREBASE_MESSAGING_SENDER_ID
+        clientConfig['firebase_app_id'] = envConfig.APP_FIREBASE_APP_ID
+        clientConfig['firebase_measurement_id'] = envConfig.APP_FIREBASE_MEASUREMENT_ID
+        clientConfig['firebase_functions_region'] = envConfig.APP_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
+      }
 
-      // Add use_emulators
-      clientConfig.use_emulators = envConfig.USE_EMULATORS || 'false'
+      // Add AI configuration as string values
+      if (envConfig.APP_AI_ENABLED) {
+        clientConfig['ai_enabled'] = envConfig.APP_AI_ENABLED
+        clientConfig['ai_model'] = envConfig.APP_AI_MODEL || 'gemini-1.5-pro'
+        clientConfig['ai_weekly_limit'] = envConfig.APP_AI_WEEKLY_LIMIT || '10'
+      }
 
-      // Convert to JSON string and properly escape for shell
-      const clientConfigValue = JSON.stringify(clientConfig).replace(/"/g, '\\"')
+      // Set individual config values one by one instead of as a JSON object
+      for (const [key, value] of Object.entries(clientConfig)) {
+        try {
+          executeFirebaseCommand(`firebase functions:config:set client.${key}="${value}"${tokenParam}`)
+        } catch (error) {
+          console.warn(`  ⚠️ Warning: Failed to set client.${key}. Continuing with other configs.`)
+        }
+      }
 
-      // Set it as a single config value
-      executeFirebaseCommand(`firebase functions:config:set client="${clientConfigValue}"${tokenParam}`)
       console.log('  ✅ Created client config section')
+
+      // Create a secrets section for sensitive API keys and credentials
+      console.log('\n📋 Setting up secrets configuration...')
+
+      // Find all secret keys in the environment
+      const secretKeys = Object.keys(envConfig).filter(key =>
+        (key.startsWith('APP_') && isSensitiveKey(key)) &&
+        !key.startsWith('APP_FIREBASE_') // Exclude Firebase keys already in client config
+      )
+
+      if (secretKeys.length > 0) {
+        console.log(`  Found ${secretKeys.length} sensitive configuration values`)
+
+        // Set each secret in the Firebase Functions config
+        for (const key of secretKeys) {
+          if (!envConfig[key]) continue
+
+          // Convert key format for Firebase
+          const configKey = `secrets.${key.toLowerCase().replace('app_', '').replace(/_/g, '.')}`
+          const configValue = envConfig[key]
+
+          // Display masked value
+          const displayValue = maskSensitiveValue(key, configValue)
+          console.log(`  Setting ${configKey} = ${displayValue}`)
+
+          // Set the secret
+          if (!dryRun) {
+            try {
+              executeFirebaseCommand(`firebase functions:config:set ${configKey}="${configValue}"${tokenParam}`)
+            } catch (error) {
+              console.warn(`  ⚠️ Warning: Failed to set ${configKey}. Continuing with other configs.`)
+            }
+          }
+        }
+
+        console.log('  ✅ Secret configuration completed')
+      } else {
+        console.log('  No additional secrets found in environment variables')
+      }
     } catch (error) {
-      console.warn(`  ⚠️ Warning: Failed to create client config section: ${error.message}`)
+      console.warn(`  ⚠️ Warning: Failed to create config sections: ${error.message}`)
     }
   }
 

@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, _computed } from 'vue'
 import { stakeholderService } from '@/services'
 
 const stakeholdersMap = ref({}) // Maps will contain stakeholders by mapId

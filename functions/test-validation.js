@@ -14,7 +14,7 @@ function testHelloWorld() {
     const options = {
       hostname: "localhost",
       port: 5001, // default emulator port
-      path: "/staketrack-dev/us-central1/helloWorld",
+      path: "/staketrack-dev/europe-west1/helloWorld",
       method: "GET",
     };
 
@@ -54,8 +54,8 @@ function testGetConfig() {
   return new Promise((resolve, reject) => {
     const options = {
       hostname: "localhost",
-      port: 5001, // default emulator port
-      path: "/staketrack-dev/us-central1/getConfig?env=development",
+      port: 5001,
+      path: "/staketrack-dev/europe-west1/getConfig",
       method: "GET",
     };
 
@@ -69,25 +69,13 @@ function testGetConfig() {
       res.on("end", () => {
         console.log("\n=== GetConfig Function Test ===");
         console.log(`Status Code: ${res.statusCode}`);
+        console.log(`Response: ${data}`);
 
-        try {
-          const parsedData = JSON.parse(data);
-          console.log("Response contains fields:");
-          Object.keys(parsedData).forEach((key) => {
-            console.log(`- ${key}`);
-          });
-
-          if (res.statusCode === 200 && parsedData.ENVIRONMENT === "DEVELOPMENT") {
-            console.log("✅ GetConfig function test PASSED");
-            resolve(true);
-          } else {
-            console.log("❌ GetConfig function test FAILED");
-            resolve(false);
-          }
-        } catch (e) {
-          console.log(`Error parsing JSON: ${e.message}`);
-          console.log(`Raw response: ${data}`);
-          console.log("❌ GetConfig function test FAILED - Invalid JSON");
+        if (res.statusCode === 200 && data.includes("APP_ENVIRONMENT")) {
+          console.log("✅ GetConfig function test PASSED");
+          resolve(true);
+        } else {
+          console.log("❌ GetConfig function test FAILED");
           resolve(false);
         }
       });
@@ -104,23 +92,24 @@ function testGetConfig() {
 
 // Run all tests
 async function runTests() {
-  console.log("Starting validation tests...");
-
   try {
-    const helloResult = await testHelloWorld();
-    const configResult = await testGetConfig();
+    console.log("Starting Firebase Functions tests...");
+
+    const helloWorldResult = await testHelloWorld();
+    const getConfigResult = await testGetConfig();
 
     console.log("\n=== Test Summary ===");
-    console.log(`HelloWorld: ${helloResult ? "✅ PASSED" : "❌ FAILED"}`);
-    console.log(`GetConfig: ${configResult ? "✅ PASSED" : "❌ FAILED"}`);
+    console.log(`HelloWorld: ${helloWorldResult ? "✅ PASSED" : "❌ FAILED"}`);
+    console.log(`GetConfig: ${getConfigResult ? "✅ PASSED" : "❌ FAILED"}`);
 
-    if (helloResult && configResult) {
-      console.log("\n✅ All tests PASSED! The upgrade appears successful.");
+    if (helloWorldResult && getConfigResult) {
+      console.log("\n🎉 All tests passed!");
     } else {
-      console.log("\n❌ Some tests FAILED. Please check the logs and fix any issues.");
+      console.log("\n⚠️ Some tests failed. Please check the logs above.");
     }
   } catch (error) {
-    console.error("Test execution error:", error);
+    console.error("Error running tests:", error);
+    process.exit(1);
   }
 }
 

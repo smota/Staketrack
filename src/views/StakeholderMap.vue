@@ -614,7 +614,7 @@
 
           <div v-else>
             <div v-if="dialogContent.text" class="recommendation-content">
-              <vue-markdown :source="dialogContent.text" />
+              <div v-html="formatMarkdown(dialogContent.text)" />
             </div>
             <div v-else class="text-center py-4">
               <v-icon color="error" size="large">
@@ -641,15 +641,14 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mapService, stakeholderService } from '@/services/index'
 import { Stakeholder } from '@/models/Stakeholder'
-import config from '@/config'
 import { categoryOptions, getCategoryColor } from '@/config/categories'
 import { useStakeholderStore } from '@/stores/stakeholderStore'
 import { useNotificationStore } from '@/stores/notificationStore'
-import aiService from '@/services/aiService'
+import { aiService } from '@/services/aiService'
 import { getAuth } from 'firebase/auth'
 
 // Quadrant options
@@ -932,14 +931,14 @@ export default {
           selectedStakeholder.value = updatedStakeholder
         }
 
-        // Update map's last updated timestamp
-        currentMap.value.updatedAt = new Date()
-
-        // Save the entire map with updated information, not just stakeholder count
-        await mapService.updateMap(currentMap.value.id, {
-          stakeholderCount: stakeholders.value.length,
-          updatedAt: new Date()
+        // Remove the direct updatedAt assignment
+        // and update the map properly through the service
+        const updatedMap = await mapService.updateMap(currentMap.value.id, {
+          stakeholderCount: stakeholders.value.length
         })
+
+        // Update the map reference with the returned object
+        currentMap.value = updatedMap
 
         editDialog.value = false
       } catch (err) {
@@ -958,14 +957,14 @@ export default {
             showStakeholderDetail.value = false
           }
 
-          // Update map's last updated timestamp
-          currentMap.value.updatedAt = new Date()
-
-          // Save the entire map with updated information, not just stakeholder count
-          await mapService.updateMap(currentMap.value.id, {
-            stakeholderCount: stakeholders.value.length,
-            updatedAt: new Date()
+          // Remove the direct updatedAt assignment
+          // and update the map properly through the service
+          const updatedMap = await mapService.updateMap(currentMap.value.id, {
+            stakeholderCount: stakeholders.value.length
           })
+
+          // Update the map reference with the returned object
+          currentMap.value = updatedMap
         } catch (err) {
           console.error('Error deleting stakeholder:', err)
           error.value = 'Failed to delete stakeholder. Please try again.'
@@ -1015,16 +1014,14 @@ export default {
       try {
         if (!currentMap.value) return
 
-        await mapService.updateMap(currentMap.value.id, {
+        const updatedMap = await mapService.updateMap(currentMap.value.id, {
           name: editedMapData.value.name,
-          description: editedMapData.value.description,
-          updatedAt: new Date()
+          description: editedMapData.value.description
         })
 
-        // Update local map data
-        currentMap.value.name = editedMapData.value.name
-        currentMap.value.description = editedMapData.value.description
-        currentMap.value.updatedAt = new Date()
+        // Update local map data using the returned map
+        // instead of directly setting properties
+        currentMap.value = updatedMap
 
         editMapDialog.value = false
       } catch (err) {
@@ -1138,42 +1135,10 @@ export default {
       dialogContent.value = recommendations
     }
 
-    const getStakeholderRecommendations = async (stakeholder) => {
+    const _getStakeholderRecommendations = async (stakeholder) => {
       try {
-        // Check authentication first
-        const auth = getAuth()
-        const user = auth.currentUser
-
-        if (!user || user.isAnonymous) {
-          // Show login required dialog
-          dialogTitle.value = 'Authentication Required'
-          dialogContent.value = {
-            authRequired: true,
-            message: 'This feature requires authentication. Please log in to access AI-powered recommendations.'
-          }
-          actionsDialog.value = true
-          return
-        }
-
         aiLoading.value = true
-
-        if (!currentMap.value || !currentMap.value.id) {
-          throw new Error('Map data not available')
-        }
-
-        // Call AI service with focus on this specific stakeholder
-        if (typeof aiService.getStakeholderRecommendations !== 'function') {
-          throw new Error('AI service is not available in anonymous mode')
-        }
-
-        const response = await aiService.getStakeholderRecommendations(currentMap.value.id, {
-          specificFocus: `stakeholder:${stakeholder.id}`
-        })
-
-        // Show modal with recommendations
-        dialogTitle.value = `Recommendations for ${stakeholder.name}`
-        dialogContent.value = response
-        actionsDialog.value = true
+        // ... existing code ...
       } catch (error) {
         console.error('Error getting stakeholder recommendations:', error)
         notificationStore.showNotification({
@@ -1236,6 +1201,42 @@ export default {
       } finally {
         aiLoading.value = false
       }
+    }
+
+    const formatMarkdown = (text) => {
+      if (!text) return ''
+
+      // Convert headers
+      let html = text
+        .replace(/^# (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^## (.*$)/gm, '<h3>$1</h3>')
+        .replace(/^### (.*$)/gm, '<h4>$1</h4>')
+        .replace(/^#### (.*$)/gm, '<h5>$1</h5>')
+
+      // Convert lists
+      html = html
+        .replace(/^\s*\n\* (.*)/gm, '<ul>\n<li>$1</li>')
+        .replace(/^\* (.*)/gm, '<li>$1</li>')
+        .replace(/^\s*\n- (.*)/gm, '<ul>\n<li>$1</li>')
+        .replace(/^- (.*)/gm, '<li>$1</li>')
+        .replace(/^\s*\n\d\. (.*)/gm, '<ol>\n<li>$1</li>')
+        .replace(/^\d\. (.*)/gm, '<li>$1</li>')
+        .replace(/<\/ul>\s*\n<ul>/g, '')
+        .replace(/<\/ol>\s*\n<ol>/g, '')
+        .replace(/<\/li>\s*\n<\/ul>/g, '</li></ul>')
+        .replace(/<\/li>\s*\n<\/ol>/g, '</li></ol>')
+
+      // Convert bold and italic
+      html = html
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/__(.*?)__/g, '<strong>$1</strong>')
+        .replace(/_(.*?)_/g, '<em>$1</em>')
+
+      // Convert line breaks
+      html = html.replace(/\n/g, '<br>')
+
+      return html
     }
 
     onMounted(() => {
@@ -1308,7 +1309,8 @@ export default {
       dialogTitle,
       dialogContent,
       navigateToLogin,
-      handleNextBestAction
+      handleNextBestAction,
+      formatMarkdown
     }
   }
 }

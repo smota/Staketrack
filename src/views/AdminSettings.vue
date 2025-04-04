@@ -264,7 +264,7 @@
 
 <script>
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, runTransaction } from 'firebase/firestore'
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore'
 
 export default {
   name: 'AdminSettings',

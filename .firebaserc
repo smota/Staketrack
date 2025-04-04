@@ -1,7 +1,7 @@
 {
   "projects": {
     "default": "staketrack-dev",
-    "staging": "staketrack-dev",
+    "development": "staketrack-dev",
     "production": "staketrack-prod"
   },
   "targets": {
@@ -9,6 +9,9 @@
       "hosting": {
         "staging": [
           "staketrack-dev"
+        ],
+        "production": [
+          "staketrack-prod"
         ]
       }
     },

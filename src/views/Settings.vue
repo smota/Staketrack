@@ -533,16 +533,17 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { auth } from '@/firebase'
+import { _ref, reactive, onMounted, _computed } from 'vue'
+import { _useRouter, useRoute } from 'vue-router'
+import { _auth } from '@/firebase'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 import { settingsService } from '@/services/settingsService'
 import config from '@/config'
 
 export default {
-  name: 'SettingsView',
+  name: 'Settings',
+  emits: ['showSnackbar'],
   data() {
     return {
       // User and auth state

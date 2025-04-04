@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "vue-cli-service serve --mode development",
     "serve": "vue-cli-service serve --mode development",
     "build": "vue-cli-service build --mode production",
     "build:staging": "vue-cli-service build --mode staging",
@@ -17,7 +18,16 @@
     "firebase:deploy:functions:staging": "firebase deploy --only functions -P staging",
     "firebase:deploy:functions:prod": "firebase deploy --only functions -P production",
     "firebase:test-config": "node scripts/test-config-function.js",
-    "firebase:update-config:staging": "node scripts/update-firebase-config.js --env=staging"
+    "firebase:update-config:staging": "node scripts/update-firebase-config.js --env=staging",
+    "firebase:setup": "node scripts/firebase-setup.js",
+    "firebase:deploy": "node scripts/firebase-deploy.js",
+    "deploy:dev": "node scripts/firebase-deploy.js --env=DEV --option=hosting",
+    "deploy:prod": "node scripts/firebase-deploy.js --env=PRD --option=hosting",
+    "deploy:rules:dev": "node scripts/firebase-deploy.js --env=DEV --option=rules",
+    "deploy:rules:prod": "node scripts/firebase-deploy.js --env=PRD --option=rules",
+    "deploy:all:dev": "node scripts/firebase-deploy.js --env=DEV --option=all",
+    "deploy:all:prod": "node scripts/firebase-deploy.js --env=PRD --option=all",
+    "emulators": "firebase emulators:start"
   },
   "dependencies": {
     "@mdi/font": "^7.3.67",

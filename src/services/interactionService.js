@@ -3,8 +3,7 @@
  * Manages stakeholder interactions using Firebase or local storage
  */
 
-import firebase from 'firebase/app'
-import 'firebase/firestore'
+import { getFirestore } from 'firebase/firestore'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 import { v4 as uuidv4 } from 'uuid'
@@ -21,7 +20,7 @@ class InteractionService {
       if (authService.isAuthenticated()) {
         // Get from Firebase
         const userId = authService.getCurrentUser().uid
-        const snapshot = await firebase.firestore()
+        const snapshot = await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -65,7 +64,7 @@ class InteractionService {
       if (authService.isAuthenticated()) {
         // Add to Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -105,7 +104,7 @@ class InteractionService {
       if (authService.isAuthenticated()) {
         // Update in Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -137,7 +136,7 @@ class InteractionService {
       if (authService.isAuthenticated()) {
         // Delete from Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')

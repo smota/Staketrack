@@ -5,7 +5,7 @@
  * @property {string} [description] - Optional map description
  * @property {number} stakeholderCount - Number of stakeholders
  * @property {Date} createdAt - Creation timestamp
- * @property {Date} lastUpdated - Last update timestamp
+ * @property {Date} updatedAt - Last update timestamp
  * @property {string} [userId] - Optional user ID for authenticated maps
  */
 
@@ -24,7 +24,7 @@ export class Map {
   /** @private */
   _createdAt;
   /** @private */
-  _lastUpdated;
+  _updatedAt;
   /** @private */
   _userId;
 
@@ -37,8 +37,8 @@ export class Map {
     this._name = data.name || 'New Map'
     this._description = data.description || ''
     this._stakeholderCount = data.stakeholderCount || 0
-    this._createdAt = data.createdAt ? new Date(data.createdAt) : new Date()
-    this._lastUpdated = data.lastUpdated ? new Date(data.lastUpdated) : new Date()
+    this._createdAt = data.createdAt || null
+    this._updatedAt = data.updatedAt || null
     this._userId = data.userId || null
   }
 
@@ -48,7 +48,7 @@ export class Map {
   get description() { return this._description }
   get stakeholderCount() { return this._stakeholderCount }
   get createdAt() { return this._createdAt }
-  get lastUpdated() { return this._lastUpdated }
+  get updatedAt() { return this._updatedAt }
   get userId() { return this._userId }
 
   // Setters with validation
@@ -81,7 +81,7 @@ export class Map {
    * @private
    */
   _updateTimestamp() {
-    this._lastUpdated = new Date()
+    this._updatedAt = new Date()
   }
 
   /**
@@ -95,7 +95,7 @@ export class Map {
       description: this._description,
       stakeholderCount: this._stakeholderCount,
       createdAt: this._createdAt,
-      lastUpdated: this._lastUpdated,
+      updatedAt: this._updatedAt,
       userId: this._userId
     }
   }

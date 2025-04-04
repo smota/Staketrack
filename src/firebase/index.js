@@ -8,8 +8,23 @@ import { getStorage } from 'firebase/storage'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 import config from '@/config'
 
-// Firebase configuration object from environment variables
-const firebaseConfig = config.env.firebaseConfig
+// Check for anonymous mode with missing Firebase config
+const isAnonymousMode = !config.env.firebaseConfig.apiKey || !config.env.firebaseConfig.projectId
+
+// If in anonymous mode and missing required config, create a minimal placeholder configuration
+let firebaseConfig = config.env.firebaseConfig
+if (isAnonymousMode) {
+  console.log('Using anonymous mode with minimal Firebase configuration')
+  firebaseConfig = {
+    apiKey: firebaseConfig.apiKey || 'anonymous-mode-api-key',
+    authDomain: firebaseConfig.authDomain || 'anonymous-mode.firebaseapp.com',
+    projectId: firebaseConfig.projectId || 'anonymous-mode',
+    storageBucket: firebaseConfig.storageBucket || '',
+    messagingSenderId: firebaseConfig.messagingSenderId || '000000000000',
+    appId: firebaseConfig.appId || '1:000000000000:web:0000000000000000000000',
+    measurementId: firebaseConfig.measurementId || ''
+  }
+}
 
 /**
  * Initialize Firebase services
@@ -30,58 +45,77 @@ try {
 // Export Firebase app instance
 export const firebaseApp = app
 
-// Initialize Auth
-export const auth = getAuth(app)
+// Initialize Auth with error handling
+let auth
+try {
+  auth = getAuth(app)
+} catch (error) {
+  console.error('Error initializing Firebase Auth:', error)
+  throw error
+}
+export { auth }
 
-// Initialize Firestore
-export const db = getFirestore(app)
+// Initialize Firestore with error handling
+let db
+try {
+  db = getFirestore(app)
+} catch (error) {
+  console.error('Error initializing Firestore:', error)
+  throw error
+}
+export { db }
 
 // Use emulators in development
 if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
   console.log('Using Firebase emulators for development')
-  connectAuthEmulator(auth, 'http://localhost:9099')
-  connectFirestoreEmulator(db, 'localhost', 8080)
+  try {
+    connectAuthEmulator(auth, 'http://localhost:9099')
+    connectFirestoreEmulator(db, 'localhost', 8080)
+  } catch (error) {
+    console.error('Error connecting to emulators:', error)
+  }
 }
 
 // Initialize Analytics conditionally
 let analytics = null
-// Only initialize analytics in production to avoid unnecessary data collection
 if (process.env.NODE_ENV === 'production') {
   isSupported().then(supported => {
     if (supported && firebaseConfig.measurementId) {
-      analytics = getAnalytics(app)
+      try {
+        analytics = getAnalytics(app)
+      } catch (error) {
+        console.warn('Firebase Analytics initialization failed:', error)
+      }
     }
   }).catch(error => {
-    console.warn('Firebase Analytics initialization failed:', error)
+    console.warn('Firebase Analytics support check failed:', error)
   })
 }
 export { analytics }
 
-// Initialize Storage (optional, only for authenticated users)
+// Initialize Storage with proper error handling
 let storage = null
 if (firebaseConfig.storageBucket) {
   try {
     storage = getStorage(app)
   } catch (error) {
-    console.warn('Firebase Storage initialization failed:', error)
-    // Don't throw the error - allow the app to continue without storage
+    console.error('Firebase Storage initialization failed:', error)
+    // Log the error but don't throw - storage is optional
   }
 }
 export { storage }
 
 // Enable offline persistence for Firestore (only when not using emulators)
 if (!(process.env.NODE_ENV === 'development' && config.env.useEmulators)) {
-  try {
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.')
-      } else if (err.code === 'unimplemented') {
-        console.warn('The current browser does not support persistence.')
-      }
-    })
-  } catch (error) {
-    console.warn('Error enabling Firestore persistence:', error)
-  }
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.')
+    } else if (err.code === 'unimplemented') {
+      console.warn('The current browser does not support persistence.')
+    } else {
+      console.warn('Error enabling Firestore persistence:', err)
+    }
+  })
 }
 
 /**

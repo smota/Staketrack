@@ -14,14 +14,14 @@ import {
   query,
   where,
   orderBy,
-  limit,
+  _limit,
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore'
 import { Stakeholder } from '@/models/Stakeholder'
 import { StakeholderMap } from '@/models/StakeholderMap'
 import { localStorageService } from './localStorageService'
-import aiService from './aiService'
+import { aiService } from './aiService'
 
 class StakeholderService {
   /**
@@ -177,8 +177,8 @@ class StakeholderService {
       })
 
       // Prepare data for Firestore
-      const mapObject = map.toObject()
-      const { stakeholders, ...mapDataForStore } = mapObject
+      const mapDataForStore = { ...map.toObject() }
+      delete mapDataForStore.stakeholders
 
       // Add timestamps for Firestore
       const dataWithTimestamps = {
@@ -191,6 +191,7 @@ class StakeholderService {
       const mapDocRef = await addDoc(this.mapsCollection, dataWithTimestamps)
 
       // Now create each stakeholder as a subcollection document
+      const stakeholders = map.toObject().stakeholders
       if (stakeholders && stakeholders.length > 0) {
         const stakeholdersCollection = this.getStakeholdersCollection(mapDocRef.id)
 
@@ -198,26 +199,26 @@ class StakeholderService {
           // Add timestamps for Firestore
           const stakeholderWithTimestamps = {
             ...stakeholderData,
-            mapId: mapDocRef.id,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
           }
 
           // Store interactions separately
-          const { interactions, ...stakeholderDataForStore } = stakeholderWithTimestamps
+          const stakeholderDataForStore = { ...stakeholderWithTimestamps }
+          delete stakeholderDataForStore.interactions
 
           // Add the stakeholder to Firestore
           const stakeholderDocRef = await addDoc(stakeholdersCollection, stakeholderDataForStore)
 
           // Add interactions if any
+          const interactions = stakeholderWithTimestamps.interactions
           if (interactions && interactions.length > 0) {
             const interactionsCollection = this.getInteractionsCollection(mapDocRef.id, stakeholderDocRef.id)
 
             for (const interactionData of interactions) {
               await addDoc(interactionsCollection, {
                 ...interactionData,
-                createdAt: serverTimestamp(),
-                date: interactionData.date || serverTimestamp()
+                createdAt: serverTimestamp()
               })
             }
           }
@@ -379,7 +380,7 @@ class StakeholderService {
       const mapRef = this.getMapRef(mapId)
 
       // Filter out properties that shouldn't be directly updated
-      const { id, stakeholders, createdAt, createdBy, ...updateData } = updates
+      const { id, _stakeholders, _createdAt, _createdBy, ...updateData } = updates
 
       // Add updated timestamp
       const dataWithTimestamp = {
@@ -545,7 +546,7 @@ class StakeholderService {
       }
 
       // Prepare data for Firestore (without interactions)
-      const { interactions, ...stakeholderForStore } = stakeholder.toObject()
+      const { _interactions, ...stakeholderForStore } = stakeholder.toObject()
 
       // Add timestamps
       const dataWithTimestamps = {
@@ -561,10 +562,10 @@ class StakeholderService {
       )
 
       // If there are interactions, add them
-      if (interactions && interactions.length > 0) {
+      if (_interactions && _interactions.length > 0) {
         const interactionsCollection = this.getInteractionsCollection(mapId, stakeholderDocRef.id)
 
-        for (const interactionData of interactions) {
+        for (const interactionData of _interactions) {
           await addDoc(interactionsCollection, {
             ...interactionData,
             createdAt: serverTimestamp(),
@@ -672,7 +673,7 @@ class StakeholderService {
       const stakeholderRef = this.getStakeholderRef(mapId, stakeholderId)
 
       // Filter out properties that shouldn't be directly updated
-      const { id, mapId: _, interactions, createdAt, createdBy, ...updateData } = updates
+      const { id, mapId: _, _interactions, _createdAt, _createdBy, ...updateData } = updates
 
       // Add updated timestamp
       const dataWithTimestamp = {

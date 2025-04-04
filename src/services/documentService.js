@@ -3,9 +3,8 @@
  * Manages stakeholder-related documents and notes using Firebase or local storage
  */
 
-import firebase from 'firebase/app'
-import 'firebase/firestore'
-import 'firebase/storage'
+import { getFirestore } from 'firebase/firestore'
+import { getStorage, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 import { v4 as uuidv4 } from 'uuid'
@@ -22,7 +21,7 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         // Get from Firebase
         const userId = authService.getCurrentUser().uid
-        const snapshot = await firebase.firestore()
+        const snapshot = await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -69,12 +68,12 @@ class DocumentService {
       if (document.type !== 'note' && document.file) {
         if (authService.isAuthenticated()) {
           const userId = authService.getCurrentUser().uid
-          const fileRef = firebase.storage()
+          const fileRef = getStorage()
             .ref()
             .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${newDocument.id}`)
 
-          await fileRef.put(document.file)
-          fileUrl = await fileRef.getDownloadURL()
+          await uploadBytes(fileRef, document.file)
+          fileUrl = await getDownloadURL(fileRef)
         } else {
           // Store file in local storage (simplified - in reality we'd need IndexedDB for files)
           fileUrl = 'local://file'
@@ -88,7 +87,7 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         // Add to Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -129,12 +128,12 @@ class DocumentService {
       if (documentData.type !== 'note' && documentData.file) {
         if (authService.isAuthenticated()) {
           const userId = authService.getCurrentUser().uid
-          const fileRef = firebase.storage()
+          const fileRef = getStorage()
             .ref()
             .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 
-          await fileRef.put(documentData.file)
-          updatedDocument.fileUrl = await fileRef.getDownloadURL()
+          await uploadBytes(fileRef, documentData.file)
+          updatedDocument.fileUrl = await getDownloadURL(fileRef)
         } else {
           updatedDocument.fileUrl = 'local://file'
         }
@@ -146,7 +145,7 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         // Update in Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -179,11 +178,11 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         try {
           const userId = authService.getCurrentUser().uid
-          const fileRef = firebase.storage()
+          const fileRef = getStorage()
             .ref()
             .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 
-          await fileRef.delete()
+          await deleteObject(fileRef)
         } catch (storageError) {
           // Ignore errors if the file doesn't exist
           console.log('No file to delete or error deleting file:', storageError)
@@ -191,7 +190,7 @@ class DocumentService {
 
         // Delete from Firestore
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
+        await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -223,7 +222,7 @@ class DocumentService {
       if (authService.isAuthenticated()) {
         // Get document data from Firestore
         const userId = authService.getCurrentUser().uid
-        const doc = await firebase.firestore()
+        const doc = await getFirestore()
           .collection('users')
           .doc(userId)
           .collection('maps')
@@ -240,11 +239,11 @@ class DocumentService {
         }
 
         // If URL not in document, try to get it from storage
-        const fileRef = firebase.storage()
+        const fileRef = getStorage()
           .ref()
           .child(`users/${userId}/maps/${mapId}/stakeholders/${stakeholderId}/documents/${documentId}`)
 
-        return await fileRef.getDownloadURL()
+        return await getDownloadURL(fileRef)
       } else {
         // Get from local storage - in real implementation, we'd need to use
         // IndexedDB or similar for file storage

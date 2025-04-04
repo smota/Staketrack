@@ -25,39 +25,31 @@
     >
       <v-list>
         <v-list-item to="/" link>
-          <v-list-item-icon>
+          <template #prepend>
             <v-icon>mdi-home</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>Home</v-list-item-title>
-          </v-list-item-content>
+          </template>
+          <v-list-item-title>Home</v-list-item-title>
         </v-list-item>
 
         <v-list-item v-if="isLoggedIn" to="/dashboard" link>
-          <v-list-item-icon>
+          <template #prepend>
             <v-icon>mdi-view-dashboard</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>Dashboard</v-list-item-title>
-          </v-list-item-content>
+          </template>
+          <v-list-item-title>Dashboard</v-list-item-title>
         </v-list-item>
 
         <v-list-item v-if="isLoggedIn" to="/settings" link>
-          <v-list-item-icon>
+          <template #prepend>
             <v-icon>mdi-cog</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>Settings</v-list-item-title>
-          </v-list-item-content>
+          </template>
+          <v-list-item-title>Settings</v-list-item-title>
         </v-list-item>
 
         <v-list-item v-if="!isLoggedIn" to="/login" link>
-          <v-list-item-icon>
+          <template #prepend>
             <v-icon>mdi-login</v-icon>
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>Login</v-list-item-title>
-          </v-list-item-content>
+          </template>
+          <v-list-item-title>Login</v-list-item-title>
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
@@ -77,7 +69,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
 

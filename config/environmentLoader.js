@@ -57,10 +57,87 @@ async function fetchFirebaseConfig() {
 
       const config = await response.json()
 
-      // Make sure the config has the required fields
-      if (!config.APP_FIREBASE_API_KEY || !config.APP_FIREBASE_PROJECT_ID) {
-        throw new Error('Incomplete configuration received from server')
+      // Check if we're getting the updated client.* config format
+      if (config.FIREBASE_API_KEY) {
+        // Old format - use as is
+        // Make sure the config has the required fields
+        if (!config.FIREBASE_API_KEY || !config.FIREBASE_PROJECT_ID) {
+          throw new Error('Incomplete configuration received from server')
+        }
       }
+      else if (config.CLIENT_CONFIG_KEYS && Array.isArray(config.CLIENT_CONFIG_KEYS)) {
+        // New format with client.* prefixes - map to expected APP_ prefixes
+        // Convert client config keys to APP_ format
+        console.log('Received updated configuration format with client prefixes')
+
+        // Map client properties to expected APP variables
+        if (config.FIREBASE_API_KEY === undefined && config.firebase_api_key) {
+          config.FIREBASE_API_KEY = config.firebase_api_key
+        }
+        if (config.FIREBASE_AUTH_DOMAIN === undefined && config.firebase_auth_domain) {
+          config.FIREBASE_AUTH_DOMAIN = config.firebase_auth_domain
+        }
+        if (config.FIREBASE_PROJECT_ID === undefined && config.firebase_project_id) {
+          config.FIREBASE_PROJECT_ID = config.firebase_project_id
+        }
+        if (config.FIREBASE_STORAGE_BUCKET === undefined && config.firebase_storage_bucket) {
+          config.FIREBASE_STORAGE_BUCKET = config.firebase_storage_bucket
+        }
+        if (config.FIREBASE_MESSAGING_SENDER_ID === undefined && config.firebase_messaging_sender_id) {
+          config.FIREBASE_MESSAGING_SENDER_ID = config.firebase_messaging_sender_id
+        }
+        if (config.FIREBASE_APP_ID === undefined && config.firebase_app_id) {
+          config.FIREBASE_APP_ID = config.firebase_app_id
+        }
+        if (config.FIREBASE_MEASUREMENT_ID === undefined && config.firebase_measurement_id) {
+          config.FIREBASE_MEASUREMENT_ID = config.firebase_measurement_id
+        }
+
+        // Map to APP_FIREBASE format
+        config.APP_FIREBASE_API_KEY = config.FIREBASE_API_KEY
+        config.APP_FIREBASE_AUTH_DOMAIN = config.FIREBASE_AUTH_DOMAIN
+        config.APP_FIREBASE_PROJECT_ID = config.FIREBASE_PROJECT_ID
+        config.APP_FIREBASE_STORAGE_BUCKET = config.FIREBASE_STORAGE_BUCKET
+        config.APP_FIREBASE_MESSAGING_SENDER_ID = config.FIREBASE_MESSAGING_SENDER_ID
+        config.APP_FIREBASE_APP_ID = config.FIREBASE_APP_ID
+        config.APP_FIREBASE_MEASUREMENT_ID = config.FIREBASE_MEASUREMENT_ID
+        config.APP_USE_EMULATORS = config.USE_EMULATORS || 'false'
+
+        // AI Settings
+        if (config.AI_ENABLED) {
+          config.APP_AI_ENABLED = config.AI_ENABLED
+          config.APP_AI_MODEL = config.AI_MODEL
+          config.APP_AI_WEEKLY_LIMIT = config.AI_WEEKLY_LIMIT
+        }
+
+        // Make sure we have required fields
+        if (!config.APP_FIREBASE_API_KEY || !config.APP_FIREBASE_PROJECT_ID) {
+          console.warn('Some required Firebase config values are missing')
+          config.CONFIG_INCOMPLETE = true
+        }
+      }
+
+      // For compatibility with old variables, ensure we have both formats
+      if (config.APP_FIREBASE_API_KEY && !config.FIREBASE_API_KEY) {
+        config.FIREBASE_API_KEY = config.APP_FIREBASE_API_KEY
+        config.FIREBASE_AUTH_DOMAIN = config.APP_FIREBASE_AUTH_DOMAIN
+        config.FIREBASE_PROJECT_ID = config.APP_FIREBASE_PROJECT_ID
+        config.FIREBASE_STORAGE_BUCKET = config.APP_FIREBASE_STORAGE_BUCKET
+        config.FIREBASE_MESSAGING_SENDER_ID = config.APP_FIREBASE_MESSAGING_SENDER_ID
+        config.FIREBASE_APP_ID = config.APP_FIREBASE_APP_ID
+        config.FIREBASE_MEASUREMENT_ID = config.APP_FIREBASE_MEASUREMENT_ID
+      }
+
+      // Log the actual Firebase config being used
+      console.log('Using Firebase configuration:', {
+        apiKey: config.APP_FIREBASE_API_KEY ? '****' : 'undefined',
+        authDomain: config.APP_FIREBASE_AUTH_DOMAIN,
+        projectId: config.APP_FIREBASE_PROJECT_ID,
+        storageBucket: config.APP_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: config.APP_FIREBASE_MESSAGING_SENDER_ID ? '****' : 'undefined',
+        appId: config.APP_FIREBASE_APP_ID ? '****' : 'undefined',
+        measurementId: config.APP_FIREBASE_MEASUREMENT_ID
+      })
 
       // Update both window.ENV and our exported env object
       Object.assign(window.ENV, config)
@@ -108,7 +185,7 @@ async function fetchFirebaseConfig() {
           APP_FIREBASE_STORAGE_BUCKET: 'staketrack-dev.appspot.com',
           APP_FIREBASE_MESSAGING_SENDER_ID: '',
           APP_FIREBASE_APP_ID: '',
-          APP_FIREBASE_MEASUREMENT_ID: 'G-XXXXXXXXXX',
+          APP_FIREBASE_MEASUREMENT_ID: 'G-HTLDLC7RM2',
           APP_USE_EMULATORS: 'false',
           CONFIG_INCOMPLETE: true
         }
