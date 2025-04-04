@@ -201,7 +201,7 @@ const loadMaps = async () => {
           name: map.name || map._name,
           description: map.description || map._description,
           stakeholderCount: map.stakeholderCount || map._stakeholderCount || 0,
-          lastUpdated: map.lastUpdated || map._lastUpdated,
+          lastUpdated: map.updatedAt || map._updatedAt,
           createdAt: map.createdAt || map._createdAt
         }
       })
@@ -298,7 +298,9 @@ const goToLogin = () => {
 const safeFormatDate = (date) => {
   if (!date) return 'Unknown date'
   try {
-    return formatDate(date)
+    // Convert Firebase server timestamp if needed
+    const dateObj = typeof date === 'object' && date.toDate ? date.toDate() : new Date(date)
+    return formatDate(dateObj)
   } catch (err) {
     console.error('Error formatting date:', err, date)
     return 'Invalid date'
