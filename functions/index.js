@@ -5,6 +5,14 @@ const { logger } = require("firebase-functions");
 // Set the region for all functions
 const region = "europe-west1";
 
+// Import AI functions from src/index.js
+const aiService = require("./src/index");
+
+// Export all AI functions from src/index.js
+exports.generateStakeholderRecommendations = aiService.generateStakeholderRecommendations;
+exports.generateStakeholderAdvice = aiService.generateStakeholderAdvice;
+exports.generateInfluenceAnalysis = aiService.generateInfluenceAnalysis;
+
 // Basic Hello World function to make sure Functions is initialized properly
 exports.helloWorld = onRequest({ region }, (request, response) => {
   logger.info("Hello request received");
