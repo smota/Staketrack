@@ -1,4 +1,4 @@
-import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, where, setDoc } from 'firebase/firestore'
+import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, where, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { auth } from '@/firebase'
 import { localStorageService } from './localStorageService'
@@ -306,15 +306,15 @@ export class MapService {
             displayName: auth.currentUser.displayName || '',
             photoURL: auth.currentUser.photoURL || '',
             currentMapId: mapId,
-            createdAt: new Date(),
-            lastLogin: new Date(),
-            lastActivity: new Date()
+            createdAt: Timestamp.fromDate(new Date()),
+            lastLogin: Timestamp.fromDate(new Date()),
+            lastActivity: Timestamp.fromDate(new Date())
           })
         } else {
           // Update existing user document
           await updateDoc(userRef, {
             currentMapId: mapId,
-            lastActivity: new Date()
+            lastActivity: Timestamp.fromDate(new Date())
           })
         }
       }

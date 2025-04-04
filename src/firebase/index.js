@@ -95,16 +95,15 @@ export const getFunctionsInstance = () => {
   }
 }
 
-// Use emulators in development
-if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
+// Cache for lazy-loaded Storage instance
+let storage = null
+
+// Use emulators when configured via environment variables
+if (config.env.useEmulators) {
   console.log('Using Firebase emulators for development')
   try {
-    connectAuthEmulator(auth, 'http://localhost:9099')
-    connectFirestoreEmulator(db, 'localhost', 8080)
-
-    // Initialize and connect Storage emulator for development
-    storage = getStorage(app)
-    connectStorageEmulator(storage, 'localhost', 9199)
+    connectAuthEmulator(auth, `http://localhost:${process.env.APP_EMULATOR_AUTH_PORT || 9099}`)
+    connectFirestoreEmulator(db, 'localhost', process.env.APP_EMULATOR_FIRESTORE_PORT || 8080)
   } catch (error) {
     console.error('Error connecting to emulators:', error)
   }
@@ -127,9 +126,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 export { analytics }
 
-// Cache for lazy-loaded Storage instance
-let storage = null
-
 /**
  * Get Firebase Storage instance, initializing it only when needed and when user is logged in
  * @returns {Object|null} Firebase Storage instance or null if unavailable
@@ -144,6 +140,12 @@ export const getFirebaseStorage = () => {
   if (auth.currentUser && firebaseConfig.storageBucket) {
     try {
       storage = getStorage(app)
+
+      // Connect to emulator if configured
+      if (config.env.useEmulators) {
+        connectStorageEmulator(storage, 'localhost', process.env.APP_EMULATOR_STORAGE_PORT || 9199)
+      }
+
       return storage
     } catch (error) {
       console.error('Firebase Storage initialization failed:', error)
