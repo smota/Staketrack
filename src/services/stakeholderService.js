@@ -491,20 +491,43 @@ class StakeholderService {
    */
   async migrateMapFromMainCollection(mapId) {
     try {
-      const userId = this.currentUserId
+      console.log(`Checking if map ${mapId} needs migration`)
 
-      if (!userId) {
-        return false
-      }
+      // Check if the map already exists in the stakeholderMaps collection
+      const mapRef = this.getMapRef(mapId)
+      const mapDoc = await getDoc(mapRef)
 
-      // Check if the map already exists in stakeholderMaps collection
-      const stakeholderMapDoc = await getDoc(this.getMapRef(mapId))
-      if (stakeholderMapDoc.exists()) {
-        // Map already exists, no need to migrate
+      if (mapDoc.exists()) {
+        console.log(`Map ${mapId} already exists in stakeholderMaps collection, no migration needed`)
         return true
       }
 
-      // Get the map from the main maps collection
+      console.log(`Map ${mapId} does not exist in stakeholderMaps, checking main collection`)
+
+      // If we're in development with emulators and the map doesn't exist, create a placeholder
+      if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
+        try {
+          console.log(`Emulator mode: creating placeholder stakeholder map for ID ${mapId}`)
+
+          const stakeholderMapData = {
+            name: 'Development Map',
+            description: 'Automatically created for emulator mode',
+            createdBy: this.currentUserId || 'anonymous',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            stakeholderCount: 0,
+            isArchived: false
+          }
+
+          await setDoc(mapRef, stakeholderMapData)
+          console.log(`Successfully created placeholder map ${mapId} in emulator mode`)
+          return true
+        } catch (emulatorError) {
+          console.error('Error creating placeholder map in emulator mode:', emulatorError)
+        }
+      }
+
+      // Check the main maps collection
       const mainMapRef = doc(collection(db, 'maps'), mapId)
       const mainMapDoc = await getDoc(mainMapRef)
 
@@ -518,7 +541,7 @@ class StakeholderService {
           const stakeholderMapData = {
             name: 'Development Map',
             description: 'Automatically created for emulator mode',
-            createdBy: userId,
+            createdBy: this.currentUserId || 'anonymous',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             stakeholderCount: 0,
@@ -536,8 +559,8 @@ class StakeholderService {
       const mainMapData = mainMapDoc.data()
 
       // Ensure the user is the owner
-      if (mainMapData.userId !== userId) {
-        console.warn(`User ${userId} is not the owner of map ${mapId}, cannot migrate`)
+      if (mainMapData.userId !== this.currentUserId) {
+        console.warn(`User ${this.currentUserId} is not the owner of map ${mapId}, cannot migrate`)
 
         // In emulator mode, proceed anyway to improve development experience
         if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
@@ -551,7 +574,7 @@ class StakeholderService {
       const stakeholderMapData = {
         name: mainMapData.name || 'Migrated Map',
         description: mainMapData.description || '',
-        createdBy: userId,
+        createdBy: this.currentUserId,
         createdAt: mainMapData.createdAt || serverTimestamp(),
         updatedAt: mainMapData.updatedAt || serverTimestamp(),
         stakeholderCount: mainMapData.stakeholderCount || 0,

@@ -151,6 +151,7 @@ class AuthService {
           photoURL: user.photoURL || '',
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
+          lastActivity: serverTimestamp(),
           settings: {
             theme: 'light',
             notifications: true
@@ -159,12 +160,14 @@ class AuthService {
       } else {
         // Update last login
         await updateDoc(userDocRef, {
-          lastLogin: serverTimestamp()
+          lastLogin: serverTimestamp(),
+          lastActivity: serverTimestamp()
         })
       }
     } catch (error) {
       console.error('Error creating/updating user document:', error)
-      throw error
+      // Don't throw error to prevent sign-in failure
+      // Just log the error and continue
     }
   }
 

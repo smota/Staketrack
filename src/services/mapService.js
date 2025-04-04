@@ -1,4 +1,4 @@
-import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, where } from 'firebase/firestore'
+import { collection, query, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, serverTimestamp, where, setDoc } from 'firebase/firestore'
 import { db } from '@/firebase'
 import { auth } from '@/firebase'
 import { localStorageService } from './localStorageService'
@@ -295,10 +295,28 @@ export class MapService {
       if (!this._isLocalMode() && auth.currentUser) {
         const userId = auth.currentUser.uid
         const userRef = doc(db, 'users', userId)
-        await updateDoc(userRef, {
-          currentMapId: mapId,
-          lastActivity: new Date()
-        })
+
+        // Check if user document exists
+        const userDoc = await getDoc(userRef)
+
+        if (!userDoc.exists()) {
+          // Create the user document if it doesn't exist
+          await setDoc(userRef, {
+            email: auth.currentUser.email || '',
+            displayName: auth.currentUser.displayName || '',
+            photoURL: auth.currentUser.photoURL || '',
+            currentMapId: mapId,
+            createdAt: new Date(),
+            lastLogin: new Date(),
+            lastActivity: new Date()
+          })
+        } else {
+          // Update existing user document
+          await updateDoc(userRef, {
+            currentMapId: mapId,
+            lastActivity: new Date()
+          })
+        }
       }
 
       return true

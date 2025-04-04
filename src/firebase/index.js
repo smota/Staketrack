@@ -4,7 +4,8 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
-import { getStorage } from 'firebase/storage'
+import { getStorage, connectStorageEmulator } from 'firebase/storage'
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 import config from '@/config'
 
@@ -65,12 +66,45 @@ try {
 }
 export { db }
 
+// Functions initialization - using lazy loading pattern similar to storage
+let _functions = null
+
+/**
+ * Get Firebase Functions instance, initializing it only when needed
+ * @returns {Object} Firebase Functions instance
+ */
+export const getFunctionsInstance = () => {
+  if (_functions) {
+    return _functions
+  }
+
+  try {
+    console.log('Initializing Firebase Functions with region:', config.env.firebase.functionsRegion || 'default')
+    _functions = getFunctions(app, config.env.firebase.functionsRegion)
+
+    // Connect to emulator in development mode
+    if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
+      console.log('Connecting Firebase Functions to emulator')
+      connectFunctionsEmulator(_functions, 'localhost', 5001)
+    }
+
+    return _functions
+  } catch (error) {
+    console.error('Error initializing Firebase Functions:', error)
+    throw new Error('Failed to initialize Firebase Functions: ' + error.message)
+  }
+}
+
 // Use emulators in development
 if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
   console.log('Using Firebase emulators for development')
   try {
     connectAuthEmulator(auth, 'http://localhost:9099')
     connectFirestoreEmulator(db, 'localhost', 8080)
+
+    // Initialize and connect Storage emulator for development
+    storage = getStorage(app)
+    connectStorageEmulator(storage, 'localhost', 9199)
   } catch (error) {
     console.error('Error connecting to emulators:', error)
   }

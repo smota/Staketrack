@@ -5,7 +5,9 @@
  */
 import { stakeholderService } from '@/services'
 import { getAuth } from 'firebase/auth'
-import { getFunctions, httpsCallable } from 'firebase/functions'
+import { httpsCallable } from 'firebase/functions'
+import { firebaseApp, getFunctionsInstance } from '@/firebase'
+import config from '@/config'
 
 class AIService {
   /**
@@ -57,16 +59,22 @@ class AIService {
       }
 
       // Get Firebase Functions instance
-      const functions = getFunctions()
+      const functions = getFunctionsInstance()
 
       // Call the Firebase Cloud Function
       const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
 
       // Make the request to Firebase Function with map data instead of prompt
-      const result = await generateRecommendations({
-        mapData,
-        ...requestOptions
-      })
+      let result
+      try {
+        result = await generateRecommendations({
+          mapData,
+          ...requestOptions
+        })
+      } catch (callError) {
+        console.error('Error calling Firebase Function:', callError)
+        throw new Error('Failed to get recommendations from AI service: ' + callError.message)
+      }
 
       // Check if user has reached usage limits
       if (result.data.limitReached) {
@@ -132,16 +140,22 @@ class AIService {
       }
 
       // Get Firebase Functions instance
-      const functions = getFunctions()
+      const functions = getFunctionsInstance()
 
       // Call the Firebase Cloud Function
       const generateAdvice = httpsCallable(functions, 'generateStakeholderAdvice')
 
       // Make the request to Firebase Function with stakeholder data instead of prompt
-      const result = await generateAdvice({
-        stakeholderData,
-        ...requestOptions
-      })
+      let result
+      try {
+        result = await generateAdvice({
+          stakeholderData,
+          ...requestOptions
+        })
+      } catch (callError) {
+        console.error('Error calling Firebase Function:', callError)
+        throw new Error('Failed to get advice from AI service: ' + callError.message)
+      }
 
       // Check if user has reached usage limits
       if (result.data.limitReached) {
@@ -208,16 +222,22 @@ class AIService {
       }
 
       // Get Firebase Functions instance
-      const functions = getFunctions()
+      const functions = getFunctionsInstance()
 
       // Call the Firebase Cloud Function
       const generateAnalysis = httpsCallable(functions, 'generateInfluenceAnalysis')
 
       // Make the request to Firebase Function with map data instead of prompt
-      const result = await generateAnalysis({
-        mapData,
-        ...requestOptions
-      })
+      let result
+      try {
+        result = await generateAnalysis({
+          mapData,
+          ...requestOptions
+        })
+      } catch (callError) {
+        console.error('Error calling Firebase Function:', callError)
+        throw new Error('Failed to get network analysis from AI service: ' + callError.message)
+      }
 
       // Check if user has reached usage limits
       if (result.data.limitReached) {
@@ -277,27 +297,39 @@ class AIService {
         throw new Error('Map not found')
       }
 
+      // Validate issue
+      if (!issue || typeof issue !== 'string' || issue.trim() === '') {
+        throw new Error('Valid issue description is required')
+      }
+
       // Extract only the data needed for the issue-specific prompt
       const mapData = this._prepareMapDataForAI(map)
 
       // Prepare options for server-side prompt generation
       const requestOptions = {
+        issue: issue.trim(),
         specialFocus: options.specificFocus,
         modelOverrides: options.modelOverrides
       }
 
       // Get Firebase Functions instance
-      const functions = getFunctions()
+      const functions = getFunctionsInstance()
 
       // Call the Firebase Cloud Function
-      const generateRecommendations = httpsCallable(functions, 'generateIssueRecommendations')
+      const generateIssueRecommendations = httpsCallable(functions, 'generateIssueRecommendations')
 
       // Make the request to Firebase Function with map data and issue instead of prompt
-      const result = await generateRecommendations({
-        mapData,
-        issue,
-        ...requestOptions
-      })
+      let result
+      try {
+        result = await generateIssueRecommendations({
+          mapData,
+          issue,
+          ...requestOptions
+        })
+      } catch (callError) {
+        console.error('Error calling Firebase Function:', callError)
+        throw new Error('Failed to get issue recommendations from AI service: ' + callError.message)
+      }
 
       // Check if user has reached usage limits
       if (result.data.limitReached) {

@@ -29,7 +29,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) &&
                       hasValidFields(
                         ['email'], 
-                        ['displayName', 'photoURL', 'createdAt', 'lastLogin', 'currentMapId', 'lastActivity']
+                        ['displayName', 'photoURL', 'createdAt', 'lastLogin', 'currentMapId', 'lastActivity', 'settings']
                       ) &&
                       isValidTimestamp('createdAt') &&
                       isValidTimestamp('lastLogin');
