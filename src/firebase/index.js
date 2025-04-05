@@ -1,257 +1,205 @@
-/**
- * Firebase configuration and initialization
- */
-import { initializeApp, getApps } from 'firebase/app'
-import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore'
+// Initialize Firebase if not already initialized
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
+import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
-import {
-  getFunctions,
-  connectFunctionsEmulator,
-  httpsCallable
-} from 'firebase/functions'
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions'
 import { getAnalytics, isSupported } from 'firebase/analytics'
+
+// Import the config based on the current environment
 import config from '@/config'
 
-// Using environment-provided Firebase configuration
-const firebaseConfig = config.env.firebaseConfig
-
-// Log the Firebase configuration being used (without sensitive values)
+// Log the Firebase config (hiding sensitive data)
 console.log('Initializing Firebase with config:', {
-  projectId: firebaseConfig.projectId || 'not set',
-  authDomain: firebaseConfig.authDomain || 'not set',
-  storageBucket: firebaseConfig.storageBucket || 'not set',
-  useEmulators: config.env.useEmulators || false,
-  functionsRegion: config.env.firebase?.functionsRegion || 'not set'
+  projectId: config.firebase.projectId || 'not set',
+  authDomain: config.firebase.authDomain || 'not set',
+  storageBucket: config.firebase.storageBucket || 'not set',
+  region: config.firebase.functionsRegion || 'not set',
+  useEmulators: config.useEmulators || false
 })
 
-/**
- * Initialize Firebase services
- */
+// Initialize Firebase
 let app
+let auth
+let db
+let storage
+let analytics
+
 try {
-  // Check if Firebase is already initialized
+  // Check if there are existing Firebase apps
   if (getApps().length === 0) {
     console.log('Initializing Firebase app for the first time...')
-    // Validate that we have the minimal required config
-    if (!firebaseConfig.projectId) {
-      console.error('Missing required Firebase project ID')
-      throw new Error('Firebase project ID is required')
-    }
-    app = initializeApp(firebaseConfig)
-    console.log('Firebase app initialized successfully with project ID:', firebaseConfig.projectId)
+    app = initializeApp(config.firebase)
+    console.log('Firebase app initialized successfully with project ID:', config.firebase.projectId)
   } else {
-    console.log('Firebase already initialized, retrieving existing app')
-    app = getApps()[0]
+    console.log('Using existing Firebase app...')
+    app = getApp()
+  }
+
+  // Initialize Firebase services
+  auth = getAuth(app)
+  db = getFirestore(app)
+  storage = getStorage(app)
+
+  // Initialize Analytics only in browser environment
+  if (typeof window !== 'undefined') {
+    try {
+      isSupported().then(supported => {
+        if (supported && config.firebase.measurementId) {
+          analytics = getAnalytics(app)
+        } else {
+          analytics = {
+            logEvent: () => { },
+            setCurrentScreen: () => { },
+            setUserId: () => { }
+          }
+        }
+      })
+    } catch (error) {
+      console.warn('Analytics initialization failed:', error)
+      // Provide a dummy implementation
+      analytics = {
+        logEvent: () => { },
+        setCurrentScreen: () => { },
+        setUserId: () => { }
+      }
+    }
+  }
+
+  // Connect to emulators if in development mode
+  if (config.useEmulators) {
+    console.log('Using Firebase emulators...')
+    connectAuthEmulator(auth, 'http://localhost:9099')
+    connectFirestoreEmulator(db, 'localhost', 8080)
+    connectStorageEmulator(storage, 'localhost', 9199)
+    // Functions emulator connection will be done in the getFunctionsInstance method
+  }
+
+  // Enable offline persistence for Firestore (only in production)
+  if (!config.useEmulators) {
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Multiple tabs open, persistence only enabled in one tab at a time.')
+      } else if (err.code === 'unimplemented') {
+        console.warn('The current browser does not support all of the features required to enable persistence')
+      } else {
+        console.error('Error enabling persistence:', err)
+      }
+    })
   }
 } catch (error) {
   console.error('Error initializing Firebase:', error)
-  throw error
-}
-
-// Export Firebase app instance
-export const firebaseApp = app
-
-// Initialize Auth with error handling
-let auth
-try {
-  auth = getAuth(app)
-} catch (error) {
-  console.error('Error initializing Firebase Auth:', error)
-  throw error
-}
-export { auth }
-
-// Initialize Firestore with error handling
-let db
-try {
-  db = getFirestore(app)
-} catch (error) {
-  console.error('Error initializing Firestore:', error)
-  throw error
-}
-export { db }
-
-// Functions initialization - using lazy loading pattern
-let _functions = null
-
-/**
- * Get Firebase Functions instance, initializing it only when needed
- * @returns {Object} Firebase Functions instance
- */
-export const getFunctionsInstance = () => {
-  if (_functions) {
-    return _functions
-  }
-
-  try {
-    // Check if we have a valid Firebase config
-    if (!firebaseConfig.projectId) {
-      console.error('Firebase project ID is missing, cannot initialize Functions')
-      throw new Error('Firebase project ID is required to initialize Functions')
-    }
-
-    // Set the region for functions
-    const functionsRegion = config.env.firebase?.functionsRegion || 'europe-west1'
-
-    // Initialize the Functions instance with region
-    _functions = getFunctions(app, functionsRegion)
-
-    // Connect to emulator if configured in environment
-    if (config.env.useEmulators) {
-      const emulatorHost = 'localhost'
-      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT || '5001'
-      connectFunctionsEmulator(_functions, emulatorHost, parseInt(emulatorPort, 10))
-    }
-
-    return _functions
-  } catch (error) {
-    console.error('Error initializing Firebase Functions:', error)
-    throw error
-  }
-}
-
-// Storage initialization
-let storage = null
-
-// Connect to emulators when configured
-if (config.env.useEmulators) {
-  try {
-    // Connect Auth emulator
-    connectAuthEmulator(auth, `http://localhost:${process.env.APP_EMULATOR_AUTH_PORT}`)
-  } catch (error) {
-    console.error('Error connecting to Auth emulator:', error)
-  }
-
-  try {
-    // Connect Firestore emulator
-    connectFirestoreEmulator(db, 'localhost', parseInt(process.env.APP_EMULATOR_FIRESTORE_PORT, 10))
-  } catch (error) {
-    console.error('Error connecting to Firestore emulator:', error)
-  }
 }
 
 /**
- * Get Firebase Storage instance
- * @returns {Object|null} Firebase Storage instance or null if unavailable
+ * Get a Firebase Functions instance for the specified region
+ * @param {string} region - The region to use for functions
+ * @returns {Object} - The Functions instance, or a mock if not available
  */
-export const getFirebaseStorage = () => {
-  // Return cached instance if available
-  if (storage) {
-    return storage
-  }
-
-  // For emulators, initialize on demand
-  if (config.env.useEmulators) {
-    try {
-      storage = getStorage(app)
-
-      try {
-        connectStorageEmulator(
-          storage,
-          'localhost',
-          parseInt(process.env.APP_EMULATOR_STORAGE_PORT, 10)
-        )
-      } catch (connError) {
-        console.error('Error connecting to Storage emulator:', connError)
-      }
-
-      return storage
-    } catch (error) {
-      console.error('Firebase Storage initialization failed:', error)
-      return null
+function getFunctionsInstance(region = config.firebase.functionsRegion) {
+  try {
+    if (!config.firebase.projectId) {
+      console.error('Cannot initialize Firebase Functions: Project ID is missing')
+      return createMockFunctionsInstance()
     }
-  }
 
-  // For production, only initialize if authenticated
-  if (auth.currentUser && firebaseConfig.storageBucket) {
+    console.log('Initializing Firebase Functions in region:', region)
+
+    // Try multiple approaches to initialize Firebase Functions
+
+    // Approach 1: Standard initialization with region
+    console.log('Attempting to initialize Firebase Functions with standard method')
     try {
-      storage = getStorage(app)
-      return storage
-    } catch (error) {
-      console.error('Firebase Storage initialization failed:', error)
-      return null
-    }
-  }
+      const functionsInstance = getFunctions(app, region)
+      console.log('Functions initialization with region successful')
 
-  return null
-}
-
-// Initialize Analytics conditionally for production only
-let analytics = null
-
-// In development or emulator mode, provide a dummy implementation
-if (process.env.NODE_ENV !== 'production' || config.env.useEmulators) {
-  analytics = {
-    logEvent: () => { },
-    setUserId: () => { },
-    setUserProperties: () => { }
-  }
-} else {
-  // Only try to initialize analytics in production
-  isSupported().then(supported => {
-    if (supported && firebaseConfig.measurementId) {
-      try {
-        analytics = getAnalytics(app)
-      } catch (error) {
-        console.warn('Firebase Analytics initialization failed:', error)
-        // Provide fallback implementation if analytics fails
-        analytics = {
-          logEvent: () => { },
-          setUserId: () => { },
-          setUserProperties: () => { }
+      // Connect to emulator if needed
+      if (config.useEmulators) {
+        try {
+          console.log('Connecting to Functions emulator...')
+          connectFunctionsEmulator(functionsInstance, 'localhost', 5001)
+          console.log('Connected to Functions emulator successfully')
+        } catch (emulatorError) {
+          console.error('Failed to connect to Functions emulator:', emulatorError)
         }
       }
-    } else {
-      // Provide fallback for unsupported browsers
-      analytics = {
-        logEvent: () => { },
-        setUserId: () => { },
-        setUserProperties: () => { }
+
+      // Validate that we got a proper Functions instance
+      console.log('Functions instance properties:',
+        Object.keys(functionsInstance).filter(key => typeof functionsInstance[key] !== 'function')
+      )
+
+      return functionsInstance
+    } catch (error) {
+      console.error('Standard Functions initialization failed, trying alternative approach:', error)
+    }
+
+    // Approach 2: Try without region
+    console.log('Attempting to initialize Functions without region')
+    try {
+      const functionsInstance = getFunctions(app)
+      console.log('Functions initialization without region successful')
+      return functionsInstance
+    } catch (error) {
+      console.error('Alternative Functions initialization also failed:', error)
+    }
+
+    // Approach 3: Try with direct URL
+    try {
+      console.log('Attempting to initialize Functions with direct URL')
+      const projectId = config.firebase.projectId
+      const customFunctionsInstance = getFunctions(app)
+
+      // Workaround attempt to make functions available
+      customFunctionsInstance._url = `https://${region}-${projectId}.cloudfunctions.net/`
+      console.log('Set custom URL for Functions:', customFunctionsInstance._url)
+
+      return customFunctionsInstance
+    } catch (error) {
+      console.error('Direct URL Functions initialization also failed:', error)
+    }
+
+    console.error('Error initializing Firebase Functions')
+
+    console.log('Firebase project ID:', config.firebase.projectId)
+    console.log('Firebase auth domain:', config.firebase.authDomain)
+    console.log('Functions region:', config.firebase.functionsRegion)
+    console.log('Use emulators:', config.useEmulators)
+
+    console.log('Returning mock Functions instance due to initialization error')
+    return createMockFunctionsInstance()
+  } catch (error) {
+    console.error('Error getting Firebase Functions instance:', error)
+    return createMockFunctionsInstance()
+  }
+}
+
+/**
+ * Create a mock Functions instance for graceful degradation
+ * @returns {Object} - A mock Functions instance
+ */
+function createMockFunctionsInstance() {
+  console.warn('Using mock Functions instance. Some features may be limited.')
+
+  return {
+    _isMock: true,
+    httpsCallable: (name) => {
+      return async (data) => {
+        console.warn(`Mock function call to ${name}:`, data)
+        return { data: { success: false, error: 'Firebase Functions not available', _isMock: true } }
       }
     }
-  }).catch(() => {
-    // Fallback for any promise rejection
-    analytics = {
-      logEvent: () => { },
-      setUserId: () => { },
-      setUserProperties: () => { }
-    }
-  })
-}
-
-export { analytics }
-
-// Enable offline persistence for Firestore (only in production)
-if (!config.env.useEmulators) {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.')
-    } else if (err.code === 'unimplemented') {
-      console.warn('The current browser does not support persistence.')
-    } else {
-      console.warn('Error enabling Firestore persistence:', err)
-    }
-  })
-}
-
-/**
- * Initialize Firebase Auth state tracking
- * @param {Function} onAuthStateChanged - Callback to be called when auth state changes
- * @returns {Function} Unsubscribe function
- */
-export const trackAuthState = (onAuthStateChanged) => {
-  if (!onAuthStateChanged || typeof onAuthStateChanged !== 'function') {
-    throw new Error('onAuthStateChanged must be a valid function')
   }
-
-  return auth.onAuthStateChanged(onAuthStateChanged)
 }
 
-/**
- * Get current authenticated user
- * @returns {Object|null} Current user or null if not authenticated
- */
-export const getCurrentUser = () => {
-  return auth.currentUser
+// Export Firebase services
+export {
+  app,
+  auth,
+  db,
+  storage,
+  analytics,
+  getFunctionsInstance
 }
+
+export default app

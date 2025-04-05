@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
 import { createVuetify } from 'vuetify'
@@ -7,10 +7,9 @@ import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 import './styles/main.css'
-import { firebaseApp, auth, db, analytics } from './firebase'
-
-// Import environment config
+import { app as firebaseApp, auth, db, analytics } from './firebase'
 import config from './config'
+import { onAuthStateChanged } from 'firebase/auth'
 
 // Create Vuetify instance
 const vuetify = createVuetify({
@@ -36,7 +35,7 @@ const vuetify = createVuetify({
 })
 
 // Create and mount app
-const app = createApp(App)
+const app = Vue.createApp(App)
 app.use(router)
 app.use(vuetify)
 app.config.globalProperties.$config = config
@@ -47,18 +46,27 @@ app.config.globalProperties.$firebase = {
   analytics
 }
 
-// Initialize Firebase Functions connectivity check
-import('@/services')
-  .then(({ aiService }) => {
-    if (aiService && typeof aiService.checkFunctionsAvailability === 'function') {
-      aiService.checkFunctionsAvailability()
-        .catch(err => {
-          console.error('Firebase Functions availability check failed:', err)
-        })
-    }
-  })
-  .catch(err => {
-    console.error('Error importing services:', err)
-  })
+// Initialize Firebase Functions availability check only after authentication
+// Track authentication state changes
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // User is signed in, now it's safe to check Functions availability
+    console.log('User authenticated, checking Firebase Functions availability')
+    import('@/services')
+      .then(({ aiService }) => {
+        if (aiService && typeof aiService.checkFunctionsAvailability === 'function') {
+          aiService.checkFunctionsAvailability()
+            .catch(err => {
+              console.error('Firebase Functions availability check failed:', err)
+            })
+        }
+      })
+      .catch(err => {
+        console.error('Error importing services:', err)
+      })
+  } else {
+    console.log('User not authenticated, skipping Firebase Functions initialization')
+  }
+})
 
 app.mount('#app')

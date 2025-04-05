@@ -35,31 +35,169 @@ export class MapService {
    */
   async getMaps() {
     try {
+      console.log('MapService.getMaps() called')
+
+      // Detailed authentication state reporting
+      console.log('Current authentication state:', auth ? 'Auth initialized' : 'Auth not initialized')
+      console.log('Current user:', auth.currentUser ? `Authenticated as ${auth.currentUser.uid}` : 'Not authenticated')
+      console.log('Is anonymous user:', auth.currentUser?.isAnonymous ? 'Yes' : 'No')
+
       if (this._isLocalMode()) {
+        console.log('Using local mode, returning from local storage')
         return localStorageService.getMaps()
       }
 
       // Check if user is authenticated and Firestore is available
       if (!auth.currentUser || !db) {
         console.warn('Firebase services not fully available, falling back to local storage')
+        console.log('Auth state:', auth.currentUser ? 'Authenticated' : 'Not authenticated')
+        console.log('Firestore available:', db ? 'Yes' : 'No')
         return localStorageService.getMaps()
       }
 
       try {
         const userId = auth.currentUser.uid
+        console.log('Fetching maps for user ID:', userId)
+        console.log('Using Firestore instance:', db ? 'Valid' : 'Invalid')
+
+        // First try: Get all maps (without filter) to test basic Firestore access
+        try {
+          console.log('ATTEMPT A: Trying to retrieve all maps without filtering')
+          const mapsRef = collection(db, 'maps')
+          console.log('Created maps collection reference')
+
+          const snapshot = await getDocs(mapsRef)
+          console.log(`Retrieved ${snapshot.docs.length} total maps`)
+
+          // Filter on the client side
+          const userMaps = snapshot.docs
+            .filter(doc => doc.data().userId === userId)
+            .map(doc => new Map({
+              id: doc.id,
+              ...doc.data()
+            }))
+
+          console.log(`Found ${userMaps.length} maps belonging to current user`)
+
+          if (userMaps.length > 0) {
+            this.maps = userMaps
+            return this.maps
+          } else {
+            console.log('No maps found for this user, will try filtered query')
+          }
+        } catch (allMapsError) {
+          console.error('Error retrieving all maps:', allMapsError)
+          console.error('Error code:', allMapsError.code)
+          console.error('Error message:', allMapsError.message)
+        }
+
+        // Second try: Use the filtered query approach
+        console.log('ATTEMPT B: Trying with userId filter')
         const mapsRef = collection(db, 'maps')
+        console.log('Created maps collection reference')
+
         const q = query(mapsRef, where('userId', '==', userId))
-        const snapshot = await getDocs(q)
+        console.log('Created query with userId filter:', userId)
 
-        this.maps = snapshot.docs.map(doc => new Map({
-          id: doc.id,
-          ...doc.data(),
-          userId
-        }))
+        // Add retry logic for Firestore query
+        let attempts = 0
+        const maxAttempts = 3
+        let lastError = null
 
-        return this.maps
+        while (attempts < maxAttempts) {
+          try {
+            console.log(`Attempt ${attempts + 1}/${maxAttempts} to execute Firestore query`)
+            const snapshot = await getDocs(q)
+            console.log(`Query successful, received ${snapshot.docs.length} documents`)
+
+            this.maps = snapshot.docs.map(doc => new Map({
+              id: doc.id,
+              ...doc.data(),
+              userId
+            }))
+
+            console.log('Processed maps data:', this.maps.length, 'maps')
+            return this.maps
+          } catch (retryError) {
+            attempts++
+            lastError = retryError
+            console.error(`Attempt ${attempts} failed:`, retryError)
+
+            // Detailed error reporting
+            if (retryError.code) {
+              console.error(`Error code: ${retryError.code}`)
+            }
+            if (retryError.name) {
+              console.error(`Error name: ${retryError.name}`)
+            }
+            if (retryError.message) {
+              console.error(`Error message: ${retryError.message}`)
+            }
+
+            if (attempts < maxAttempts) {
+              // Wait before retrying (exponential backoff)
+              const delayMs = Math.pow(2, attempts) * 500
+              console.log(`Waiting ${delayMs}ms before retry`)
+              await new Promise(resolve => setTimeout(resolve, delayMs))
+            }
+          }
+        }
+
+        // Third try: Use collection path inside the user document
+        try {
+          console.log('ATTEMPT C: Trying user-specific maps subcollection')
+          const userMapsRef = collection(db, `users/${userId}/maps`)
+          console.log('Created user maps subcollection reference')
+
+          const snapshot = await getDocs(userMapsRef)
+          console.log(`Retrieved ${snapshot.docs.length} maps from user subcollection`)
+
+          if (snapshot.docs.length > 0) {
+            this.maps = snapshot.docs.map(doc => new Map({
+              id: doc.id,
+              ...doc.data(),
+              userId
+            }))
+
+            console.log('Processed maps data from subcollection:', this.maps.length, 'maps')
+            return this.maps
+          }
+        } catch (subcollectionError) {
+          console.error('Error retrieving maps from subcollection:', subcollectionError)
+          console.error('Error code:', subcollectionError.code)
+          console.error('Error message:', subcollectionError.message)
+        }
+
+        // If we get here, all attempts failed
+        console.error('All Firestore query attempts failed, falling back to local storage. Last error:', lastError)
+
+        // Try to get more information about the specific permission issue
+        console.log('Current auth user details:')
+        if (auth.currentUser) {
+          console.log('  - UID:', auth.currentUser.uid)
+          console.log('  - Email:', auth.currentUser.email || 'No email')
+          console.log('  - Email verified:', auth.currentUser.emailVerified)
+          console.log('  - Anonymous:', auth.currentUser.isAnonymous)
+          console.log('  - Provider data:', JSON.stringify(auth.currentUser.providerData))
+        } else {
+          console.log('  - No current user')
+        }
+
+        return localStorageService.getMaps()
       } catch (firestoreError) {
         console.error('Firestore error, falling back to local storage:', firestoreError)
+
+        // Log more details about the error
+        if (firestoreError.code) {
+          console.error('Error code:', firestoreError.code)
+        }
+        if (firestoreError.name) {
+          console.error('Error name:', firestoreError.name)
+        }
+        if (firestoreError.message) {
+          console.error('Error message:', firestoreError.message)
+        }
+
         return localStorageService.getMaps()
       }
     } catch (error) {

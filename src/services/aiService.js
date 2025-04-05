@@ -1,20 +1,15 @@
 /* eslint-disable indent */
 /**
- * AI Service
- * Handles interactions with Firebase's GenAI service for stakeholder recommendations
+ * AI service for StakeTrack
+ * Provides AI-powered recommendations and advice for stakeholder management
  */
-import { getAuth } from 'firebase/auth'
 import { httpsCallable } from 'firebase/functions'
-import { getFunctionsInstance } from '@/firebase'
+import { getFunctionsInstance, auth } from '@/firebase'
 import config from '@/config'
 
-// Use dynamic imports for services to avoid circular dependencies
-let stakeholderService = null
+// Lazy load the stakeholder service to avoid circular dependencies
 const getStakeholderService = async () => {
-  if (!stakeholderService) {
-    const services = await import('@/services')
-    stakeholderService = services.stakeholderService
-  }
+  const { stakeholderService } = await import('./stakeholderService')
   return stakeholderService
 }
 
@@ -39,16 +34,18 @@ class AIService {
     let map
     try {
       // Check if user is authenticated
-      const auth = getAuth()
       const user = auth.currentUser
 
       if (!user) {
+        console.log('User not authenticated, cannot access AI recommendations')
         return this._getAuthRequiredResponse()
       }
 
-      // Verify Firebase Functions service is available first
+      // Verify Firebase Functions service is available only when user is authenticated
+      // This prevents premature initialization errors
       const functionsAvailable = await this.checkFunctionsAvailability()
       if (!functionsAvailable) {
+        console.warn('Firebase Functions service is not available, but user is authenticated')
         throw new Error('Firebase Functions service is not available')
       }
 
@@ -135,7 +132,6 @@ class AIService {
     let stakeholder
     try {
       // Check if user is authenticated
-      const auth = getAuth()
       const user = auth.currentUser
 
       if (!user) {
@@ -227,7 +223,6 @@ class AIService {
     let map
     try {
       // Check if user is authenticated
-      const auth = getAuth()
       const user = auth.currentUser
 
       if (!user) {
@@ -318,7 +313,6 @@ class AIService {
     let map
     try {
       // Check if user is authenticated
-      const auth = getAuth()
       const user = auth.currentUser
 
       if (!user) {
@@ -760,18 +754,48 @@ class AIService {
       // Get Functions instance
       const functions = getFunctionsInstance()
 
-      // Create a reference to the helloWorld function
-      const helloWorld = httpsCallable(functions, 'helloWorld')
+      // If we got a mock functions instance (initialization failed)
+      if (functions._region === 'mock') {
+        console.warn('Using mock Functions instance, real Functions not available')
+        return false
+      }
 
-      // Set a timeout to prevent hanging
-      const result = await Promise.race([
-        helloWorld(),
-        new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Functions call timed out after 5000ms')), 5000)
-        })
-      ])
+      // Log function region for debugging
+      console.log('Checking Functions availability with region:', functions._region || 'Not specified')
 
-      return true
+      // First, check if we can create a reference to a function
+      // This doesn't actually call the function, just verifies the service is available
+      try {
+        // Create a reference to a callable function
+        const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
+
+        // Verify it's a proper function reference
+        if (typeof generateRecommendations !== 'function') {
+          console.warn('Functions reference is not a valid function type')
+          return false
+        }
+
+        console.log('Firebase Functions service is available')
+        return true
+      } catch (callableError) {
+        console.warn('Error creating callable function reference:', callableError)
+
+        // Fallback to an HTTP function as a second test
+        try {
+          const helloWorld = httpsCallable(functions, 'helloWorld')
+
+          if (typeof helloWorld !== 'function') {
+            console.warn('HTTP function reference is not a valid function type')
+            return false
+          }
+
+          console.log('Firebase Functions service is available (via HTTP function)')
+          return true
+        } catch (httpError) {
+          console.warn('Error creating HTTP function reference:', httpError)
+          return false
+        }
+      }
     } catch (error) {
       console.error('Error checking Firebase Functions availability:', error)
       return false

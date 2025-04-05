@@ -1,159 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Common validation functions
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-    
-    function hasValidFields(requiredFields, optionalFields) {
-      let allFields = requiredFields.concat(optionalFields);
-      return request.resource.data.keys().hasOnly(allFields) &&
-             request.resource.data.keys().hasAll(requiredFields);
-    }
-    
-    function isValidTimestamp(field) {
-      return request.resource.data[field] is timestamp;
-    }
-    
-    // Users collection rules
-    match /users/{userId} {
-      // Allow read only by the owner
-      allow read: if isOwner(userId);
-      
-      // Allow create with valid fields
-      allow create: if isOwner(userId) &&
-                      hasValidFields(
-                        ['email'], 
-                        ['displayName', 'photoURL', 'createdAt', 'lastLogin', 'currentMapId', 'lastActivity', 'settings']
-                      ) &&
-                      isValidTimestamp('createdAt') &&
-                      isValidTimestamp('lastLogin');
-      
-      // Allow update with valid fields
-      allow update: if isOwner(userId) &&
-                      hasValidFields(
-                        [], 
-                        ['displayName', 'photoURL', 'lastLogin', 'settings', 'currentMapId', 'lastActivity']
-                      ) &&
-                      (
-                        !('lastLogin' in request.resource.data) || 
-                        isValidTimestamp('lastLogin')
-                      );
-      
-      // No deletes allowed
-      allow delete: if false;
-      
-      // Maps subcollection rules - KEEP THIS FOR COMPATIBILITY
-      match /maps/{mapId} {
-        // Allow read by owner
-        allow read: if isOwner(userId);
-        
-        // Allow create with valid fields and current user as owner
-        allow create: if isOwner(userId) &&
-                        hasValidFields(
-                          ['name', 'createdAt', 'updatedAt'], 
-                          ['description', 'stakeholderCount']
-                        ) &&
-                        isValidTimestamp('createdAt') &&
-                        isValidTimestamp('updatedAt');
-        
-        // Allow update with valid fields by owner
-        allow update: if isOwner(userId) &&
-                        hasValidFields(
-                          ['name', 'createdAt', 'updatedAt'], 
-                          ['description', 'stakeholderCount']
-                        ) &&
-                        isValidTimestamp('updatedAt');
-        
-        // Allow delete by owner
-        allow delete: if isOwner(userId);
-      }
-    }
-    
-    // Add direct Maps collection rules - NEW SECTION
-    match /maps/{mapId} {
-      // Allow read by owner
-      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
-      
-      // Allow create with valid fields and current user as owner
-      allow create: if isSignedIn() &&
-                      request.resource.data.userId == request.auth.uid &&
-                      hasValidFields(
-                        ['name', 'userId'], 
-                        ['description', 'stakeholderCount', 'createdAt', 'updatedAt']
-                      );
-      
-      // Allow update with valid fields by owner
-      allow update: if isSignedIn() &&
-                      resource.data.userId == request.auth.uid;
-      
-      // Allow delete by owner
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-    
-    // Rules for stakeholder maps collection
-    match /stakeholderMaps/{mapId} {
-      // Allow read by creator or shared user
-      allow read: if isSignedIn() && 
-                   (request.auth.uid == resource.data.createdBy || 
-                   (resource.data.sharedWith is list && request.auth.uid in resource.data.sharedWith));
-      
-      // Allow create for authenticated users
-      allow create: if isSignedIn() && 
-                     request.resource.data.createdBy == request.auth.uid;
-      
-      // Allow update by creator or shared user
-      allow update: if isSignedIn() && 
-                     (resource.data.createdBy == request.auth.uid || 
-                     (resource.data.sharedWith is list && request.auth.uid in resource.data.sharedWith));
-      
-      // Allow delete by creator
-      allow delete: if isSignedIn() && resource.data.createdBy == request.auth.uid;
-      
-      // Stakeholders subcollection rules
-      match /stakeholders/{stakeholderId} {
-        // Allow read by map owner or shared user
-        allow read: if isSignedIn() && 
-                     (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.createdBy == request.auth.uid ||
-                     (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith is list && 
-                      request.auth.uid in get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith));
-        
-        // Allow create by map owner or shared user
-        allow create: if isSignedIn() && 
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.createdBy == request.auth.uid ||
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith is list && 
-                       request.auth.uid in get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith));
-        
-        // Allow update by map owner or shared user
-        allow update: if isSignedIn() && 
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.createdBy == request.auth.uid ||
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith is list && 
-                       request.auth.uid in get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith));
-        
-        // Allow delete by map owner or shared user
-        allow delete: if isSignedIn() && 
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.createdBy == request.auth.uid ||
-                      (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith is list && 
-                       request.auth.uid in get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith));
-                      
-        // Interactions subcollection rules
-        match /interactions/{interactionId} {
-          allow read, write: if isSignedIn() && 
-                              (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.createdBy == request.auth.uid ||
-                              (get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith is list && 
-                               request.auth.uid in get(/databases/$(database)/documents/stakeholderMaps/$(mapId)).data.sharedWith));
-        }
-      }
-    }
-    
-    // Deny access to all other documents
+
+    // TEMPORARY PERMISSIVE RULE FOR DEBUGGING
+    // This rule allows authenticated users to read and write any document
+    // Remove this after debugging is complete!
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if isSignedIn();
     }
+
+    // The rules below are ignored while the temporary rule above is active
+    // Keep them for reference and restore them after debugging
+
+    // match /users/{userId} {
+    //   allow read: if isSignedIn() && request.auth.uid == userId;
+    //   allow write: if isSignedIn() && request.auth.uid == userId;
+    //   
+    //   match /maps/{mapId} {
+    //     allow read, write: if isSignedIn() && request.auth.uid == userId;
+    //   }
+    // }
+    
+    // match /maps/{mapId} {
+    //   allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+    //   allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    //   allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    // }
+    
+    // match /records/{recordId} {
+    //   allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+    //   allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    //   allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    // }
   }
 } 
