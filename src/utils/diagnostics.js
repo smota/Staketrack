@@ -255,3 +255,44 @@ export const testEmulatorDirectly = async () => {
     results
   }
 }
+
+/**
+ * Check if Firebase Functions emulator is available
+ * @returns {Promise<boolean>} True if the emulator is available and connected
+ */
+export const checkFunctionsEmulator = async () => {
+  try {
+    console.log('Checking Firebase Functions emulator availability...')
+
+    // Create a new Firebase app just for this test
+    const { initializeApp } = await import('firebase/app')
+    const { getFunctions, connectFunctionsEmulator, httpsCallable } = await import('firebase/functions')
+    const { firebaseConfig } = await import('@/config').then(m => m.default.env)
+
+    // Use minimal config for this test
+    const testApp = initializeApp({
+      projectId: firebaseConfig.projectId || 'staketrack-dev',
+      apiKey: firebaseConfig.apiKey || 'dummy-api-key'
+    }, 'emulator-test-app')
+
+    // Try to get functions instance with emulator
+    const functions = getFunctions(testApp)
+
+    // Set emulator connection
+    const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT || '5001'
+    connectFunctionsEmulator(functions, 'localhost', parseInt(emulatorPort, 10))
+
+    // Try to call the helloWorld function
+    const helloWorld = httpsCallable(functions, 'helloWorld')
+    const result = await Promise.race([
+      helloWorld(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+    ])
+
+    console.log('Functions emulator test result:', result?.data)
+    return true
+  } catch (error) {
+    console.error('Functions emulator is not available:', error)
+    return false
+  }
+}

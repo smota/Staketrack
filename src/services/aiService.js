@@ -37,6 +37,12 @@ class AIService {
         return this._getAuthRequiredResponse()
       }
 
+      // Verify Firebase Functions service is available first
+      const functionsAvailable = await this.checkFunctionsAvailability()
+      if (!functionsAvailable) {
+        throw new Error('Firebase Functions service is not available')
+      }
+
       if (typeof mapIdOrMap === 'string') {
         // Fetch the map using the stakeholder service
         map = await stakeholderService.getMap(mapIdOrMap)
@@ -61,44 +67,38 @@ class AIService {
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
 
-      if (!functions) {
-        console.warn('Firebase Functions instance is null - using fallback data for emulator mode')
-        // Provide basic fallback recommendations in emulator mode
-        return this._getFallbackRecommendations(map)
+      // Log function instance details for debugging
+      console.log('Functions instance region:', functions._region || 'Not specified')
+      if (functions._emulatorOrigin) {
+        console.log('Using emulator with origin:', functions._emulatorOrigin)
       }
 
-      // Call the Firebase Cloud Function
-      const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
-
-      // Make the request to Firebase Function with map data instead of prompt
-      let result
+      // Call the Firebase Cloud Function, handling compatibility with Functions v2
       try {
         console.log(`Calling Firebase Function 'generateStakeholderRecommendations' with mapData for map: ${map.id}`)
 
-        // Log function instance details for debugging
-        console.log('Functions instance region:', functions._region || 'Not specified')
-        if (functions._emulatorOrigin) {
-          console.log('Using emulator with origin:', functions._emulatorOrigin)
-        }
+        // Create the callable function reference
+        const generateRecommendations = httpsCallable(functions, 'generateStakeholderRecommendations')
 
-        result = await generateRecommendations({
+        // Make the request to Firebase Function
+        const result = await generateRecommendations({
           mapData,
           ...requestOptions
         })
 
         console.log('Function call successful, processing result')
+
+        // Check if user has reached usage limits
+        if (result.data.limitReached) {
+          return this._getLimitReachedResponse(result.data.usageInfo)
+        }
+
+        // Process and format the AI response
+        return this._processAIResponse(result.data, map)
       } catch (callError) {
         console.error('Error calling Firebase Function:', callError)
         throw new Error('Failed to get recommendations from AI service: ' + callError.message)
       }
-
-      // Check if user has reached usage limits
-      if (result.data.limitReached) {
-        return this._getLimitReachedResponse(result.data.usageInfo)
-      }
-
-      // Process and format the AI response
-      return this._processAIResponse(result.data, map)
     } catch (error) {
       console.error('Error getting AI recommendations:', error)
 
@@ -153,18 +153,10 @@ class AIService {
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
 
-      if (!functions) {
-        console.warn('Firebase Functions instance is null - using fallback advice for emulator mode')
-        // Return basic fallback advice
-        return {
-          success: true,
-          advice: `[EMULATOR MODE] This is fallback advice for ${stakeholder.name}. Based on their influence level (${stakeholder.influence}/10) and impact level (${stakeholder.impact}/10), consider implementing a ${stakeholder.quadrant === 'manage-closely' ? 'high-engagement' : 'regular engagement'} approach.`,
-          stakeholder: stakeholder.name,
-          metadata: {
-            generatedAt: new Date().toISOString(),
-            isFallback: true
-          }
-        }
+      // Log function instance details for debugging
+      console.log('Functions instance region:', functions._region || 'Not specified')
+      if (functions._emulatorOrigin) {
+        console.log('Using emulator with origin:', functions._emulatorOrigin)
       }
 
       // Call the Firebase Cloud Function
@@ -227,10 +219,11 @@ class AIService {
         return this._getAuthRequiredResponse()
       }
 
-      // Get the map data
       if (typeof mapIdOrMap === 'string') {
+        // Fetch the map using the stakeholder service
         map = await stakeholderService.getMap(mapIdOrMap)
       } else {
+        // Use the provided map object
         map = mapIdOrMap
       }
 
@@ -250,16 +243,10 @@ class AIService {
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
 
-      if (!functions) {
-        console.warn('Firebase Functions instance is null - using fallback network analysis for emulator mode')
-        return {
-          success: true,
-          analysis: `[EMULATOR MODE] This is fallback influence network analysis for "${map.name}". The map has ${map.stakeholders.length} stakeholders with varying levels of influence. Key stakeholders include ${map.stakeholders.slice(0, 3).map(s => s.name).join(', ')}.`,
-          metadata: {
-            generatedAt: new Date().toISOString(),
-            isFallback: true
-          }
-        }
+      // Log function instance details for debugging
+      console.log('Functions instance region:', functions._region || 'Not specified')
+      if (functions._emulatorOrigin) {
+        console.log('Using emulator with origin:', functions._emulatorOrigin)
       }
 
       // Call the Firebase Cloud Function
@@ -353,17 +340,10 @@ class AIService {
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
 
-      if (!functions) {
-        console.warn('Firebase Functions instance is null - using fallback issue recommendations for emulator mode')
-        return {
-          success: true,
-          recommendations: `[EMULATOR MODE] This is fallback issue-specific recommendation for "${map.name}" regarding the issue: "${issue}". Consider engaging with key stakeholders ${map.stakeholders.slice(0, 3).map(s => s.name).join(', ')} to address this concern.`,
-          issue: issue,
-          metadata: {
-            generatedAt: new Date().toISOString(),
-            isFallback: true
-          }
-        }
+      // Log function instance details for debugging
+      console.log('Functions instance region:', functions._region || 'Not specified')
+      if (functions._emulatorOrigin) {
+        console.log('Using emulator with origin:', functions._emulatorOrigin)
       }
 
       // Call the Firebase Cloud Function
@@ -876,6 +856,60 @@ class AIService {
         error: error.message,
         timestamp: new Date().toISOString()
       }
+    }
+  }
+
+  /**
+   * Check if Firebase Functions service is available
+   * @returns {Promise<boolean>} True if available, false otherwise
+   */
+  async checkFunctionsAvailability() {
+    try {
+      console.log('Checking Firebase Functions availability...')
+
+      // Get Functions instance
+      const functions = getFunctionsInstance()
+
+      // Log basic information
+      console.log('Functions configuration:', {
+        region: functions._region || 'not specified',
+        usingEmulator: !!functions._emulatorOrigin,
+        emulatorOrigin: functions._emulatorOrigin || 'none'
+      })
+
+      // Try to call a simple test function (helloWorld) if available
+      // This is a more reliable test than just checking for the instance
+      try {
+        // Create the callable reference
+        const helloWorld = httpsCallable(functions, 'helloWorld')
+
+        // Set a timeout to prevent hanging
+        const result = await Promise.race([
+          helloWorld(),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Functions call timed out after 5 seconds')), 5000)
+          })
+        ])
+
+        console.log('Firebase Functions test successful:', result?.data)
+        return true
+      } catch (callError) {
+        // Check for specific error types that indicate the service is available
+        // but the function might not exist
+        if (
+          callError.message.includes('not found') ||
+          callError.message.includes('FUNCTIONS_UNAVAILABLE')
+        ) {
+          console.warn('Functions service is available but test function not found:', callError.message)
+          return true // Service exists but function not found
+        }
+
+        console.error('Firebase Functions test failed:', callError)
+        return false
+      }
+    } catch (error) {
+      console.error('Error checking Firebase Functions availability:', error)
+      return false
     }
   }
 }

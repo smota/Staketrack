@@ -5,12 +5,25 @@ import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
-import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions'
+import {
+  getFunctions,
+  connectFunctionsEmulator,
+  httpsCallable
+} from 'firebase/functions'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 import config from '@/config'
 
 // Using environment-provided Firebase configuration
 const firebaseConfig = config.env.firebaseConfig
+
+// Log the Firebase configuration being used (without sensitive values)
+console.log('Initializing Firebase with config:', {
+  projectId: firebaseConfig.projectId || 'not set',
+  authDomain: firebaseConfig.authDomain || 'not set',
+  storageBucket: firebaseConfig.storageBucket || 'not set',
+  useEmulators: config.env.useEmulators || false,
+  functionsRegion: config.env.firebase?.functionsRegion || 'not set'
+})
 
 /**
  * Initialize Firebase services
@@ -19,8 +32,16 @@ let app
 try {
   // Check if Firebase is already initialized
   if (getApps().length === 0) {
+    console.log('Initializing Firebase app for the first time...')
+    // Validate that we have the minimal required config
+    if (!firebaseConfig.projectId) {
+      console.error('Missing required Firebase project ID')
+      throw new Error('Firebase project ID is required')
+    }
     app = initializeApp(firebaseConfig)
+    console.log('Firebase app initialized successfully with project ID:', firebaseConfig.projectId)
   } else {
+    console.log('Firebase already initialized, retrieving existing app')
     app = getApps()[0]
   }
 } catch (error) {
@@ -64,20 +85,35 @@ export const getFunctionsInstance = () => {
   }
 
   try {
-    // Set the region for functions
-    const functionsRegion = config.env.firebase.functionsRegion
+    // Check if we have a valid Firebase config first
+    if (!firebaseConfig.projectId) {
+      console.error('Firebase project ID is missing, cannot initialize Functions')
+      throw new Error('Firebase project ID is required to initialize Functions')
+    }
+
+    // Set the region for functions - ensure a default value
+    const functionsRegion = config.env.firebase?.functionsRegion || 'europe-west1'
+    console.log(`Initializing Firebase Functions for project ${firebaseConfig.projectId} in region: ${functionsRegion}`)
+
+    // Initialize the Functions instance with app and region
     _functions = getFunctions(app, functionsRegion)
 
     // Connect to emulator in development mode
     if (config.env.useEmulators) {
-      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT
+      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT || '5001'
+      console.log(`Connecting to Functions emulator on port: ${emulatorPort}`)
       connectFunctionsEmulator(_functions, 'localhost', parseInt(emulatorPort, 10))
+    }
+
+    // Verify we have a valid Functions instance
+    if (!_functions || typeof _functions !== 'object') {
+      throw new Error('Failed to initialize Firebase Functions')
     }
 
     return _functions
   } catch (error) {
     console.error('Error initializing Firebase Functions:', error)
-    return null
+    throw error // Don't return null, throw the error to prevent silent failures
   }
 }
 
