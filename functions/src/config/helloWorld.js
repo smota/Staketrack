@@ -7,9 +7,9 @@ const { onRequest } = require("firebase-functions/v2/https");
 const { defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 
-// Define environment parameters with defaults from environment variables
+// Define environment parameters using the central config
 const region = defineString("REGION", {
-  default: process.env.REGION || "europe-west1",
+  default: process.env.APP_FIREBASE_FUNCTIONS_REGION || "europe-west1",
 });
 
 /**

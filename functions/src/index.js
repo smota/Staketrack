@@ -7,15 +7,28 @@ const { onCall } = require("firebase-functions/v2/https");
 const { defineString, defineInt } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const path = require("path");
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
   admin.initializeApp();
 }
 
-// Define environment parameters with defaults from environment variables
+// Get the environment from the Firebase project ID or default to development
+const getEnvironment = () => {
+  const projectId = process.env.FIREBASE_PROJECT_ID || "";
+  if (projectId.includes("prod")) {
+    return "production";
+  } else if (projectId.includes("dev")) {
+    return "staging"; // The dev project is mapped to staging environment in our setup
+  }
+  return "development";
+};
+
+// Define environment parameters using the central environment files
+// APP_FIREBASE_FUNCTIONS_REGION is defined in the central .env.[environment] files
 const region = defineString("REGION", {
-  default: process.env.REGION || "europe-west1",
+  default: process.env.APP_FIREBASE_FUNCTIONS_REGION || "europe-west1",
 });
 
 const memoryOption = defineString("FUNCTION_MEMORY", {

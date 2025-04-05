@@ -9,23 +9,8 @@ import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/
 import { getAnalytics, isSupported } from 'firebase/analytics'
 import config from '@/config'
 
-// Check for anonymous mode with missing Firebase config
-const isAnonymousMode = !config.env.firebaseConfig.apiKey || !config.env.firebaseConfig.projectId
-
-// If in anonymous mode and missing required config, create a minimal placeholder configuration
-let firebaseConfig = config.env.firebaseConfig
-if (isAnonymousMode) {
-  console.log('Using anonymous mode with minimal Firebase configuration')
-  firebaseConfig = {
-    apiKey: firebaseConfig.apiKey || 'anonymous-mode-api-key',
-    authDomain: firebaseConfig.authDomain || 'anonymous-mode.firebaseapp.com',
-    projectId: firebaseConfig.projectId || 'anonymous-mode',
-    storageBucket: firebaseConfig.storageBucket || '',
-    messagingSenderId: firebaseConfig.messagingSenderId || '000000000000',
-    appId: firebaseConfig.appId || '1:000000000000:web:0000000000000000000000',
-    measurementId: firebaseConfig.measurementId || ''
-  }
-}
+// Using environment-provided Firebase configuration
+const firebaseConfig = config.env.firebaseConfig
 
 /**
  * Initialize Firebase services
@@ -66,7 +51,7 @@ try {
 }
 export { db }
 
-// Functions initialization - using lazy loading pattern similar to storage
+// Functions initialization - using lazy loading pattern
 let _functions = null
 
 /**
@@ -79,99 +64,79 @@ export const getFunctionsInstance = () => {
   }
 
   try {
-    // Set the region for functions - required for Firebase v10+
-    const functionsRegion = config.env.firebase.functionsRegion || 'europe-west1'
-    console.log('Initializing Firebase Functions with region:', functionsRegion)
-
-    // Create functions instance with explicit region
+    // Set the region for functions
+    const functionsRegion = config.env.firebase.functionsRegion
     _functions = getFunctions(app, functionsRegion)
 
-    // For Firebase v10+, ensure all required modules are loaded
-    if (!_functions) {
-      throw new Error('Firebase Functions module failed to initialize properly')
-    }
-
     // Connect to emulator in development mode
-    if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
-      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT || 5001
-
-      console.log('Connecting Firebase Functions to emulator on port:', emulatorPort)
-
-      try {
-        connectFunctionsEmulator(_functions, 'localhost', parseInt(emulatorPort, 10))
-        console.log('Successfully connected to Functions emulator')
-
-        // In Firebase v10+, we need to validate that the emulator connection is working
-        const testFunction = httpsCallable(_functions, 'helloWorld')
-        console.log('Functions instance created successfully with callable reference')
-      } catch (emulatorError) {
-        console.error('Failed to connect to Functions emulator:', emulatorError)
-
-        // Re-initialize without emulator if connection fails
-        console.log('Reinitializing Functions without emulator connection')
-        _functions = getFunctions(app, functionsRegion)
-      }
+    if (config.env.useEmulators) {
+      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT
+      connectFunctionsEmulator(_functions, 'localhost', parseInt(emulatorPort, 10))
     }
 
     return _functions
   } catch (error) {
     console.error('Error initializing Firebase Functions:', error)
-    // Don't throw error, return null to allow graceful degradation
     return null
   }
 }
 
-// Cache for lazy-loaded Storage instance
+// Storage initialization
 let storage = null
 
-// Use emulators when configured via environment variables
+// Connect to emulators when configured
 if (config.env.useEmulators) {
-  console.log('Using Firebase emulators for development')
   try {
+    // Connect Auth emulator
     connectAuthEmulator(auth, `http://localhost:${process.env.APP_EMULATOR_AUTH_PORT}`)
+  } catch (error) {
+    console.error('Error connecting to Auth emulator:', error)
+  }
+
+  try {
+    // Connect Firestore emulator
     connectFirestoreEmulator(db, 'localhost', parseInt(process.env.APP_EMULATOR_FIRESTORE_PORT, 10))
   } catch (error) {
-    console.error('Error connecting to emulators:', error)
+    console.error('Error connecting to Firestore emulator:', error)
   }
 }
 
-// Initialize Analytics conditionally
-let analytics = null
-if (process.env.NODE_ENV === 'production') {
-  isSupported().then(supported => {
-    if (supported && firebaseConfig.measurementId) {
-      try {
-        analytics = getAnalytics(app)
-      } catch (error) {
-        console.warn('Firebase Analytics initialization failed:', error)
-      }
-    }
-  }).catch(error => {
-    console.warn('Firebase Analytics support check failed:', error)
-  })
-}
-export { analytics }
-
 /**
- * Get Firebase Storage instance, initializing it only when needed and when user is logged in
+ * Get Firebase Storage instance
  * @returns {Object|null} Firebase Storage instance or null if unavailable
  */
 export const getFirebaseStorage = () => {
-  // If storage is already initialized, return the cached instance
+  // Return cached instance if available
   if (storage) {
     return storage
   }
 
-  // Only initialize Storage if user is logged in
-  if (auth.currentUser && firebaseConfig.storageBucket) {
+  // For emulators, initialize on demand
+  if (config.env.useEmulators) {
     try {
       storage = getStorage(app)
 
-      // Connect to emulator if configured
-      if (config.env.useEmulators) {
-        connectStorageEmulator(storage, 'localhost', parseInt(process.env.APP_EMULATOR_STORAGE_PORT, 10))
+      try {
+        connectStorageEmulator(
+          storage,
+          'localhost',
+          parseInt(process.env.APP_EMULATOR_STORAGE_PORT, 10)
+        )
+      } catch (connError) {
+        console.error('Error connecting to Storage emulator:', connError)
       }
 
+      return storage
+    } catch (error) {
+      console.error('Firebase Storage initialization failed:', error)
+      return null
+    }
+  }
+
+  // For production, only initialize if authenticated
+  if (auth.currentUser && firebaseConfig.storageBucket) {
+    try {
+      storage = getStorage(app)
       return storage
     } catch (error) {
       console.error('Firebase Storage initialization failed:', error)
@@ -182,8 +147,53 @@ export const getFirebaseStorage = () => {
   return null
 }
 
-// Enable offline persistence for Firestore (only when not using emulators)
-if (!(process.env.NODE_ENV === 'development' && config.env.useEmulators)) {
+// Initialize Analytics conditionally for production only
+let analytics = null
+
+// In development or emulator mode, provide a dummy implementation
+if (process.env.NODE_ENV !== 'production' || config.env.useEmulators) {
+  analytics = {
+    logEvent: () => { },
+    setUserId: () => { },
+    setUserProperties: () => { }
+  }
+} else {
+  // Only try to initialize analytics in production
+  isSupported().then(supported => {
+    if (supported && firebaseConfig.measurementId) {
+      try {
+        analytics = getAnalytics(app)
+      } catch (error) {
+        console.warn('Firebase Analytics initialization failed:', error)
+        // Provide fallback implementation if analytics fails
+        analytics = {
+          logEvent: () => { },
+          setUserId: () => { },
+          setUserProperties: () => { }
+        }
+      }
+    } else {
+      // Provide fallback for unsupported browsers
+      analytics = {
+        logEvent: () => { },
+        setUserId: () => { },
+        setUserProperties: () => { }
+      }
+    }
+  }).catch(() => {
+    // Fallback for any promise rejection
+    analytics = {
+      logEvent: () => { },
+      setUserId: () => { },
+      setUserProperties: () => { }
+    }
+  })
+}
+
+export { analytics }
+
+// Enable offline persistence for Firestore (only in production)
+if (!config.env.useEmulators) {
   enableIndexedDbPersistence(db).catch((err) => {
     if (err.code === 'failed-precondition') {
       console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.')

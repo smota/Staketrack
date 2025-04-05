@@ -136,7 +136,8 @@ export default {
   font-family: 'Roboto', sans-serif;
 }
 
-html, body {
+html,
+body {
   overflow-x: hidden;
   margin: 0;
   padding: 0;

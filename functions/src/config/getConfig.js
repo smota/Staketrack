@@ -8,9 +8,9 @@ const { defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const cors = require("cors")({ origin: true });
 
-// Define environment parameters with defaults from environment variables
+// Define environment parameters using the central config
 const region = defineString("REGION", {
-  default: process.env.REGION || "europe-west1",
+  default: process.env.APP_FIREBASE_FUNCTIONS_REGION || "europe-west1",
 });
 
 /**
@@ -72,7 +72,7 @@ module.exports = onRequest({ region: region }, (request, response) => {
           APP_FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
           APP_FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
           APP_FIREBASE_MEASUREMENT_ID: process.env.FIREBASE_MEASUREMENT_ID,
-          APP_USE_EMULATORS: env === "local" ? "true" : "false",
+          APP_USE_EMULATORS: env === "local" || env === "development" ? "true" : "false",
           CONFIG_INCOMPLETE: !process.env.FIREBASE_API_KEY,
         };
       }

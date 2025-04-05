@@ -127,6 +127,9 @@
     "tasks": {
       "port": 9499
     },
-    "singleProjectMode": true
+    "singleProjectMode": true,
+    "database": {
+      "port": 9000
+    }
   }
 }
