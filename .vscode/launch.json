@@ -34,7 +34,9 @@
       "request": "launch",
       "name": "Run Tests",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
-      "args": ["--runInBand"],
+      "args": [
+        "--runInBand"
+      ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },
@@ -43,14 +45,42 @@
       "request": "launch",
       "name": "Firebase Emulator",
       "program": "${workspaceFolder}/node_modules/.bin/firebase",
-      "args": ["emulators:start"],
-      "console": "integratedTerminal"
+      "args": [
+        "emulators:start",
+        "--inspect-functions"
+      ],
+      "console": "integratedTerminal",
+      "env": {
+        "ENVIRONMENT": "DEV",
+        "FUNCTIONS_EMULATOR": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "attach",
+      "name": "Debug Firebase Functions",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
     }
   ],
   "compounds": [
     {
       "name": "Dev Server + Firebase Emulator",
-      "configurations": ["Firebase Emulator", "Launch Chrome (Development)"]
+      "configurations": [
+        "Firebase Emulator",
+        "Launch Chrome (Development)"
+      ]
+    },
+    {
+      "name": "Full Debug Environment",
+      "configurations": [
+        "Firebase Emulator",
+        "Debug Firebase Functions",
+        "Launch Chrome (Development)"
+      ]
     }
   ]
-} 
+}

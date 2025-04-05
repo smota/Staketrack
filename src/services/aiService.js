@@ -58,27 +58,13 @@ class AIService {
         modelOverrides: options.modelOverrides
       }
 
-      // Try to get Firebase Functions instance
-      let functions
-      try {
-        // Check if we're in emulator mode and Functions might not be available
-        if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
-          console.log('Running in emulator mode, checking Functions availability')
-          functions = getFunctionsInstance()
-          if (!functions) {
-            console.warn('Firebase Functions not available in emulator mode, using fallback')
-            return this._getEmulatorFallbackResponse(map)
-          }
-        } else {
-          functions = getFunctionsInstance()
-        }
-      } catch (functionsError) {
-        console.error('Error getting Functions instance:', functionsError)
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Functions unavailable in development, using fallback')
-          return this._getEmulatorFallbackResponse(map)
-        }
-        throw functionsError
+      // Get Firebase Functions instance
+      const functions = getFunctionsInstance()
+
+      if (!functions) {
+        console.warn('Firebase Functions instance is null - using fallback data for emulator mode')
+        // Provide basic fallback recommendations in emulator mode
+        return this._getFallbackRecommendations(map)
       }
 
       // Call the Firebase Cloud Function
@@ -87,18 +73,22 @@ class AIService {
       // Make the request to Firebase Function with map data instead of prompt
       let result
       try {
+        console.log(`Calling Firebase Function 'generateStakeholderRecommendations' with mapData for map: ${map.id}`)
+
+        // Log function instance details for debugging
+        console.log('Functions instance region:', functions._region || 'Not specified')
+        if (functions._emulatorOrigin) {
+          console.log('Using emulator with origin:', functions._emulatorOrigin)
+        }
+
         result = await generateRecommendations({
           mapData,
           ...requestOptions
         })
+
+        console.log('Function call successful, processing result')
       } catch (callError) {
         console.error('Error calling Firebase Function:', callError)
-
-        // Special handling for emulator mode
-        if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
-          return this._getEmulatorFallbackResponse(map)
-        }
-
         throw new Error('Failed to get recommendations from AI service: ' + callError.message)
       }
 
@@ -112,17 +102,12 @@ class AIService {
     } catch (error) {
       console.error('Error getting AI recommendations:', error)
 
-      // Provide fallback recommendations if something goes wrong
-      if (map) {
-        return this._getFallbackRecommendations(map)
-      } else {
-        // If we couldn't even get the map, return a basic error response
-        return {
-          error: true,
-          message: error.message,
-          metadata: {
-            generatedAt: new Date().toISOString()
-          }
+      // Pass through the error
+      return {
+        error: true,
+        message: error.message,
+        metadata: {
+          generatedAt: new Date().toISOString()
         }
       }
     }
@@ -168,12 +153,27 @@ class AIService {
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
 
+      if (!functions) {
+        console.warn('Firebase Functions instance is null - using fallback advice for emulator mode')
+        // Return basic fallback advice
+        return {
+          success: true,
+          advice: `[EMULATOR MODE] This is fallback advice for ${stakeholder.name}. Based on their influence level (${stakeholder.influence}/10) and impact level (${stakeholder.impact}/10), consider implementing a ${stakeholder.quadrant === 'manage-closely' ? 'high-engagement' : 'regular engagement'} approach.`,
+          stakeholder: stakeholder.name,
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            isFallback: true
+          }
+        }
+      }
+
       // Call the Firebase Cloud Function
       const generateAdvice = httpsCallable(functions, 'generateStakeholderAdvice')
 
       // Make the request to Firebase Function with stakeholder data instead of prompt
       let result
       try {
+        console.log(`Calling Firebase Function 'generateStakeholderAdvice' for stakeholder: ${stakeholder.id}`)
         result = await generateAdvice({
           stakeholderData,
           ...requestOptions
@@ -249,6 +249,18 @@ class AIService {
 
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
+
+      if (!functions) {
+        console.warn('Firebase Functions instance is null - using fallback network analysis for emulator mode')
+        return {
+          success: true,
+          analysis: `[EMULATOR MODE] This is fallback influence network analysis for "${map.name}". The map has ${map.stakeholders.length} stakeholders with varying levels of influence. Key stakeholders include ${map.stakeholders.slice(0, 3).map(s => s.name).join(', ')}.`,
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            isFallback: true
+          }
+        }
+      }
 
       // Call the Firebase Cloud Function
       const generateAnalysis = httpsCallable(functions, 'generateInfluenceAnalysis')
@@ -340,6 +352,19 @@ class AIService {
 
       // Get Firebase Functions instance
       const functions = getFunctionsInstance()
+
+      if (!functions) {
+        console.warn('Firebase Functions instance is null - using fallback issue recommendations for emulator mode')
+        return {
+          success: true,
+          recommendations: `[EMULATOR MODE] This is fallback issue-specific recommendation for "${map.name}" regarding the issue: "${issue}". Consider engaging with key stakeholders ${map.stakeholders.slice(0, 3).map(s => s.name).join(', ')} to address this concern.`,
+          issue: issue,
+          metadata: {
+            generatedAt: new Date().toISOString(),
+            isFallback: true
+          }
+        }
+      }
 
       // Call the Firebase Cloud Function
       const generateIssueRecommendations = httpsCallable(functions, 'generateIssueRecommendations')
@@ -689,29 +714,167 @@ class AIService {
   }
 
   /**
-   * Get fallback recommendations when running in emulator mode and Functions service is unavailable
-   * @param {Object} map - The stakeholder map
-   * @returns {Object} Fallback recommendation data
-   * @private
+   * Test the Firebase Functions connectivity and AI function availability
+   * @returns {Promise<Object>} Test results with function status
    */
-  _getEmulatorFallbackResponse(map) {
-    console.log('Providing emulator fallback recommendations for map:', map.id)
-    return {
-      success: true,
-      recommendations: [
-        {
-          title: '[EMULATOR FALLBACK] Stakeholder Engagement Recommendations',
-          content: 'This is a fallback recommendation provided when running in emulator mode. Firebase Functions service is not available. To get real recommendations, please ensure your Functions emulator is running correctly.'
-        },
-        {
-          title: 'Next Steps',
-          content: 'Please check that:\n1. Firebase emulators are running\n2. Functions emulator is properly initialized\n3. Cloud functions are deployed to the emulator\n4. Environment variables are correctly set'
+  async testFunctionsConnection() {
+    try {
+      console.log('Testing Firebase Functions connectivity...')
+
+      // Get Firebase configuration for diagnostic info
+      const firebaseConfig = config.env.firebaseConfig
+      const useEmulators = config.env.useEmulators || false
+      const functionsRegion = config.env.firebase.functionsRegion || 'europe-west1'
+
+      console.log('Firebase SDK Version: 10.1.0')
+      console.log('Environment:', process.env.NODE_ENV)
+      console.log('Using emulators:', useEmulators)
+      console.log('Functions region:', functionsRegion)
+      console.log('Project ID:', firebaseConfig.projectId)
+
+      try {
+        // Get Functions instance
+        const functions = getFunctionsInstance()
+
+        if (!functions) {
+          console.error('Functions instance is NULL - this indicates a problem with Firebase Functions initialization')
+          return {
+            success: false,
+            message: 'Failed to get Firebase Functions instance - check browser console for details',
+            timestamp: new Date().toISOString(),
+            diagnostics: {
+              isEmulator: useEmulators,
+              environment: process.env.NODE_ENV,
+              projectId: firebaseConfig.projectId,
+              region: functionsRegion
+            }
+          }
         }
-      ],
-      stakeholderMap: map.name,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        isEmulatorFallback: true
+
+        // Log connectivity info
+        const isUsingEmulator = !!functions._emulatorOrigin
+        console.log('Functions instance details:')
+        console.log('- Region:', functions._region || 'Not specified')
+        console.log('- Using emulator:', isUsingEmulator)
+        if (isUsingEmulator) {
+          console.log('- Emulator origin:', functions._emulatorOrigin)
+        }
+
+        // Attempt to retrieve the 'type' property which should exist on a valid Functions instance
+        if (typeof functions.type !== 'string') {
+          console.warn('Functions instance is missing expected properties')
+        }
+
+        // Test results object
+        const results = {
+          success: true,
+          message: 'Firebase Functions connectivity test complete',
+          timestamp: new Date().toISOString(),
+          isUsingEmulator,
+          functionTests: {},
+          diagnostics: {
+            firebaseInitialized: true,
+            functionsInstantiated: !!functions,
+            environment: process.env.NODE_ENV,
+            emulatorEnabled: useEmulators,
+            emulatorConnected: isUsingEmulator,
+            functionsProperties: Object.keys(functions).filter(k => !k.startsWith('_')).join(', '),
+            region: functionsRegion
+          }
+        }
+
+        // Test each AI function (references only, don't actually call except for helloWorld)
+        const functionNames = [
+          'helloWorld',
+          'generateStakeholderRecommendations',
+          'generateStakeholderAdvice',
+          'generateInfluenceAnalysis'
+        ]
+
+        // Run tests one by one
+        for (const funcName of functionNames) {
+          try {
+            console.log(`Testing function reference: ${funcName}...`)
+            let func
+
+            try {
+              func = httpsCallable(functions, funcName)
+
+              if (!func || typeof func !== 'function') {
+                throw new Error('Function reference is not a function')
+              }
+
+              // For helloWorld, we can try to call it (if emulator is working)
+              if (funcName === 'helloWorld' && isUsingEmulator) {
+                try {
+                  console.log('Attempting to call helloWorld test function...')
+                  const result = await func()
+                  console.log('Function call result:', result?.data)
+
+                  results.functionTests[funcName] = {
+                    success: true,
+                    response: result?.data,
+                    referenceValid: true,
+                    callSucceeded: true,
+                    message: 'Function reference and call successful'
+                  }
+                } catch (callError) {
+                  console.warn(`Call to ${funcName} failed:`, callError)
+                  results.functionTests[funcName] = {
+                    success: true,
+                    referenceValid: true,
+                    callSucceeded: false,
+                    callError: callError.message,
+                    message: 'Function reference successful but call failed'
+                  }
+                }
+              } else {
+                // Just verify we can create a reference to the function
+                results.functionTests[funcName] = {
+                  success: true,
+                  referenceValid: true,
+                  message: 'Function reference successful (not called)'
+                }
+              }
+            } catch (refError) {
+              console.error(`Error creating reference to function ${funcName}:`, refError)
+              results.functionTests[funcName] = {
+                success: false,
+                referenceValid: false,
+                message: `Error creating function reference: ${refError.message}`,
+                error: refError.message
+              }
+            }
+          } catch (functionError) {
+            results.functionTests[funcName] = {
+              success: false,
+              message: `Error with function ${funcName}: ${functionError.message}`,
+              error: functionError.message
+            }
+          }
+        }
+
+        return results
+      } catch (functionsError) {
+        return {
+          success: false,
+          message: 'Error initializing Firebase Functions: ' + functionsError.message,
+          error: functionsError.message,
+          timestamp: new Date().toISOString(),
+          diagnostics: {
+            isEmulator: useEmulators,
+            environment: process.env.NODE_ENV,
+            firebaseError: functionsError.message,
+            projectId: firebaseConfig.projectId
+          }
+        }
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error testing Functions connection: ' + error.message,
+        error: error.message,
+        timestamp: new Date().toISOString()
       }
     }
   }

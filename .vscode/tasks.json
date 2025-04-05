@@ -93,6 +93,34 @@
       }
     },
     {
+      "label": "Start Firebase Emulators with Debug",
+      "type": "shell",
+      "command": "firebase emulators:start --inspect-functions",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": ".",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Starting emulators",
+          "endsPattern": "All emulators ready"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "env": {
+        "ENVIRONMENT": "DEV",
+        "FUNCTIONS_EMULATOR": "true"
+      }
+    },
+    {
       "label": "Deploy to Firebase (Development)",
       "type": "shell",
       "command": "firebase deploy --only hosting:development",
@@ -111,4 +139,4 @@
       }
     }
   ]
-} 
+}

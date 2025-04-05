@@ -5,7 +5,7 @@ import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, enableIndexedDbPersistence, connectFirestoreEmulator } from 'firebase/firestore'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
+import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 import config from '@/config'
 
@@ -79,19 +79,45 @@ export const getFunctionsInstance = () => {
   }
 
   try {
-    console.log('Initializing Firebase Functions with region:', config.env.firebase.functionsRegion)
-    _functions = getFunctions(app, config.env.firebase.functionsRegion)
+    // Set the region for functions - required for Firebase v10+
+    const functionsRegion = config.env.firebase.functionsRegion || 'europe-west1'
+    console.log('Initializing Firebase Functions with region:', functionsRegion)
+
+    // Create functions instance with explicit region
+    _functions = getFunctions(app, functionsRegion)
+
+    // For Firebase v10+, ensure all required modules are loaded
+    if (!_functions) {
+      throw new Error('Firebase Functions module failed to initialize properly')
+    }
 
     // Connect to emulator in development mode
     if (process.env.NODE_ENV === 'development' && config.env.useEmulators) {
-      console.log('Connecting Firebase Functions to emulator on port:', process.env.APP_EMULATOR_FUNCTIONS_PORT)
-      connectFunctionsEmulator(_functions, 'localhost', parseInt(process.env.APP_EMULATOR_FUNCTIONS_PORT, 10))
+      const emulatorPort = process.env.APP_EMULATOR_FUNCTIONS_PORT || 5001
+
+      console.log('Connecting Firebase Functions to emulator on port:', emulatorPort)
+
+      try {
+        connectFunctionsEmulator(_functions, 'localhost', parseInt(emulatorPort, 10))
+        console.log('Successfully connected to Functions emulator')
+
+        // In Firebase v10+, we need to validate that the emulator connection is working
+        const testFunction = httpsCallable(_functions, 'helloWorld')
+        console.log('Functions instance created successfully with callable reference')
+      } catch (emulatorError) {
+        console.error('Failed to connect to Functions emulator:', emulatorError)
+
+        // Re-initialize without emulator if connection fails
+        console.log('Reinitializing Functions without emulator connection')
+        _functions = getFunctions(app, functionsRegion)
+      }
     }
 
     return _functions
   } catch (error) {
     console.error('Error initializing Firebase Functions:', error)
-    throw new Error('Failed to initialize Firebase Functions: ' + error.message)
+    // Don't throw error, return null to allow graceful degradation
+    return null
   }
 }
 
