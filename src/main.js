@@ -47,17 +47,18 @@ app.config.globalProperties.$firebase = {
   analytics
 }
 
-// Initialize Firebase Functions when in emulator mode
-import { aiService } from '@/services'
-if (process.env.APP_USE_EMULATORS === 'true') {
-  // Check Functions availability at startup
-  aiService.checkFunctionsAvailability()
-    .then(available => {
-      console.log('Firebase Functions availability on startup:', available ? 'AVAILABLE' : 'NOT AVAILABLE')
-    })
-    .catch(err => {
-      console.error('Error checking Functions availability:', err)
-    })
-}
+// Initialize Firebase Functions connectivity check
+import('@/services')
+  .then(({ aiService }) => {
+    if (aiService && typeof aiService.checkFunctionsAvailability === 'function') {
+      aiService.checkFunctionsAvailability()
+        .catch(err => {
+          console.error('Firebase Functions availability check failed:', err)
+        })
+    }
+  })
+  .catch(err => {
+    console.error('Error importing services:', err)
+  })
 
 app.mount('#app')

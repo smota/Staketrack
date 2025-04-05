@@ -3,11 +3,20 @@
  * AI Service
  * Handles interactions with Firebase's GenAI service for stakeholder recommendations
  */
-import { stakeholderService } from '@/services'
 import { getAuth } from 'firebase/auth'
 import { httpsCallable } from 'firebase/functions'
-import { firebaseApp, getFunctionsInstance } from '@/firebase'
+import { getFunctionsInstance } from '@/firebase'
 import config from '@/config'
+
+// Use dynamic imports for services to avoid circular dependencies
+let stakeholderService = null
+const getStakeholderService = async () => {
+  if (!stakeholderService) {
+    const services = await import('@/services')
+    stakeholderService = services.stakeholderService
+  }
+  return stakeholderService
+}
 
 class AIService {
   /**
@@ -43,9 +52,12 @@ class AIService {
         throw new Error('Firebase Functions service is not available')
       }
 
+      // Get stakeholder service dynamically to avoid circular imports
+      const service = await getStakeholderService()
+
       if (typeof mapIdOrMap === 'string') {
         // Fetch the map using the stakeholder service
-        map = await stakeholderService.getMap(mapIdOrMap)
+        map = await service.getMap(mapIdOrMap)
       } else {
         // Use the provided map object
         map = mapIdOrMap
@@ -130,9 +142,12 @@ class AIService {
         return this._getAuthRequiredResponse()
       }
 
+      // Get stakeholder service dynamically
+      const service = await getStakeholderService()
+
       // Get the stakeholder data
       if (typeof stakeholderId === 'string') {
-        stakeholder = await stakeholderService.getStakeholder(stakeholderId)
+        stakeholder = await service.getStakeholder(stakeholderId)
       } else {
         stakeholder = stakeholderId
       }
@@ -219,9 +234,12 @@ class AIService {
         return this._getAuthRequiredResponse()
       }
 
+      // Get stakeholder service dynamically
+      const service = await getStakeholderService()
+
       if (typeof mapIdOrMap === 'string') {
         // Fetch the map using the stakeholder service
-        map = await stakeholderService.getMap(mapIdOrMap)
+        map = await service.getMap(mapIdOrMap)
       } else {
         // Use the provided map object
         map = mapIdOrMap
@@ -311,9 +329,12 @@ class AIService {
         throw new Error('A specific issue must be provided')
       }
 
+      // Get stakeholder service dynamically
+      const service = await getStakeholderService()
+
       // Get the map data
       if (typeof mapIdOrMap === 'string') {
-        map = await stakeholderService.getMap(mapIdOrMap)
+        map = await service.getMap(mapIdOrMap)
       } else {
         map = mapIdOrMap
       }
@@ -560,137 +581,8 @@ class AIService {
       }
     } catch (error) {
       console.error('Error processing AI response:', error)
-      return this._getFallbackRecommendations(map)
+      throw new Error('Could not parse AI service response: ' + error.message)
     }
-  }
-
-  /**
-   * Generate fallback recommendations when the AI service fails
-   * @param {StakeholderMap} map - The stakeholder map
-   * @returns {Object} Simple fallback recommendations
-   * @private
-   */
-  _getFallbackRecommendations(map) {
-    // Get high-influence stakeholders
-    const highInfluence = map.stakeholders
-      .filter(s => s.influence >= 7)
-      .map(s => s.name)
-
-    // Get stakeholders in the "manage closely" quadrant
-    const manageClosely = map.stakeholders
-      .filter(s => s.quadrant === 'manage-closely')
-      .map(s => s.name)
-
-    // Basic stakeholder-specific recommendations
-    const stakeholderRecsByName = {}
-    map.stakeholders.forEach(s => {
-      stakeholderRecsByName[s.name] = {
-        engagementApproach: this._getBasicEngagementApproach(s),
-        communicationChannels: this._getBasicCommunicationChannels(s),
-        keyMessages: ['Focus on project benefits', 'Address specific concerns'],
-        riskMitigation: s.risk || 'Maintain regular communication'
-      }
-    })
-
-    return {
-      overallStrategy: {
-        summary: 'Focus on regular communication with key stakeholders while maintaining transparency across all groups',
-        keyPriorities: [
-          'Establish regular communication cadence',
-          'Develop clear messaging about project goals',
-          'Identify and address stakeholder concerns early'
-        ],
-        criticalStakeholders: highInfluence.length > 0 ? highInfluence : ['No high-influence stakeholders identified'],
-        recommendedActions: [
-          'Schedule individual meetings with high-influence stakeholders',
-          'Create a communication plan with regular updates',
-          'Document and address stakeholder feedback'
-        ]
-      },
-      stakeholderSpecificRecommendations: stakeholderRecsByName,
-      communicationPriorities: [
-        'Ensure all stakeholders understand project goals and timeline',
-        'Provide regular status updates to maintain transparency',
-        'Create tailored messages for different stakeholder groups'
-      ],
-      riskManagement: {
-        topRisks: [
-          {
-            description: 'Lack of stakeholder buy-in for project approach',
-            stakeholdersInvolved: manageClosely.length > 0 ? manageClosely : ['All stakeholders'],
-            mitigationStrategy: 'Increase communication frequency and collect regular feedback'
-          }
-        ]
-      },
-      opportunityAreas: [
-        {
-          description: 'Improve stakeholder relationships through more regular engagement',
-          stakeholdersInvolved: ['All stakeholders'],
-          potentialApproach: 'Implement regular check-ins and feedback mechanisms'
-        }
-      ],
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        mapId: map.id,
-        mapName: map.name,
-        note: 'These are fallback recommendations. For more personalized insights, please try again later.'
-      }
-    }
-  }
-
-  /**
-   * Get basic engagement approach based on stakeholder quadrant
-   * @param {Stakeholder} stakeholder - The stakeholder
-   * @returns {string} Basic engagement approach
-   * @private
-   */
-  _getBasicEngagementApproach(stakeholder) {
-    switch (stakeholder.quadrant) {
-      case 'manage-closely':
-        return 'Regular personal meetings and proactive engagement'
-      case 'keep-satisfied':
-        return 'Regular updates and consultation on decisions'
-      case 'keep-informed':
-        return 'Regular communication and updates'
-      case 'monitor':
-        return 'Periodic updates and monitoring of needs'
-      default:
-        return 'Maintain appropriate level of communication'
-    }
-  }
-
-  /**
-   * Get basic communication channels based on stakeholder category
-   * @param {Stakeholder} stakeholder - The stakeholder
-   * @returns {string[]} Suggested communication channels
-   * @private
-   */
-  _getBasicCommunicationChannels(stakeholder) {
-    const category = stakeholder.category
-
-    const channels = ['Email', 'Project updates']
-
-    if (category === 'internal' || category === 'employee') {
-      channels.push('Team meetings', 'Internal communication tools')
-    }
-
-    if (stakeholder.quadrant === 'manage-closely' || stakeholder.quadrant === 'keep-satisfied') {
-      channels.push('One-on-one meetings', 'Phone calls')
-    }
-
-    if (category === 'external' || category === 'community') {
-      channels.push('Public communications')
-    }
-
-    if (category === 'customer') {
-      channels.push('Customer feedback sessions')
-    }
-
-    if (category === 'regulator') {
-      channels.push('Formal written communications')
-    }
-
-    return channels
   }
 
   /**
@@ -865,48 +757,21 @@ class AIService {
    */
   async checkFunctionsAvailability() {
     try {
-      console.log('Checking Firebase Functions availability...')
-
       // Get Functions instance
       const functions = getFunctionsInstance()
 
-      // Log basic information
-      console.log('Functions configuration:', {
-        region: functions._region || 'not specified',
-        usingEmulator: !!functions._emulatorOrigin,
-        emulatorOrigin: functions._emulatorOrigin || 'none'
-      })
+      // Create a reference to the helloWorld function
+      const helloWorld = httpsCallable(functions, 'helloWorld')
 
-      // Try to call a simple test function (helloWorld) if available
-      // This is a more reliable test than just checking for the instance
-      try {
-        // Create the callable reference
-        const helloWorld = httpsCallable(functions, 'helloWorld')
+      // Set a timeout to prevent hanging
+      const result = await Promise.race([
+        helloWorld(),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Functions call timed out after 5000ms')), 5000)
+        })
+      ])
 
-        // Set a timeout to prevent hanging
-        const result = await Promise.race([
-          helloWorld(),
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Functions call timed out after 5 seconds')), 5000)
-          })
-        ])
-
-        console.log('Firebase Functions test successful:', result?.data)
-        return true
-      } catch (callError) {
-        // Check for specific error types that indicate the service is available
-        // but the function might not exist
-        if (
-          callError.message.includes('not found') ||
-          callError.message.includes('FUNCTIONS_UNAVAILABLE')
-        ) {
-          console.warn('Functions service is available but test function not found:', callError.message)
-          return true // Service exists but function not found
-        }
-
-        console.error('Firebase Functions test failed:', callError)
-        return false
-      }
+      return true
     } catch (error) {
       console.error('Error checking Firebase Functions availability:', error)
       return false

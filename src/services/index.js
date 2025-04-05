@@ -9,6 +9,7 @@ import stakeholderService from './stakeholderService'
 import { interactionService } from './interactionService'
 import { documentService } from './documentService'
 import { settingsService } from './settingsService'
+import { aiService } from './aiService'
 
 export {
   authService,
@@ -17,5 +18,6 @@ export {
   stakeholderService,
   interactionService,
   documentService,
-  settingsService
+  settingsService,
+  aiService
 }
