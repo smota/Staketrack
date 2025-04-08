@@ -1,0 +1,79 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+0. **Good practices and patterns for coding** 
+   - Always design and implement using Component-Based Architecture
+   - Always design and implement using MVC Pattern
+   - Always design and implement using Event-Driven Communication
+   - Always design and implement using Separation of Concerns
+   - Always design and implement using Proper model classes with encapsulation
+   - Always design and implement using Repository pattern for data operations.
+
+1. **Performance Optimization**:
+   - Always implement lazy loading for components and routes
+   - Always optimize images and assets before deployment
+   - Always implement proper caching strategies for Firebase data
+   - Always monitor and optimize bundle size
+
+2. **Security**:
+   - Always implement rate limiting for API calls
+   - Always sanitize user inputs before database operations
+   - Always implement proper CORS policies
+   - Always use HTTPS in production
+   - Always implement proper session management
+
+3. **Error Handling and Logging**:
+   - Always implement proper error boundaries in React components
+   - Always log errors to a centralized logging service
+   - Always implement proper fallback UI for error states
+   - Always include error tracking (e.g., Sentry) in production
+
+4. **State Management**:
+   - Always use proper state management patterns (Redux/Context)
+   - Always implement proper data normalization
+   - Always handle loading and error states in the UI
+
+5. **Testing**:
+   - Always maintain minimum code coverage thresholds
+   - Always include integration tests for critical paths
+   - Always implement E2E tests for main user flows
+   - Always run tests in CI/CD pipeline
+
+6. **Documentation**:
+   - Always document API endpoints
+   - Always include setup instructions in README
+   - Always document environment variables
+   - Always keep architecture diagrams updated
+
+7. **Dependencies**:
+   - Always keep dependencies updated
+   - Always audit dependencies for security vulnerabilities
+   - Always document why specific dependencies are chosen
+   - Always implement proper version pinning
+
+8. **Monitoring**:
+    - Always implement proper analytics tracking
+    - Always monitor application performance
+    - Always set up alerts for critical errors
+    - Always track user behavior patterns
+
+9. **Code Quality**:
+    - Always run linters in CI pipeline
+    - Always enforce consistent code formatting
+    - Always use TypeScript for type safety
+    - Always implement proper code splitting
+
+10. **Database**:
+    - Always implement proper indexing
+    - Always optimize database queries
+    - Always implement proper data backup procedures
+    - Always monitor database performance
+
+11. **Mobile Considerations**:
+    - Always test on multiple device sizes
+    - Always implement proper touch interactions
+    - Always consider offline capabilities
+    - Always optimize for mobile performance

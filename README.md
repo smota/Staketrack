@@ -255,3 +255,44 @@ StakeTrack includes AI-powered recommendation features that use server-side prom
 - **Issue-Specific Recommendations**: Topic-focused engagement strategies
 
 See [AI Recommendations Documentation](docs/spec/EPIC-05-AI-Recommendations.md) for details on implementation and usage.
+
+## Firebase Service Integration
+
+StakeTrack uses Firebase services with v2 API compatibility. All Firebase functionality is configured to use the `europe-west1` region as required by project guidelines.
+
+### Firebase Configuration Guidelines
+
+- All Firebase functions are implemented using v2 API
+- All services are configured to use `europe-west1` region
+- Proper error logging and monitoring is implemented for service failures
+- Rate limiting is implemented for all API endpoints
+- Cross-origin resource sharing (CORS) is properly configured
+
+### Environment Configuration
+
+The application supports three environments:
+
+- **DEVELOPMENT**: Local environment running on emulators
+- **STAGING**: Online Firebase application used for testing (`staketrack-dev`)
+- **PRODUCTION**: Online Firebase application for public use (`staketrack`)
+
+Environment-specific configuration is handled through `.env.[environment]` files, with sensitive data stored in `.env.[environment].local` files (not committed to git).
+
+## Important Project Rules
+
+1. **Firebase Services**
+   - All client code and functions use v2 API compatibility
+   - All services are configured for the `europe-west1` region
+   - Proper error logging when services aren't working as expected
+
+2. **Environment Management**
+   - No environment-specific code (configuration-based environment handling)
+   - No environment-specific failovers
+   - STAGING environment is `staketrack-dev`
+   - PRODUCTION environment is `staketrack`
+   - DEVELOPMENT environment uses local emulators
+
+3. **Configuration Management**
+   - Sensitive keys are stored in `.env.[environment].local` files
+   - Non-sensitive keys are stored in `.env.[environment]` files
+   - Environment files have consistent structure across environments

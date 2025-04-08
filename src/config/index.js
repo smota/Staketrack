@@ -54,6 +54,31 @@ const config = {
     }
   },
 
+  // Security configuration
+  security: {
+    // Rate limiting configuration
+    rateLimit: {
+      // API rate limits
+      api: {
+        maxRequestsPerMinute: 60,
+        maxRequestsPerHour: 300,
+        maxRequestsPerDay: 1000
+      },
+      // AI service rate limits
+      ai: {
+        maxRequestsPerMinute: 5,
+        maxRequestsPerDay: 50,
+        weeklyLimit: parseInt(process.env.APP_AI_WEEKLY_LIMIT, 10) || 10
+      }
+    },
+    // CORS configuration
+    cors: {
+      allowedOrigins: process.env.NODE_ENV === 'production'
+        ? ['https://staketrack-prod.web.app', 'https://staketrack.app']
+        : ['http://localhost:8080']
+    }
+  },
+
   // AI Configuration
   ai: {
     enabled: process.env.APP_AI_ENABLED === 'true',

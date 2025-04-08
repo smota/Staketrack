@@ -10,6 +10,7 @@ import './styles/main.css'
 import { app as firebaseApp, auth, db, analytics } from './firebase'
 import config from './config'
 import { onAuthStateChanged } from 'firebase/auth'
+import { checkFirebaseReadiness } from '@/utils/firebaseValidator'
 
 // Create Vuetify instance
 const vuetify = createVuetify({
@@ -69,4 +70,22 @@ onAuthStateChanged(auth, (user) => {
   }
 })
 
-app.mount('#app')
+// Check Firebase services are properly initialized and v2 compatible
+checkFirebaseReadiness().then(isReady => {
+  if (!isReady) {
+    console.error('WARNING: Firebase services not fully initialized. Some functionality may be limited.')
+  } else {
+    console.log('Firebase services initialized successfully with v2 API compatibility')
+  }
+
+  // Continue with application initialization even if there are issues
+  // This allows the app to still function in offline mode or with limited functionality
+
+  // Mount the application
+  app.mount('#app')
+}).catch(error => {
+  console.error('Error during Firebase validation:', error)
+
+  // Still mount the app to enable at least basic functionality
+  app.mount('#app')
+})
