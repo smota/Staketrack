@@ -56,6 +56,12 @@
 
     <v-main>
       <v-container fluid>
+        <!-- Configuration status component -->
+        <ConfigurationStatus
+          display-mode="auto"
+          class="mb-4"
+          @dismissed="onConfigStatusDismissed"
+        />
         <router-view />
       </v-container>
     </v-main>
@@ -72,14 +78,19 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
+import ConfigurationStatus from '@/components/ConfigurationStatus.vue'
+import config from '@/config'
 
 export default {
   name: 'App',
+  components: {
+    ConfigurationStatus
+  },
   setup() {
     const drawer = ref(false)
     const isDarkMode = ref(false)
     const isLoggedIn = ref(false)
-    const appVersion = ref(process.env.APP_VERSION || '1.0.0')
+    const appVersion = ref(config.version)
     const router = useRouter()
 
     onMounted(() => {
@@ -113,13 +124,18 @@ export default {
       }
     }
 
+    const onConfigStatusDismissed = () => {
+      console.log('Configuration status dismissed by user')
+    }
+
     return {
       drawer,
       isDarkMode,
       isLoggedIn,
       appVersion,
       toggleDarkMode,
-      logout
+      logout,
+      onConfigStatusDismissed
     }
   }
 }

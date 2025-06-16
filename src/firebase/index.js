@@ -3,7 +3,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, connectAuthEmulator } from 'firebase/auth'
 import { getFirestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
-import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions'
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 
 // Import the config based on the current environment
@@ -21,18 +21,18 @@ const serviceStatus = {
 
 // Log the Firebase config (hiding sensitive data)
 console.log('Initializing Firebase with config:', {
-  projectId: config.firebase.projectId || 'not set',
-  authDomain: config.firebase.authDomain || 'not set',
-  storageBucket: config.firebase.storageBucket || 'not set',
-  region: config.firebase.functionsRegion || 'not set',
-  useEmulators: config.useEmulators || false
+  projectId: config.env.firebaseConfig.projectId || 'not set',
+  authDomain: config.env.firebaseConfig.authDomain || 'not set',
+  storageBucket: config.env.firebaseConfig.storageBucket || 'not set',
+  region: config.env.firebase.functionsRegion || 'not set',
+  useEmulators: config.features.useEmulators || false
 })
 
 // Initialize Firebase
 let app
 let auth
 let db
-let storage
+let storage = null // Set to null initially for lazy loading
 let analytics
 let functions
 
@@ -59,9 +59,9 @@ try {
   if (getApps().length === 0) {
     console.log('Initializing Firebase app for the first time...')
     try {
-      app = initializeApp(config.firebase)
+      app = initializeApp(config.env.firebaseConfig)
       serviceStatus.app.initialized = true
-      console.log('Firebase app initialized successfully with project ID:', config.firebase.projectId)
+      console.log('Firebase app initialized successfully with project ID:', config.env.firebaseConfig.projectId)
     } catch (error) {
       logServiceError('app', error)
     }
@@ -95,20 +95,13 @@ try {
       logServiceError('firestore', error)
     }
 
-    // Initialize Storage
-    try {
-      storage = getStorage(app)
-      serviceStatus.storage.initialized = true
-      console.log('Firebase Storage initialized successfully')
-    } catch (error) {
-      logServiceError('storage', error)
-    }
+    // Storage is now lazy loaded - see getFirebaseStorage function
 
     // Initialize Analytics only in browser environment
     if (typeof window !== 'undefined') {
       try {
         isSupported().then(supported => {
-          if (supported && config.firebase.measurementId) {
+          if (supported && config.env.firebaseConfig.measurementId) {
             analytics = getAnalytics(app)
             serviceStatus.analytics.initialized = true
             console.log('Firebase Analytics initialized successfully')
@@ -133,7 +126,7 @@ try {
     }
 
     // Connect to emulators if in development mode
-    if (config.useEmulators) {
+    if (config.features.useEmulators) {
       console.log('Using Firebase emulators...')
 
       if (auth && serviceStatus.auth.initialized) {
@@ -166,7 +159,7 @@ try {
     }
 
     // Enable offline persistence for Firestore (only in production)
-    if (db && serviceStatus.firestore.initialized && !config.useEmulators) {
+    if (db && serviceStatus.firestore.initialized && !config.features.useEmulators) {
       enableIndexedDbPersistence(db).catch((err) => {
         if (err.code === 'failed-precondition') {
           console.warn('Multiple tabs open, persistence only enabled in one tab at a time.')
@@ -189,88 +182,74 @@ try {
  * @param {string} region - The region to use for functions
  * @returns {Object} - The Functions instance, or a mock if not available
  */
-function getFunctionsInstance(region = config.firebase.functionsRegion) {
+function getFunctionsInstance(region = config.env.firebase.functionsRegion) {
   try {
-    if (!config.firebase.projectId) {
-      console.error('Cannot initialize Firebase Functions: Project ID is missing')
-      return createMockFunctionsInstance('Project ID is missing')
+    // Basic validation
+    if (!app) {
+      const reason = 'Firebase app not initialized'
+      console.warn(`Cannot initialize Firebase Functions: ${reason}`)
+      serviceStatus.functions.error = reason
+      return createMockFunctionsInstance(reason)
+    }
+
+    if (!config.env.firebaseConfig.projectId) {
+      const reason = 'Project ID is missing'
+      console.warn(`Cannot initialize Firebase Functions: ${reason}`)
+      serviceStatus.functions.error = reason
+      return createMockFunctionsInstance(reason)
     }
 
     console.log('Initializing Firebase Functions in region:', region)
 
-    // Try multiple approaches to initialize Firebase Functions
-    functions = null
-
-    // Approach 1: Standard initialization with region
-    console.log('Attempting to initialize Firebase Functions with standard method')
+    // Single, simplified approach to improve reliability
     try {
-      functions = getFunctions(app, region)
-      serviceStatus.functions.initialized = true
-      console.log('Functions initialization with region successful')
+      // Use region if specified, otherwise default
+      const functionsRegion = region || 'us-central1'
+      console.log(`Attempting to initialize Firebase Functions in ${functionsRegion}`)
 
-      // Connect to emulator if needed
-      if (config.useEmulators) {
+      functions = getFunctions(app, functionsRegion)
+
+      // Connect to emulator if needed - continue even if this fails
+      if (config.features.useEmulators) {
         try {
           console.log('Connecting to Functions emulator...')
           connectFunctionsEmulator(functions, 'localhost', 5001)
           console.log('Connected to Functions emulator successfully')
         } catch (emulatorError) {
-          console.error('Failed to connect to Functions emulator:', emulatorError)
+          // Non-critical error - log but continue with the functions instance
+          console.warn('Non-critical: Failed to connect to Functions emulator:', emulatorError)
+          console.warn('Functions will still be available but may use production services')
         }
       }
 
-      // Validate that we got a proper Functions instance
-      console.log('Functions instance properties:',
-        Object.keys(functions).filter(key => typeof functions[key] !== 'function')
-      )
-
-      return functions
-    } catch (error) {
-      console.error('Standard Functions initialization failed, trying alternative approach:', error)
-      serviceStatus.functions.error = `Standard initialization failed: ${error.message}`
-    }
-
-    // Approach 2: Try without region
-    console.log('Attempting to initialize Functions without region')
-    try {
-      functions = getFunctions(app)
+      // Mark as successfully initialized
       serviceStatus.functions.initialized = true
-      console.log('Functions initialization without region successful')
-      return functions
-    } catch (error) {
-      console.error('Alternative Functions initialization also failed:', error)
-      serviceStatus.functions.error = `${serviceStatus.functions.error || ''}; Without region failed: ${error.message}`
-    }
-
-    // Approach 3: Try with direct URL
-    try {
-      console.log('Attempting to initialize Functions with direct URL')
-      const projectId = config.firebase.projectId
-      functions = getFunctions(app)
-      serviceStatus.functions.initialized = true
-
-      // Workaround attempt to make functions available
-      functions._url = `https://${region}-${projectId}.cloudfunctions.net/`
-      console.log('Set custom URL for Functions:', functions._url)
+      serviceStatus.functions.error = null
+      console.log('Firebase Functions initialized successfully')
 
       return functions
     } catch (error) {
-      console.error('Direct URL Functions initialization also failed:', error)
-      serviceStatus.functions.error = `${serviceStatus.functions.error || ''}; Direct URL failed: ${error.message}`
+      // Capture specific error details
+      const errorMessage = error.message || String(error)
+      console.error('Firebase Functions initialization failed:', error)
+
+      // Record the error for monitoring
+      serviceStatus.functions.error = errorMessage
+
+      // Alert developers in production for monitoring
+      if (typeof window !== 'undefined' && config.env.isProduction && window.errorReporting) {
+        window.errorReporting.report(`Firebase Functions initialization failed: ${errorMessage}`)
+      }
+
+      // Return mock functions instance for graceful degradation
+      return createMockFunctionsInstance(errorMessage)
     }
-
-    const errorDetails = `Firebase Functions initialization completely failed. Project ID: ${config.firebase.projectId}, Region: ${region}, Emulators: ${config.useEmulators}`
-    console.error('CRITICAL:', errorDetails)
-
-    // In production, report to monitoring service
-    if (typeof window !== 'undefined' && config.env.isProduction && window.errorReporting) {
-      window.errorReporting.report(errorDetails)
-    }
-
-    return createMockFunctionsInstance(serviceStatus.functions.error || 'Multiple initialization approaches failed')
-  } catch (error) {
-    console.error('Error getting Firebase Functions instance:', error)
-    return createMockFunctionsInstance(`Caught exception: ${error.message}`)
+  } catch (outerError) {
+    // Catch any unexpected errors in our initialization logic
+    const errorMessage = outerError.message || String(outerError)
+    console.error('Unexpected error initializing Firebase Functions:', outerError)
+    serviceStatus.functions.error = errorMessage
+    return createMockFunctionsInstance(`Unexpected error: ${errorMessage}`)
   }
 }
 
@@ -302,6 +281,76 @@ function createMockFunctionsInstance(reason = 'unknown reason') {
 }
 
 /**
+ * Create a mock Storage instance for graceful degradation
+ * @param {string} reason - Reason for creating mock
+ * @returns {Object} - A mock Storage instance
+ */
+function createMockStorageInstance(reason = 'unknown reason') {
+  console.warn(`Using mock Storage instance (${reason}). Some features may be limited.`)
+
+  // Create a minimal mock that won't break code expecting Storage API
+  return {
+    _isMock: true,
+    _mockReason: reason,
+    ref: (path) => ({
+      put: () => Promise.resolve({ ref: { getDownloadURL: () => Promise.resolve('') } }),
+      getDownloadURL: () => Promise.resolve(''),
+      delete: () => Promise.resolve(),
+      listAll: () => Promise.resolve({ items: [], prefixes: [] }),
+      _path: path
+    })
+  }
+}
+
+/**
+ * Lazily initialize Firebase Storage and return the instance
+ * Only initializes storage when actually needed and if user is authenticated
+ * @returns {Object} Firebase Storage instance or mock if initialization fails
+ */
+function getFirebaseStorage() {
+  // Return existing instance if already initialized
+  if (storage && serviceStatus.storage.initialized) {
+    return storage
+  }
+
+  try {
+    console.log('Lazy loading Firebase Storage...')
+    if (!app) {
+      const reason = 'Firebase app not initialized'
+      console.warn(`Cannot initialize Storage: ${reason}`)
+      serviceStatus.storage.error = reason
+      return createMockStorageInstance(reason)
+    }
+
+    // Initialize Storage
+    storage = getStorage(app)
+    serviceStatus.storage.initialized = true
+    console.log('Firebase Storage initialized successfully')
+
+    // Connect to emulator if needed
+    if (config.features.useEmulators) {
+      try {
+        connectStorageEmulator(storage, 'localhost', 9199)
+        console.log('Storage emulator connected successfully')
+      } catch (emulatorError) {
+        // Non-critical error - log but continue with the storage instance
+        console.warn('Non-critical: Failed to connect to Storage emulator:', emulatorError)
+        // We don't consider this a failure of the overall storage initialization
+      }
+    }
+
+    return storage
+  } catch (error) {
+    const errorMessage = error.message || String(error)
+    console.error('Error initializing Storage:', error)
+    serviceStatus.storage.error = errorMessage
+
+    // Return mock storage to prevent null reference errors
+    return createMockStorageInstance(errorMessage)
+  }
+}
+
+/**
  * Get the status of all Firebase services
  * @returns {Object} Status of all services
  */
@@ -317,7 +366,8 @@ export {
   storage,
   analytics,
   getFunctionsInstance,
-  getServicesStatus
+  getServicesStatus,
+  getFirebaseStorage
 }
 
 export default app

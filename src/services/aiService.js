@@ -587,16 +587,16 @@ class AIService {
     try {
       console.log('Testing Firebase Functions connectivity...')
 
-      // Get Firebase configuration for diagnostic info
-      const firebaseConfig = config.env.firebaseConfig
-      const useEmulators = config.env.useEmulators || false
-      const functionsRegion = config.env.firebase.functionsRegion || 'europe-west1'
+      // Get status and prepare test configuration
+      const projectId = config.env.firebaseConfig.projectId || 'not-set'
+      const region = config.env.firebase.functionsRegion || 'europe-west1'
+      const useEmulators = config.features.useEmulators || false
 
       console.log('Firebase SDK Version: 10.1.0')
       console.log('Environment:', process.env.NODE_ENV)
       console.log('Using emulators:', useEmulators)
-      console.log('Functions region:', functionsRegion)
-      console.log('Project ID:', firebaseConfig.projectId)
+      console.log('Functions region:', region)
+      console.log('Project ID:', projectId)
 
       try {
         // Get Functions instance
@@ -611,8 +611,8 @@ class AIService {
             diagnostics: {
               isEmulator: useEmulators,
               environment: process.env.NODE_ENV,
-              projectId: firebaseConfig.projectId,
-              region: functionsRegion
+              projectId: projectId,
+              region: region
             }
           }
         }
@@ -645,7 +645,7 @@ class AIService {
             emulatorEnabled: useEmulators,
             emulatorConnected: isUsingEmulator,
             functionsProperties: Object.keys(functions).filter(k => !k.startsWith('_')).join(', '),
-            region: functionsRegion
+            region: region
           }
         }
 
@@ -731,7 +731,7 @@ class AIService {
             isEmulator: useEmulators,
             environment: process.env.NODE_ENV,
             firebaseError: functionsError.message,
-            projectId: firebaseConfig.projectId
+            projectId: projectId
           }
         }
       }
@@ -746,11 +746,35 @@ class AIService {
   }
 
   /**
-   * Check if Firebase Functions service is available
-   * @returns {Promise<boolean>} True if available, false otherwise
+   * Check if AI functions are configured properly in the current environment
+   * @returns {Promise<Object>} Status and details about the configuration
    */
   async checkFunctionsAvailability() {
     try {
+      console.log('Checking AI functions availability...')
+
+      // Check if AI is enabled in config
+      if (!config.ai.enabled) {
+        console.log('AI features are disabled in configuration')
+        return {
+          available: false,
+          reason: 'disabled-in-config',
+          message: 'AI features are disabled in configuration'
+        }
+      }
+
+      // Get relevant environment information
+      const { projectId } = config.env.firebaseConfig
+      const functionsRegion = config.env.firebase.functionsRegion
+      const useEmulators = config.features.useEmulators || false
+
+      // Log environment information
+      console.log('AI Functions environment:', {
+        projectId,
+        region: functionsRegion,
+        emulators: useEmulators
+      })
+
       // Get Functions instance
       const functions = getFunctionsInstance()
 

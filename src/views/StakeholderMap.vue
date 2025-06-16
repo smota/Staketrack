@@ -178,6 +178,10 @@
                       max="10"
                       step="1"
                       thumb-label
+                      :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+                      class="mb-2"
+                      hide-details
+                      density="comfortable"
                     >
                       <template #prepend>
                         <span>{{ influenceRange[0] }}</span>
@@ -195,6 +199,10 @@
                       max="10"
                       step="1"
                       thumb-label
+                      :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+                      class="mb-2"
+                      hide-details
+                      density="comfortable"
                     >
                       <template #prepend>
                         <span>{{ impactRange[0] }}</span>
@@ -212,6 +220,10 @@
                       max="10"
                       step="1"
                       thumb-label
+                      :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+                      class="mb-2"
+                      hide-details
+                      density="comfortable"
                     >
                       <template #prepend>
                         <span>{{ relationshipRange[0] }}</span>
@@ -413,7 +425,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-slider
               v-model="newStakeholder.impact"
@@ -422,7 +437,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-slider
               v-model="newStakeholder.relationship"
@@ -431,7 +449,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-textarea v-model="newStakeholder.interests" label="Interests" rows="3" />
             <v-textarea v-model="newStakeholder.contribution" label="Contribution" rows="3" />
@@ -518,7 +539,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-slider
               v-model="editedStakeholder.impact"
@@ -527,7 +551,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-slider
               v-model="editedStakeholder.relationship"
@@ -536,7 +563,10 @@
               max="10"
               step="1"
               thumb-label
-              ticks
+              :ticks="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+              class="mb-4"
+              hide-details
+              density="comfortable"
             />
             <v-textarea v-model="editedStakeholder.interests" label="Interests" rows="3" />
             <v-textarea v-model="editedStakeholder.contribution" label="Contribution" rows="3" />
@@ -614,7 +644,9 @@
 
           <div v-else>
             <div v-if="dialogContent.text" class="recommendation-content">
-              <div v-html="formatMarkdown(dialogContent.text)" />
+              <div class="markdown-content">
+                {{ formatMarkdown(dialogContent.text) }}
+              </div>
             </div>
             <div v-else class="text-center py-4">
               <v-icon color="error" size="large">
@@ -676,7 +708,7 @@ export default {
     const router = useRouter()
     const mapId = computed(() => route.params.id)
 
-    const stakeholderStore = useStakeholderStore()
+    const _stakeholderStore = useStakeholderStore()
     const notificationStore = useNotificationStore()
 
     // Loading and error states
@@ -690,7 +722,7 @@ export default {
     // Dialog states
     const addDialog = ref(false)
     const editDialog = ref(false)
-    const deleteDialog = ref(false)
+    const _deleteDialog = ref(false)
     const editMapDialog = ref(false)
     const actionsDialog = ref(false)
     const dialogTitle = ref('')
@@ -780,8 +812,16 @@ export default {
         error.value = null
         currentMap.value = await mapService.getCurrentMap()
 
-        if (currentMap.value) {
-          console.log('Loading stakeholders for map:', currentMap.value.id)
+        if (!currentMap.value) {
+          console.log('No current map found')
+          error.value = 'No map selected. Please create a new map or select an existing one.'
+          loading.value = false
+          return
+        }
+
+        console.log('Loading stakeholders for map:', currentMap.value.id)
+
+        try {
           const loadedStakeholders = await stakeholderService.getStakeholders(currentMap.value.id)
           console.log('Loaded stakeholders:', loadedStakeholders)
           console.log('Stakeholder types check:', loadedStakeholders.map(s => {
@@ -805,10 +845,26 @@ export default {
             stakeholderCount: stakeholders.value.length,
             updatedAt: new Date()
           })
+        } catch (stakeholderErr) {
+          console.error('Error loading stakeholders:', stakeholderErr)
+          if (stakeholderErr.message && stakeholderErr.message.includes('does not exist')) {
+            error.value = 'The selected map no longer exists. Please create a new map or select a different one.'
+            // Clear the current map selection since it's invalid
+            await mapService.setCurrentMapId(null)
+            currentMap.value = null
+          } else {
+            error.value = 'Failed to load stakeholders. Please try again.'
+          }
         }
       } catch (err) {
         console.error('Error loading map:', err)
-        error.value = 'Failed to load map. Please try again.'
+        if (err.message && err.message.includes('does not exist')) {
+          error.value = 'The selected map does not exist. Please create a new map or select a different one.'
+          // Clear the current map selection since it's invalid
+          await mapService.setCurrentMapId(null)
+        } else {
+          error.value = 'Failed to load map. Please try again.'
+        }
       } finally {
         loading.value = false
       }
@@ -818,6 +874,11 @@ export default {
       try {
         if (!currentMap.value) {
           error.value = 'No map selected. Please create or select a map first.'
+          return
+        }
+
+        if (!currentMap.value.id) {
+          error.value = 'Invalid map ID. Please reload the page and try again.'
           return
         }
 
@@ -854,7 +915,17 @@ export default {
         })
       } catch (err) {
         console.error('Error adding stakeholder:', err)
-        error.value = 'Failed to add stakeholder. Please try again.'
+
+        if (err.message && err.message.includes('does not exist')) {
+          error.value = 'The stakeholder map does not exist. Please create a new map or reload the page.'
+        } else if (err.message && err.message.includes('Access denied')) {
+          error.value = 'You do not have permission to add stakeholders to this map.'
+        } else {
+          error.value = 'Failed to add stakeholder. Please try again.'
+        }
+
+        // Keep dialog open so user doesn't lose their input
+        addDialog.value = true
       }
     }
 
@@ -1206,37 +1277,30 @@ export default {
     const formatMarkdown = (text) => {
       if (!text) return ''
 
-      // Convert headers
-      let html = text
-        .replace(/^# (.*$)/gm, '<h2>$1</h2>')
-        .replace(/^## (.*$)/gm, '<h3>$1</h3>')
-        .replace(/^### (.*$)/gm, '<h4>$1</h4>')
-        .replace(/^#### (.*$)/gm, '<h5>$1</h5>')
+      // Replace Markdown with plain text formatting
+      // This is a text-only version that avoids HTML injection risks
 
-      // Convert lists
-      html = html
-        .replace(/^\s*\n\* (.*)/gm, '<ul>\n<li>$1</li>')
-        .replace(/^\* (.*)/gm, '<li>$1</li>')
-        .replace(/^\s*\n- (.*)/gm, '<ul>\n<li>$1</li>')
-        .replace(/^- (.*)/gm, '<li>$1</li>')
-        .replace(/^\s*\n\d\. (.*)/gm, '<ol>\n<li>$1</li>')
-        .replace(/^\d\. (.*)/gm, '<li>$1</li>')
-        .replace(/<\/ul>\s*\n<ul>/g, '')
-        .replace(/<\/ol>\s*\n<ol>/g, '')
-        .replace(/<\/li>\s*\n<\/ul>/g, '</li></ul>')
-        .replace(/<\/li>\s*\n<\/ol>/g, '</li></ol>')
+      // Format headers with spacing
+      let formatted = text
+        .replace(/^# (.*$)/gm, '$1\n')
+        .replace(/^## (.*$)/gm, '$1\n')
+        .replace(/^### (.*$)/gm, '$1\n')
+        .replace(/^#### (.*$)/gm, '$1\n')
 
-      // Convert bold and italic
-      html = html
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        .replace(/_(.*?)_/g, '<em>$1</em>')
+      // Format lists with proper spacing
+      formatted = formatted
+        .replace(/^\* (.*$)/gm, '• $1')
+        .replace(/^- (.*$)/gm, '• $1')
+        .replace(/^\d\. (.*$)/gm, '$1')
 
-      // Convert line breaks
-      html = html.replace(/\n/g, '<br>')
+      // Simplify bold and italic (can't show in text-only)
+      formatted = formatted
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/__(.*?)__/g, '$1')
+        .replace(/_(.*?)_/g, '$1')
 
-      return html
+      return formatted
     }
 
     onMounted(() => {
@@ -1457,5 +1521,65 @@ export default {
 .usage-stats {
   max-width: 400px;
   margin: 0 auto;
+}
+
+/* Slider styles for consistent appearance */
+.v-slider {
+  width: 100%;
+  padding: 8px 0;
+}
+
+.v-slider__track-container {
+  height: 6px;
+}
+
+.v-slider__thumb {
+  cursor: pointer;
+}
+
+.v-dialog .v-slider {
+  margin-bottom: 24px;
+}
+
+.v-slider .v-label,
+.v-range-slider .v-label {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+/* Ensure consistent spacing in forms */
+.v-form .v-slider,
+.v-form .v-range-slider {
+  margin-top: 12px;
+  margin-bottom: 24px;
+}
+
+/* Markdown content styling */
+.markdown-content {
+  text-align: left;
+  line-height: 1.5;
+}
+
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5 {
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25em;
+}
+
+.markdown-content strong,
+.markdown-content em {
+  display: inline;
 }
 </style>

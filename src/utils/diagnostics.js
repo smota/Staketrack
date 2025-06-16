@@ -20,12 +20,16 @@ export const testFirebaseFunctions = async () => {
   console.log('FIREBASE FUNCTIONS DIAGNOSTICS')
   console.log('============================================')
 
-  // Get basic environment info
+  // Create a diagnostic result object with basic information
   const results = {
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    firebaseSDK: '10.1.0', // From package.json
-    useEmulators: config.env.useEmulators || false,
+    environment: {
+      node_env: process.env.NODE_ENV,
+      app_env: process.env.APP_ENVIRONMENT,
+      baseUrl: process.env.BASE_URL,
+      useEmulators: config.features.useEmulators || false,
+      isFirebaseConfigured: !!config.env.firebaseConfig.projectId
+    },
     tests: {}
   }
 
@@ -44,7 +48,7 @@ export const testFirebaseFunctions = async () => {
       console.log('Functions properties:', Object.keys(functions))
 
       // If we're using emulators, try connecting
-      if (config.env.useEmulators) {
+      if (config.features.useEmulators) {
         try {
           console.log('Connecting to emulator...')
           connectFunctionsEmulator(functions, 'localhost', 5001)
@@ -110,7 +114,7 @@ export const testFirebaseFunctions = async () => {
     authDomain: firebaseConfig.authDomain,
     hasApiKey: !!firebaseConfig.apiKey,
     hasAppId: !!firebaseConfig.appId,
-    useEmulators: config.env.useEmulators,
+    useEmulators: config.features.useEmulators,
     functionsRegion: config.env.firebase.functionsRegion
   })
 
@@ -122,7 +126,7 @@ export const testFirebaseFunctions = async () => {
       firebaseConfig.appId
     ),
     projectId: firebaseConfig.projectId,
-    emulatorConfig: config.env.useEmulators
+    emulatorConfig: config.features.useEmulators
   }
 
   console.log('\nDIAGNOSTICS COMPLETE')
@@ -269,10 +273,11 @@ export const checkFunctionsEmulator = async () => {
     const { getFunctions, connectFunctionsEmulator, httpsCallable } = await import('firebase/functions')
     const { firebaseConfig } = await import('@/config').then(m => m.default.env)
 
-    // Use minimal config for this test
+    // Use minimal config for this test - avoid direct references to API keys
     const testApp = initializeApp({
       projectId: firebaseConfig.projectId || 'staketrack-dev',
-      apiKey: firebaseConfig.apiKey || 'dummy-api-key'
+      // Use a secure non-revealing placeholder
+      apiKey: '[PLACEHOLDER]' // No actual API key or length exposed
     }, 'emulator-test-app')
 
     // Try to get functions instance with emulator

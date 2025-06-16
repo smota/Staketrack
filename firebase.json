@@ -20,11 +20,20 @@
       ],
       "headers": [
         {
-          "source": "**/*.@(js|css)",
+          "source": "assets/@(js|css)/*",
           "headers": [
             {
               "key": "Cache-Control",
-              "value": "max-age=3600"
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "source": "index.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
             }
           ]
         },
@@ -33,13 +42,10 @@
           "headers": [
             {
               "key": "Permissions-Policy",
-              "value": "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+              "value": "camera=(), microphone=(), geolocation=()"
             }
           ]
         }
-      ],
-      "predeploy": [
-        "npm run build:staging"
       ]
     },
     {
@@ -62,11 +68,20 @@
       ],
       "headers": [
         {
-          "source": "**/*.@(js|css)",
+          "source": "assets/@(js|css)/*",
           "headers": [
             {
               "key": "Cache-Control",
-              "value": "max-age=86400"
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "source": "index.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
             }
           ]
         },
@@ -75,13 +90,10 @@
           "headers": [
             {
               "key": "Permissions-Policy",
-              "value": "camera=(), microphone=(), geolocation=(), browsing-topics=()"
+              "value": "camera=(), microphone=(), geolocation=()"
             }
           ]
         }
-      ],
-      "predeploy": [
-        "npm run build:prod"
       ]
     }
   ],

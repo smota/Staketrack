@@ -1,13 +1,9 @@
 <template>
+  <!-- eslint-disable vue/max-attributes-per-line, vue/html-indent, vue/html-closing-bracket-newline -->
   <div class="settings">
     <h1>Settings</h1>
 
-    <v-tabs
-      v-model="activeTab"
-      color="primary"
-      align-tabs="center"
-      class="mb-6"
-    >
+    <v-tabs v-model="activeTab" color="primary" align-tabs="center" class="mb-6">
       <v-tab value="account">
         Account
       </v-tab>
@@ -62,32 +58,16 @@
 
               <v-form ref="profileForm" v-model="profileFormValid" @submit.prevent="updateProfile">
                 <v-text-field
-                  v-model="profileForm.displayName"
-                  label="Display Name"
-                  variant="outlined"
-                  density="comfortable"
-                  :rules="[v => !!v || 'Name is required']"
-                  class="mb-3"
-                />
+v-model="profileForm.displayName" label="Display Name" variant="outlined"
+                  density="comfortable" :rules="[v => !!v || 'Name is required']" class="mb-3" />
 
                 <v-file-input
-                  v-model="profileForm.photoFile"
-                  label="Profile Picture"
-                  variant="outlined"
-                  density="comfortable"
-                  accept="image/*"
-                  prepend-icon="mdi-camera"
-                  class="mb-3"
-                />
+v-model="profileForm.photoFile" label="Profile Picture" variant="outlined"
+                  density="comfortable" accept="image/*" prepend-icon="mdi-camera" class="mb-3" />
 
                 <v-row class="mt-4">
                   <v-col>
-                    <v-btn
-                      color="primary"
-                      type="submit"
-                      :loading="updating"
-                      :disabled="!profileFormValid"
-                    >
+                    <v-btn color="primary" type="submit" :loading="updating" :disabled="!profileFormValid">
                       Update Profile
                     </v-btn>
                   </v-col>
@@ -127,13 +107,8 @@
                 <v-list-item-title>Theme Mode</v-list-item-title>
                 <template #append>
                   <v-switch
-                    v-model="themeMode"
-                    :true-value="'dark'"
-                    :false-value="'light'"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+v-model="themeMode" :true-value="'dark'" :false-value="'light'" color="primary" hide-details
+                    inset />
                 </template>
               </v-list-item>
 
@@ -148,12 +123,7 @@
                 </template>
                 <v-list-item-title>Show Quadrant Labels</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="matrixSettings.showLabels"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="matrixSettings.showLabels" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -164,12 +134,7 @@
                 </template>
                 <v-list-item-title>Show Stakeholder Names</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="matrixSettings.showNames"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="matrixSettings.showNames" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -183,13 +148,8 @@
                 </v-list-item-title>
                 <template #append>
                   <v-slider
-                    v-model="matrixSettings.influenceThreshold"
-                    min="1"
-                    max="10"
-                    step="0.5"
-                    thumb-label
-                    class="w-25"
-                  />
+v-model="matrixSettings.influenceThreshold" min="1" max="10" step="0.5" thumb-label
+                    class="w-25" />
                 </template>
               </v-list-item>
 
@@ -202,13 +162,8 @@
                 </v-list-item-title>
                 <template #append>
                   <v-slider
-                    v-model="matrixSettings.impactThreshold"
-                    min="1"
-                    max="10"
-                    step="0.5"
-                    thumb-label
-                    class="w-25"
-                  />
+v-model="matrixSettings.impactThreshold" min="1" max="10" step="0.5" thumb-label
+                    class="w-25" />
                 </template>
               </v-list-item>
             </v-list>
@@ -249,11 +204,7 @@
                       Clear locally stored application data and preferences.
                       This does not affect cloud-saved stakeholder data.
                     </p>
-                    <v-btn
-                      color="warning"
-                      :loading="clearingLocalData"
-                      @click="clearLocalData"
-                    >
+                    <v-btn color="warning" :loading="clearingLocalData" @click="clearLocalData">
                       Clear Local Data
                     </v-btn>
                   </v-card-text>
@@ -274,12 +225,7 @@
                       Remove all your stakeholder data and account information.
                       Caution: This action cannot be undone.
                     </p>
-                    <v-btn
-                      color="error"
-                      variant="outlined"
-                      :loading="deletingAccount"
-                      @click="confirmDeleteAccount"
-                    >
+                    <v-btn color="error" variant="outlined" :loading="deletingAccount" @click="confirmDeleteAccount">
                       Delete Account & Data
                     </v-btn>
                   </v-card-text>
@@ -306,12 +252,7 @@
                 </template>
                 <v-list-item-title>Upcoming Stakeholder Interactions</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="notificationSettings.upcomingInteractions"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="notificationSettings.upcomingInteractions" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -321,12 +262,7 @@
                 </template>
                 <v-list-item-title>Map Sharing</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="notificationSettings.mapSharing"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="notificationSettings.mapSharing" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -336,12 +272,7 @@
                 </template>
                 <v-list-item-title>Application Updates</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="notificationSettings.appUpdates"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="notificationSettings.appUpdates" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -354,12 +285,7 @@
                 </template>
                 <v-list-item-title>Enable In-App Notifications</v-list-item-title>
                 <template #append>
-                  <v-switch
-                    v-model="notificationSettings.inAppEnabled"
-                    color="primary"
-                    hide-details
-                    inset
-                  />
+                  <v-switch v-model="notificationSettings.inAppEnabled" color="primary" hide-details inset />
                 </template>
               </v-list-item>
 
@@ -370,12 +296,8 @@
                 <v-list-item-title>Interaction Reminders</v-list-item-title>
                 <template #append>
                   <v-switch
-                    v-model="notificationSettings.interactionReminders"
-                    color="primary"
-                    hide-details
-                    inset
-                    :disabled="!notificationSettings.inAppEnabled"
-                  />
+v-model="notificationSettings.interactionReminders" color="primary" hide-details inset
+                    :disabled="!notificationSettings.inAppEnabled" />
                 </template>
               </v-list-item>
             </v-list>
@@ -399,7 +321,7 @@
           <v-card-text>
             <div class="text-center mb-6">
               <v-avatar size="120" class="app-logo mb-4">
-                <v-img src="/img/logo.png" alt="StakeTrack Logo" />
+                <v-img src="@/assets/images/logo.svg" alt="StakeTrack Logo" />
               </v-avatar>
               <h2 class="text-h4 mb-1">
                 StakeTrack
@@ -447,12 +369,7 @@
                   </v-card-title>
                   <v-card-text class="text-center">
                     <p>View our documentation and tutorials.</p>
-                    <v-btn
-                      color="primary"
-                      variant="text"
-                      href="https://docs.staketrack.app"
-                      target="_blank"
-                    >
+                    <v-btn color="primary" variant="text" href="https://docs.staketrack.app" target="_blank">
                       <v-icon left>
                         mdi-book-open-variant
                       </v-icon>
@@ -470,20 +387,10 @@
                 &copy; {{ currentYear }} StakeTrack. All rights reserved.
               </p>
               <div class="mt-2">
-                <v-btn
-                  size="small"
-                  variant="text"
-                  href="/terms"
-                  target="_blank"
-                >
+                <v-btn size="small" variant="text" href="/terms" target="_blank">
                   Terms of Service
                 </v-btn>
-                <v-btn
-                  size="small"
-                  variant="text"
-                  href="/privacy"
-                  target="_blank"
-                >
+                <v-btn size="small" variant="text" href="/privacy" target="_blank">
                   Privacy Policy
                 </v-btn>
               </div>
@@ -533,8 +440,8 @@
 </template>
 
 <script>
-import { _ref, reactive, onMounted, _computed } from 'vue'
-import { _useRouter, useRoute } from 'vue-router'
+import { _ref, _computed } from 'vue'
+import { _useRouter, _useRoute } from 'vue-router'
 import { _auth } from '@/firebase'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'

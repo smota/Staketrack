@@ -39,7 +39,7 @@ if (env === 'dev') {
   projectEnv = 'development'
 } else if (env === 'staging') {
   envFileName = '.env.staging'
-  projectEnv = 'staging'
+  projectEnv = 'staketrack-dev'
 } else { // prd
   envFileName = '.env.production'
   projectEnv = 'production'
@@ -59,29 +59,29 @@ const hasLocalEnv = fs.existsSync(localEnvFilePath)
 // Define which variables to extract from .env files and add to Firebase config
 const FIREBASE_CONFIG_VARS = [
   // Firebase configuration
-  'APP_FIREBASE_API_KEY',
-  'APP_FIREBASE_AUTH_DOMAIN',
-  'APP_FIREBASE_PROJECT_ID',
-  'APP_FIREBASE_STORAGE_BUCKET',
-  'APP_FIREBASE_MESSAGING_SENDER_ID',
-  'APP_FIREBASE_APP_ID',
-  'APP_FIREBASE_MEASUREMENT_ID',
-  'APP_FIREBASE_FUNCTIONS_REGION',
+  'VUE_APP_FIREBASE_API_KEY',
+  'VUE_APP_FIREBASE_AUTH_DOMAIN',
+  'VUE_APP_FIREBASE_PROJECT_ID',
+  'VUE_APP_FIREBASE_STORAGE_BUCKET',
+  'VUE_APP_FIREBASE_MESSAGING_SENDER_ID',
+  'VUE_APP_FIREBASE_APP_ID',
+  'VUE_APP_FIREBASE_MEASUREMENT_ID',
+  'VUE_APP_FIREBASE_FUNCTIONS_REGION',
 
   // Application settings
-  'APP_USE_EMULATORS',
-  'APP_AI_ENABLED',
-  'APP_AI_MODEL',
-  'APP_AI_WEEKLY_LIMIT',
+  'VUE_APP_USE_EMULATORS',
+  'VUE_APP_AI_ENABLED',
+  'VUE_APP_AI_MODEL',
+  'VUE_APP_AI_WEEKLY_LIMIT',
 
   // API Keys and secrets (usually in .local files)
-  'APP_API_KEY',
-  'APP_AUTH_SECRET',
-  'APP_EXTERNAL_API_TOKEN',
-  'APP_VERTEX_AI_API_KEY',
-  'APP_OPENAI_API_KEY',
-  'APP_DATABASE_URL',
-  'APP_STORAGE_API_KEY'
+  'VUE_APP_API_KEY',
+  'VUE_APP_AUTH_SECRET',
+  'VUE_APP_EXTERNAL_API_TOKEN',
+  'VUE_APP_VERTEX_AI_API_KEY',
+  'VUE_APP_OPENAI_API_KEY',
+  'VUE_APP_DATABASE_URL',
+  'VUE_APP_STORAGE_API_KEY'
 ]
 
 // Create readline interface for user confirmation (not needed in CI environment)
@@ -185,16 +185,16 @@ function updateFirebaseConfig() {
   // Build Firebase Functions config commands
   for (const key of FIREBASE_CONFIG_VARS) {
     if (envConfig[key]) {
-      // Convert the key format from APP_FIREBASE_API_KEY to app.api.key or firebase.api.key
+      // Convert the key format from VUE_APP_FIREBASE_API_KEY to app.api.key or firebase.api.key
       // Firebase Functions config uses lowercase with dots
       const configKey = key.toLowerCase()
-        .replace('app_firebase_', 'firebase.')  // Convert APP_FIREBASE_ to firebase.
-        .replace('app_use_', 'app.')  // Convert APP_USE_ to app.
+        .replace('vue_app_firebase_', 'firebase.')  // Convert VUE_APP_FIREBASE_ to firebase.
+        .replace('vue_app_use_', 'app.')  // Convert VUE_APP_USE_ to app.
         .replace(/_/g, '.')  // Convert remaining underscores to dots
 
       // For Firebase Functions, we should only update app config, not the firebase related ones
       // Firebase API keys and similar should all go in the client config
-      if (key.startsWith('APP_FIREBASE_') || key.startsWith('APP_AI_')) {
+      if (key.startsWith('VUE_APP_FIREBASE_') || key.startsWith('VUE_APP_AI_')) {
         console.log(`  Skipping ${configKey} - will include in client config section`)
         continue
       }
@@ -227,26 +227,26 @@ function updateFirebaseConfig() {
       // Create a flattened client config with all values as strings
       const clientConfig = {
         'environment': envConfig.ENVIRONMENT || projectEnv.toUpperCase(),
-        'use_emulators': envConfig.APP_USE_EMULATORS || 'false'
+        'use_emulators': envConfig.VUE_APP_USE_EMULATORS || 'false'
       }
 
       // Add Firebase configuration as string values with prefixes
-      if (envConfig.APP_FIREBASE_API_KEY) {
-        clientConfig['firebase_api_key'] = envConfig.APP_FIREBASE_API_KEY
-        clientConfig['firebase_auth_domain'] = envConfig.APP_FIREBASE_AUTH_DOMAIN
-        clientConfig['firebase_project_id'] = envConfig.APP_FIREBASE_PROJECT_ID
-        clientConfig['firebase_storage_bucket'] = envConfig.APP_FIREBASE_STORAGE_BUCKET
-        clientConfig['firebase_messaging_sender_id'] = envConfig.APP_FIREBASE_MESSAGING_SENDER_ID
-        clientConfig['firebase_app_id'] = envConfig.APP_FIREBASE_APP_ID
-        clientConfig['firebase_measurement_id'] = envConfig.APP_FIREBASE_MEASUREMENT_ID
-        clientConfig['firebase_functions_region'] = envConfig.APP_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
+      if (envConfig.VUE_APP_FIREBASE_API_KEY) {
+        clientConfig['firebase_api_key'] = envConfig.VUE_APP_FIREBASE_API_KEY
+        clientConfig['firebase_auth_domain'] = envConfig.VUE_APP_FIREBASE_AUTH_DOMAIN
+        clientConfig['firebase_project_id'] = envConfig.VUE_APP_FIREBASE_PROJECT_ID
+        clientConfig['firebase_storage_bucket'] = envConfig.VUE_APP_FIREBASE_STORAGE_BUCKET
+        clientConfig['firebase_messaging_sender_id'] = envConfig.VUE_APP_FIREBASE_MESSAGING_SENDER_ID
+        clientConfig['firebase_app_id'] = envConfig.VUE_APP_FIREBASE_APP_ID
+        clientConfig['firebase_measurement_id'] = envConfig.VUE_APP_FIREBASE_MEASUREMENT_ID
+        clientConfig['firebase_functions_region'] = envConfig.VUE_APP_FIREBASE_FUNCTIONS_REGION || 'europe-west1'
       }
 
       // Add AI configuration as string values
-      if (envConfig.APP_AI_ENABLED) {
-        clientConfig['ai_enabled'] = envConfig.APP_AI_ENABLED
-        clientConfig['ai_model'] = envConfig.APP_AI_MODEL || 'gemini-1.5-pro'
-        clientConfig['ai_weekly_limit'] = envConfig.APP_AI_WEEKLY_LIMIT || '10'
+      if (envConfig.VUE_APP_AI_ENABLED) {
+        clientConfig['ai_enabled'] = envConfig.VUE_APP_AI_ENABLED
+        clientConfig['ai_model'] = envConfig.VUE_APP_AI_MODEL || 'gemini-1.5-pro'
+        clientConfig['ai_weekly_limit'] = envConfig.VUE_APP_AI_WEEKLY_LIMIT || '10'
       }
 
       // Set individual config values one by one instead of as a JSON object
@@ -265,8 +265,8 @@ function updateFirebaseConfig() {
 
       // Find all secret keys in the environment
       const secretKeys = Object.keys(envConfig).filter(key =>
-        (key.startsWith('APP_') && isSensitiveKey(key)) &&
-        !key.startsWith('APP_FIREBASE_') // Exclude Firebase keys already in client config
+        (key.startsWith('VUE_APP_') && isSensitiveKey(key)) &&
+        !key.startsWith('VUE_APP_FIREBASE_') // Exclude Firebase keys already in client config
       )
 
       if (secretKeys.length > 0) {
@@ -277,7 +277,7 @@ function updateFirebaseConfig() {
           if (!envConfig[key]) continue
 
           // Convert key format for Firebase
-          const configKey = `secrets.${key.toLowerCase().replace('app_', '').replace(/_/g, '.')}`
+          const configKey = `secrets.${key.toLowerCase().replace('vue_app_', '').replace(/_/g, '.')}`
           const configValue = envConfig[key]
 
           // Display masked value

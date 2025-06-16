@@ -1,40 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper function to check if a user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // TEMPORARY PERMISSIVE RULE FOR DEBUGGING
-    // This rule allows authenticated users to read and write any document
-    // Remove this after debugging is complete!
-    match /{document=**} {
-      allow read, write: if isSignedIn();
+    // Security rules for the 'users' collection
+    // Users can only read and write their own documents
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      
+      // Security rules for the 'maps' subcollection within a user's document
+      // Users can perform all operations on their own maps
+      match /maps/{mapId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
     }
-
-    // The rules below are ignored while the temporary rule above is active
-    // Keep them for reference and restore them after debugging
-
-    // match /users/{userId} {
-    //   allow read: if isSignedIn() && request.auth.uid == userId;
-    //   allow write: if isSignedIn() && request.auth.uid == userId;
-    //   
-    //   match /maps/{mapId} {
-    //     allow read, write: if isSignedIn() && request.auth.uid == userId;
-    //   }
-    // }
     
-    // match /maps/{mapId} {
-    //   allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
-    //   allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-    //   allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-    // }
+    // Security rules for the root 'maps' collection
+    // This allows users to access maps if their userId is on the document
+    match /maps/{mapId} {
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
     
-    // match /records/{recordId} {
-    //   allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
-    //   allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-    //   allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-    // }
+    // Security rules for the 'records' collection
+    // This allows users to access records if their userId is on the document
+    match /records/{recordId} {
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
   }
 } 

@@ -3,6 +3,7 @@ import { db } from '@/firebase'
 import { auth } from '@/firebase'
 import { localStorageService } from './localStorageService'
 import { Map } from '@/models/Map'
+import config from '@/config'
 
 /**
  * Map Service - Handles operations related to stakeholder maps
@@ -19,9 +20,12 @@ export class MapService {
    * @returns {boolean}
    */
   _isLocalMode() {
-    // In development with emulators, we might want to force local mode for testing
-    if (process.env.NODE_ENV === 'development' && !auth.currentUser) {
-      console.log('Development mode with no user, using local storage')
+    // Remove environment-specific code
+    // Instead, use a configuration property for consistent behavior across environments
+    const useLocalStorage = config?.env?.useLocalStorage === 'true'
+
+    if (!auth.currentUser && useLocalStorage) {
+      console.log('No authenticated user, using local storage')
       return true
     }
 
@@ -291,7 +295,7 @@ export class MapService {
         const mapData = map.toJSON()
 
         // Don't include ID in Firestore document data
-        const { id, ...firestoreData } = mapData
+        const { id: _id, ...firestoreData } = mapData
         console.log('Map data being sent to Firestore:', firestoreData)
 
         const docRef = await addDoc(mapsRef, firestoreData)
@@ -334,12 +338,12 @@ export class MapService {
 
       if (!this._isLocalMode()) {
         // If user is logged in, update Firestore too
-        const userId = auth.currentUser.uid
+        const _userId = auth.currentUser.uid
         const mapRef = doc(db, 'maps', mapId)
 
         // Get the map data but remove the id field
         const mapData = updatedMap.toJSON()
-        const { id, ...firestoreData } = mapData
+        const { id: _id, ...firestoreData } = mapData
 
         await updateDoc(mapRef, firestoreData)
       }

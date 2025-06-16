@@ -9,7 +9,7 @@
         <v-col cols="12" sm="10" md="8" lg="6">
           <v-card class="mt-5">
             <v-card-title class="text-h4 text-center">
-              Sign In to StakeTrack
+              {{ authMode === 'signin' ? 'Sign In to StakeTrack' : 'Sign Up for StakeTrack' }}
             </v-card-title>
             <v-card-subtitle class="text-center mb-4">
               Access your stakeholder maps and data
@@ -18,17 +18,17 @@
             <v-card-text>
               <v-form ref="form" v-model="isFormValid" lazy-validation @submit.prevent="submitForm">
                 <v-text-field v-if="authMethod === 'email'" v-model="email" :rules="emailRules" label="Email"
-                  prepend-icon="mdi-email" required />
+                  prepend-icon="mdi-email" required data-testid="email-input" />
 
                 <v-text-field v-if="authMethod === 'email'" v-model="password" :rules="passwordRules" label="Password"
                   prepend-icon="mdi-lock" :type="showPassword ? 'text' : 'password'" required
-                  :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                  :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" data-testid="password-input"
                   @click:append="showPassword = !showPassword" />
 
                 <div class="text-center">
                   <v-btn v-if="authMethod === 'email'" color="primary" block :loading="isLoading"
-                    :disabled="!isFormValid || isLoading" type="submit" class="mb-4">
-                    Sign In with Email
+                    :disabled="!isFormValid || isLoading" type="submit" class="mb-4" data-testid="signin-email-button">
+                    {{ authMode === 'signin' ? 'Sign In with Email' : 'Sign Up with Email' }}
                   </v-btn>
                 </div>
 
@@ -38,7 +38,7 @@
                   </p>
 
                   <v-btn block color="red darken-1" class="white--text mb-3" prepend-icon="mdi-google"
-                    :loading="isLoadingGoogle" @click="signInWithGoogle">
+                    :loading="isLoadingGoogle" data-testid="google-signin-button" @click="signInWithGoogle">
                     <v-icon left>
                       mdi-google
                     </v-icon>
@@ -46,7 +46,7 @@
                   </v-btn>
 
                   <v-btn block color="primary" variant="outlined" class="mb-3" :loading="isLoadingAnonymous"
-                    @click="signInAnonymously">
+                    data-testid="anonymous-signin-button" @click="signInAnonymously">
                     <v-icon left>
                       mdi-incognito
                     </v-icon>
@@ -61,8 +61,10 @@
 
               <div class="text-center mt-6">
                 <p class="text-body-2">
-                  Don't have an account?
-                  <a href="#" @click.prevent="toggleAuthMode">Sign up</a>
+                  {{ authMode === 'signin' ? "Don't have an account?" : "Already have an account?" }}
+                  <a href="#" data-testid="signup-link" @click.prevent="toggleAuthMode">
+                    {{ authMode === 'signin' ? 'Sign up' : 'Sign in' }}
+                  </a>
                 </p>
                 <p class="text-caption text-secondary mt-2">
                   By signing in, you agree to our
@@ -85,10 +87,12 @@ import {
   getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously as firebaseSignInAnonymously,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  linkWithPopup,
+  signInWithCredential
 } from 'firebase/auth'
+import { authService } from '@/services/authService'
 import { auth } from '@/firebase'
 
 export default {
@@ -132,7 +136,8 @@ export default {
 
     // Submit form based on current auth mode
     const submitForm = async () => {
-      if (!form.value.validate()) return
+      const { valid } = await form.value.validate()
+      if (!valid) return
 
       const auth = getAuth()
       error.value = null
@@ -140,7 +145,6 @@ export default {
 
       try {
         if (authMode.value === 'signin') {
-          const _credential = await signInWithEmailAndPassword(auth, email.value, password.value)
           await signInWithEmailAndPassword(auth, email.value, password.value)
         } else {
           await createUserWithEmailAndPassword(auth, email.value, password.value)
@@ -151,7 +155,6 @@ export default {
         router.push(redirectPath)
       } catch (err) {
         error.value = err.message
-        console.error('Authentication error:', err)
       } finally {
         isLoading.value = false
       }
@@ -164,31 +167,31 @@ export default {
       isLoadingGoogle.value = true
 
       try {
-        // Check if required Firebase services are available
-        if (!auth) {
-          throw new Error('Firebase authentication is not available')
-        }
-
         const provider = new GoogleAuthProvider()
 
-        // Check if user is already signed in anonymously
         if (auth.currentUser && auth.currentUser.isAnonymous) {
           console.log('Attempting to upgrade anonymous user to Google account')
           try {
-            // Remove the invalid credential creation
-            // Try to link accounts directly with the provider
-            await auth.currentUser.linkWithPopup(provider)
+            await linkWithPopup(auth.currentUser, provider)
+            console.log('Successfully linked anonymous account with Google')
           } catch (linkError) {
             console.error('Error linking accounts:', linkError)
-            // If linking fails (e.g., email already exists), sign in with the new method
-            // This will create a new account and the anonymous data will be lost
-            // A better UX would be to inform the user and confirm this action
-            await signInWithPopup(auth, provider)
+            if (linkError.code === 'auth/credential-already-in-use') {
+              error.value = 'This Google account is already in use. We will sign you in and transfer your local data.'
+              console.log('Credential already in use, attempting to sign in with Google credential.')
+              const credential = GoogleAuthProvider.credentialFromError(linkError)
+              await signInWithCredential(auth, credential)
+            } else {
+              error.value = 'Failed to link with Google. Please try signing in directly.'
+              // Fallback to regular sign-in might be needed here if other errors occur
+            }
           }
         } else {
-          // Regular sign in if not anonymous
           await signInWithPopup(auth, provider)
         }
+
+        // After successful login/linking, migrate data
+        await authService.migrateLocalDataToFirestore()
 
         // Redirect after successful authentication
         const redirectPath = route.query.redirect || '/dashboard'
@@ -204,6 +207,8 @@ export default {
           error.value = 'Network error. Please check your internet connection.'
         } else if (err.code === 'auth/invalid-api-key') {
           error.value = 'Firebase configuration error. Please try anonymous login instead.'
+        } else if (err.code === 'auth/credential-already-in-use') {
+          error.value = 'This account already exists. Please sign in.'
         } else {
           error.value = err.message || 'An error occurred during Google sign-in'
         }
@@ -218,7 +223,7 @@ export default {
       isLoadingAnonymous.value = true
 
       try {
-        await firebaseSignInAnonymously(auth)
+        authService.startLocalAnonymousSession()
 
         // Redirect after successful authentication
         const redirectPath = route.query.redirect || '/dashboard'

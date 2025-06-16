@@ -137,6 +137,19 @@
         "reveal": "always",
         "panel": "new"
       }
+    },
+    {
+      "label": "Deploy to Firebase (Staging)",
+      "type": "shell",
+      "command": "npm run deploy:staging",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
     }
   ]
 }

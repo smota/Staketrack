@@ -1,10 +1,12 @@
 import { Map } from '@/models/Map'
 import { Stakeholder } from '@/models/Stakeholder'
+import config from '@/config'
 
 const STORAGE_KEYS = {
   MAPS: 'staketrack_maps',
-  CURRENT_MAP: 'staketrack_current_map',
-  VERSION: 'staketrack_data_version'
+  CURRENT_MAP: 'staketrack_current_map_id',
+  SETTINGS: 'staketrack_settings',
+  ANONYMOUS_SESSION: 'staketrack_anonymous_session'
 }
 
 const CURRENT_VERSION = '1.0'
@@ -17,7 +19,12 @@ class LocalStorageService {
     this.prefix = 'staketrack_'
     this.mapsKey = STORAGE_KEYS.MAPS
     this.currentMapKey = STORAGE_KEYS.CURRENT_MAP
-    this.settingsKey = `${this.prefix}settings`
+    this.settingsKey = STORAGE_KEYS.SETTINGS
+    this.anonymousSessionKey = STORAGE_KEYS.ANONYMOUS_SESSION
+    this.version = 1 // Used for migrations
+
+    // Get debug flag from configuration instead of hard-coding
+    this.debugMode = config.env.debugLocalStorage === 'true'
 
     // Initialize with static methods for backward compatibility
     this.getMaps = this._getMaps.bind(this)
@@ -27,6 +34,22 @@ class LocalStorageService {
     this.deleteMap = this._deleteMap.bind(this)
     this.setCurrentMapId = this._setCurrentMapId.bind(this)
     this.getCurrentMapId = this._getCurrentMapId.bind(this)
+  }
+
+  // Debug log helper that only logs when debug mode is enabled
+  _debugLog(message, ...args) {
+    if (this.debugMode) {
+      // Only log message and types, not actual data values to avoid leaking sensitive info
+      const safeArgs = args.map(arg => {
+        if (arg === null) return 'null'
+        if (arg === undefined) return 'undefined'
+        if (typeof arg === 'object') return `[${Array.isArray(arg) ? 'Array' : 'Object'}]`
+        if (typeof arg === 'string') return `"${arg.length > 10 ? arg.substring(0, 10) + '...' : arg}"`
+        return typeof arg
+      })
+
+      console.log(`LocalStorage: ${message}`, ...safeArgs)
+    }
   }
 
   /**
@@ -108,11 +131,11 @@ class LocalStorageService {
   _getMaps() {
     try {
       const data = localStorage.getItem(this.mapsKey)
-      console.log('DEBUG: Raw data from localStorage:', data, 'using key:', this.mapsKey)
+      this._debugLog('DEBUG: Raw data from localStorage:', data, 'using key:', this.mapsKey)
       if (!data) return []
 
       const maps = JSON.parse(data)
-      console.log('DEBUG: Parsed maps from localStorage:', maps)
+      this._debugLog('DEBUG: Parsed maps from localStorage:', maps)
       return maps.map(map => new Map(map))
     } catch (error) {
       console.error('Error getting maps from local storage:', error)
@@ -126,14 +149,14 @@ class LocalStorageService {
    */
   _saveMaps(maps) {
     try {
-      console.log('DEBUG: Saving maps array to localStorage:', maps, 'using key:', this.mapsKey)
+      this._debugLog('DEBUG: Saving maps array to localStorage:', maps, 'using key:', this.mapsKey)
       const data = maps.map(map => map.toJSON ? map.toJSON() : map)
-      console.log('DEBUG: Serialized maps data:', data)
+      this._debugLog('DEBUG: Serialized maps data:', data)
       localStorage.setItem(this.mapsKey, JSON.stringify(data))
 
       // Verify storage
       const verification = localStorage.getItem(this.mapsKey)
-      console.log('DEBUG: Verification from localStorage after save:', verification)
+      this._debugLog('DEBUG: Verification from localStorage after save:', verification)
 
       return true
     } catch (error) {
@@ -150,15 +173,15 @@ class LocalStorageService {
   getStakeholders(mapId) {
     try {
       const key = `${this.prefix}stakeholders_${mapId}`
-      console.log(`DEBUG: Getting stakeholders from localStorage with key: ${key}`)
+      this._debugLog(`DEBUG: Getting stakeholders from localStorage with key: ${key}`)
       const data = localStorage.getItem(key)
-      console.log('DEBUG: Raw stakeholder data from localStorage:', data)
+      this._debugLog('DEBUG: Raw stakeholder data from localStorage:', data)
 
       if (!data) return []
 
       // Parse the JSON data
       const stakeholderData = JSON.parse(data)
-      console.log('DEBUG: Parsed stakeholder data:', stakeholderData)
+      this._debugLog('DEBUG: Parsed stakeholder data:', stakeholderData)
 
       // Convert plain objects to Stakeholder instances
       return stakeholderData.map(data => new Stakeholder(data))
@@ -177,7 +200,7 @@ class LocalStorageService {
   saveStakeholders(mapId, stakeholders) {
     try {
       const key = `${this.prefix}stakeholders_${mapId}`
-      console.log(`DEBUG: Saving stakeholders to localStorage with key: ${key}`)
+      this._debugLog(`DEBUG: Saving stakeholders to localStorage with key: ${key}`)
 
       // Convert Stakeholder instances to plain objects
       const data = stakeholders.map(stakeholder => {
@@ -192,13 +215,13 @@ class LocalStorageService {
         }
       })
 
-      console.log('DEBUG: Serialized stakeholder data:', data)
+      this._debugLog('DEBUG: Serialized stakeholder data:', data)
 
       localStorage.setItem(key, JSON.stringify(data))
 
       // Verify storage
       const verification = localStorage.getItem(key)
-      console.log('DEBUG: Verification from localStorage after save:', verification)
+      this._debugLog('DEBUG: Verification from localStorage after save:', verification)
 
       return true
     } catch (error) {
@@ -238,20 +261,20 @@ class LocalStorageService {
    */
   _saveMap(map) {
     try {
-      console.log('DEBUG: Saving map to localStorage:', map)
+      this._debugLog('DEBUG: Saving map to localStorage:', map)
       const maps = this._getMaps()
       const index = maps.findIndex(m => m.id === map.id)
 
       if (index === -1) {
-        console.log('DEBUG: Adding new map to array')
+        this._debugLog('DEBUG: Adding new map to array')
         maps.push(map)
       } else {
-        console.log('DEBUG: Updating existing map at index', index)
+        this._debugLog('DEBUG: Updating existing map at index', index)
         maps[index] = map
       }
 
       const result = this._saveMaps(maps)
-      console.log('DEBUG: Result of saving maps:', result)
+      this._debugLog('DEBUG: Result of saving maps:', result)
       return result
     } catch (error) {
       console.error('Error saving map to local storage:', error)
@@ -286,7 +309,7 @@ class LocalStorageService {
    */
   _setCurrentMapId(id) {
     try {
-      console.log('DEBUG: Saving current map ID to localStorage:', id, 'using key:', this.currentMapKey)
+      this._debugLog('DEBUG: Saving current map ID to localStorage:', id, 'using key:', this.currentMapKey)
       if (id) {
         return this._setItem(this.currentMapKey, id)
       } else {
@@ -305,7 +328,7 @@ class LocalStorageService {
   _getCurrentMapId() {
     try {
       const id = this._getItem(this.currentMapKey)
-      console.log('DEBUG: Retrieved current map ID from localStorage:', id, 'using key:', this.currentMapKey)
+      this._debugLog('DEBUG: Retrieved current map ID from localStorage:', id, 'using key:', this.currentMapKey)
       return id
     } catch (error) {
       console.error('Error getting current map ID from local storage:', error)
@@ -437,11 +460,32 @@ class LocalStorageService {
   /**
    * Migrate data to new version
    * @private
-   * @param {string|null} fromVersion - Previous version
+   * @param {string|null} _fromVersion - Previous version
    */
-  static _migrateData(fromVersion) {
+  static _migrateData(_fromVersion) {
     // Implement migration strategies here
     localStorage.setItem(STORAGE_KEYS.VERSION, CURRENT_VERSION)
+  }
+
+  /**
+   * Set the anonymous session state
+   * @param {boolean} isActive
+   */
+  setAnonymousSession(isActive) {
+    if (isActive) {
+      this._setItem(this.anonymousSessionKey, { active: true, version: CURRENT_VERSION })
+    } else {
+      this._removeItem(this.anonymousSessionKey)
+    }
+  }
+
+  /**
+   * Check if an anonymous session is active
+   * @returns {boolean}
+   */
+  isAnonymousSessionActive() {
+    const session = this._getItem(this.anonymousSessionKey)
+    return session && session.active === true
   }
 }
 

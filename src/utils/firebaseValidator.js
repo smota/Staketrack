@@ -7,45 +7,64 @@ import { getServicesStatus } from '@/firebase'
 
 /**
  * Validates that Firebase services are properly initialized with v2 API compatibility
+ * @param {string[]} [expectedServices] - Optional array of services to validate. If not provided, validates all.
  * @returns {Object} Validation results for each service
  */
-export function validateFirebaseServices() {
+export function validateFirebaseServices(expectedServices) {
   const status = getServicesStatus()
   const validationResults = {}
+  const servicesToValidate = expectedServices || ['app', 'auth', 'firestore', 'functions', 'storage', 'analytics']
 
-  // Check Firebase app initialization
-  validationResults.app = {
-    initialized: status.app.initialized,
-    error: status.app.error,
-    v2Compatible: true // Firebase app itself doesn't have v2 API concerns
+  if (servicesToValidate.includes('app')) {
+    validationResults.app = {
+      initialized: status.app.initialized,
+      error: status.app.error,
+      v2Compatible: true // Firebase app itself doesn't have v2 API concerns
+    }
   }
 
-  // Check Auth service
-  validationResults.auth = {
-    initialized: status.auth.initialized,
-    error: status.auth.error,
-    v2Compatible: true // Auth doesn't have specific v2 API issues to check
+  if (servicesToValidate.includes('auth')) {
+    // Check Auth service
+    validationResults.auth = {
+      initialized: status.auth.initialized,
+      error: status.auth.error,
+      v2Compatible: true // Auth doesn't have specific v2 API issues to check
+    }
   }
 
-  // Check Firestore service
-  validationResults.firestore = {
-    initialized: status.firestore.initialized,
-    error: status.firestore.error,
-    v2Compatible: true // Firestore client SDK is compatible with v2 rules
+  if (servicesToValidate.includes('firestore')) {
+    // Check Firestore service
+    validationResults.firestore = {
+      initialized: status.firestore.initialized,
+      error: status.firestore.error,
+      v2Compatible: true // Firestore client SDK is compatible with v2 rules
+    }
   }
 
-  // Check Functions service (most important for v2 compatibility)
-  validationResults.functions = {
-    initialized: status.functions.initialized,
-    error: status.functions.error,
-    v2Compatible: checkFunctionsV2Compatibility()
+  if (servicesToValidate.includes('functions')) {
+    // Check Functions service (most important for v2 compatibility)
+    validationResults.functions = {
+      initialized: status.functions.initialized,
+      error: status.functions.error,
+      v2Compatible: checkFunctionsV2Compatibility()
+    }
   }
 
-  // Check Storage service
-  validationResults.storage = {
-    initialized: status.storage.initialized,
-    error: status.storage.error,
-    v2Compatible: true // Storage doesn't have specific v2 API issues to check
+  if (servicesToValidate.includes('storage')) {
+    // Check Storage service
+    validationResults.storage = {
+      initialized: status.storage.initialized,
+      error: status.storage.error,
+      v2Compatible: true // Storage doesn't have specific v2 API issues to check
+    }
+  }
+
+  if (servicesToValidate.includes('analytics')) {
+    validationResults.analytics = {
+      initialized: status.analytics.initialized,
+      error: status.analytics.error,
+      v2Compatible: true
+    }
   }
 
   return validationResults
@@ -110,10 +129,11 @@ export function logServiceCompatibilityIssues(validationResults) {
 
 /**
  * Checks application readiness with Firebase services
+ * @param {string[]} [expectedServices] - Optional array of services to validate.
  * @returns {Promise<boolean>} Whether the application is ready
  */
-export async function checkFirebaseReadiness() {
-  const validationResults = validateFirebaseServices()
+export async function checkFirebaseReadiness(expectedServices) {
+  const validationResults = validateFirebaseServices(expectedServices)
   const hasIssues = logServiceCompatibilityIssues(validationResults)
 
   // Determine if the application can proceed despite any issues
@@ -123,6 +143,11 @@ export async function checkFirebaseReadiness() {
 
   if (!isReady) {
     console.error('CRITICAL: Core Firebase services failed to initialize')
+  }
+
+  // Log additional warning if there are issues but we're still considering the app ready
+  if (isReady && hasIssues) {
+    console.warn('Application continuing to initialize despite some Firebase service issues')
   }
 
   return isReady

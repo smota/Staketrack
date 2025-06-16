@@ -6,64 +6,64 @@
  * during the deployment process.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs')
+const path = require('path')
 
 // Path to the version file
-const versionFilePath = path.join(process.cwd(), 'js', 'utils', 'version.js');
+const versionFilePath = path.join(process.cwd(), 'src', 'utils', 'version.js')
 
 // Get version type to bump from args (default to minor)
-const args = process.argv.slice(2);
-const versionType = args.find(arg => ['major', 'minor', 'patch'].includes(arg)) || 'minor';
-const buildId = args.find(arg => arg.startsWith('--build='))?.split('=')[1] || '';
+const args = process.argv.slice(2)
+const versionType = args.find(arg => ['major', 'minor', 'patch'].includes(arg)) || 'minor'
+const buildId = args.find(arg => arg.startsWith('--build='))?.split('=')[1] || ''
 
-console.log(`\n📦 Updating ${versionType} version...`);
+console.log(`\n📦 Updating ${versionType} version...`)
 
 // Read the current version file
-let versionFileContent;
+let versionFileContent
 try {
-  versionFileContent = fs.readFileSync(versionFilePath, 'utf8');
+  versionFileContent = fs.readFileSync(versionFilePath, 'utf8')
 } catch (error) {
-  console.error(`Error reading version file: ${error.message}`);
-  process.exit(1);
+  console.error(`Error reading version file: ${error.message}`)
+  process.exit(1)
 }
 
 // Parse the current version
-const majorRegex = /major:\s*(\d+)/;
-const minorRegex = /minor:\s*(\d+)/;
-const patchRegex = /patch:\s*(\d+)/;
+const majorRegex = /major:\s*(\d+)/
+const minorRegex = /minor:\s*(\d+)/
+const patchRegex = /patch:\s*(\d+)/
 
-const majorMatch = versionFileContent.match(majorRegex);
-const minorMatch = versionFileContent.match(minorRegex);
-const patchMatch = versionFileContent.match(patchRegex);
+const majorMatch = versionFileContent.match(majorRegex)
+const minorMatch = versionFileContent.match(minorRegex)
+const patchMatch = versionFileContent.match(patchRegex)
 
 if (!majorMatch || !minorMatch || !patchMatch) {
-  console.error('Could not parse version information from version.js');
-  process.exit(1);
+  console.error('Could not parse version information from version.js')
+  process.exit(1)
 }
 
-let major = parseInt(majorMatch[1], 10);
-let minor = parseInt(minorMatch[1], 10);
-let patch = parseInt(patchMatch[1], 10);
+let major = parseInt(majorMatch[1], 10)
+let minor = parseInt(minorMatch[1], 10)
+let patch = parseInt(patchMatch[1], 10)
 
 // Increment version based on type
 switch (versionType) {
   case 'major':
-    major++;
-    minor = 0;
-    patch = 0;
-    break;
+    major++
+    minor = 0
+    patch = 0
+    break
   case 'minor':
-    minor++;
-    patch = 0;
-    break;
+    minor++
+    patch = 0
+    break
   case 'patch':
-    patch++;
-    break;
+    patch++
+    break
 }
 
 // Get the environment from process.env
-const environment = process.env.ENVIRONMENT || 'DEV';
+const environment = process.env.ENVIRONMENT || 'DEV'
 
 // Update the version.js file
 const updatedContent = versionFileContent
@@ -71,14 +71,14 @@ const updatedContent = versionFileContent
   .replace(minorRegex, `minor: ${minor}`)
   .replace(patchRegex, `patch: ${patch}`)
   .replace(/build:\s*['"].*?['"]/, `build: '${buildId}'`)
-  .replace(/timestamp:\s*.*?,/, `timestamp: new Date().toISOString(),`)
-  .replace(/environment:\s*.*?['"].*?['"]/, `environment: process.env.ENVIRONMENT || 'DEV'`);
+  .replace(/timestamp:\s*.*?,/, 'timestamp: new Date().toISOString(),')
+  .replace(/environment:\s*.*?['"].*?['"]/, 'environment: process.env.ENVIRONMENT || \'DEV\'')
 
 // Write the updated file
 try {
-  fs.writeFileSync(versionFilePath, updatedContent, 'utf8');
-  console.log(`✅ Version updated to ${major}.${minor}.${patch}${buildId ? `-${buildId}` : ''} for ${environment} environment`);
+  fs.writeFileSync(versionFilePath, updatedContent, 'utf8')
+  console.log(`✅ Version updated to ${major}.${minor}.${patch}${buildId ? `-${buildId}` : ''} for ${environment} environment`)
 } catch (error) {
-  console.error(`Error writing version file: ${error.message}`);
-  process.exit(1);
-} 
+  console.error(`Error writing version file: ${error.message}`)
+  process.exit(1)
+}

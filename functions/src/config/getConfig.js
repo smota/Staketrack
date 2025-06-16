@@ -84,9 +84,6 @@ module.exports = onRequest({
 
       logger.info(`getConfig called with env: ${env}, fallback: ${isFallback}`);
 
-      // Log environment variables for debugging
-      logger.info(`Current environment variables: FIREBASE_API_KEY exists: ${!!process.env.FIREBASE_API_KEY}`);
-
       // Common config structure for all environments
       const config = {
         APP_ENVIRONMENT: getEnvironmentName(env),

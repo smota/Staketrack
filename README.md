@@ -10,6 +10,7 @@ A comprehensive web application for managing stakeholder relationships, visualiz
 - **Deployment**: Firebase Hosting
 - **Testing**: Jest (Unit), Playwright (E2E)
 - **Linting**: ESLint with Vue.js plugin
+- **Environment Management**: Cross-env for cross-platform compatibility
 
 ## Features
 
@@ -94,16 +95,26 @@ npm run build
 
 # Build for development
 npm run build:dev
+
+# Build for staging
+npm run build:staging
 ```
+
+All build commands use cross-env to ensure consistent environment variables across platforms.
 
 ### Deployment
 
+The application supports deployment to three environments: development, staging, and production.
+
 ```bash
+# Deploy to Firebase staging environment
+npm run deploy:staging
+
 # Deploy to Firebase development environment
-npm run firebase:deploy:dev
+npm run deploy:dev
 
 # Deploy to Firebase production environment
-npm run firebase:deploy:prod
+npm run deploy:prod
 
 # Deploy functions to development environment
 npm run firebase:deploy:functions:dev
@@ -111,6 +122,20 @@ npm run firebase:deploy:functions:dev
 # Deploy functions to production environment
 npm run firebase:deploy:functions:prod
 ```
+
+#### Enhanced Staging Deployment
+
+The staging deployment process includes special features:
+- Automatic validation of required Firebase configuration
+- Merging of environment variables from .env.staging and .env.staging.local
+- Error handling and deployment logs
+
+To use with dry run (no actual deployment):
+```bash
+node scripts/deploy-staging.js --dry-run
+```
+
+Refer to the [Deployment Guide](docs/DEPLOYMENT.md) for detailed deployment instructions.
 
 ## Project Structure
 
@@ -174,61 +199,23 @@ staketrack/
 
 ## Environment Setup
 
-The application uses environment variables for configuration. Follow these steps to set up your development environment:
+The application uses environment variables for configuration with a clear separation between sensitive and non-sensitive values:
 
-### 1. Environment Files Structure
+- **Non-sensitive values** are stored in `.env.[environment]` files (committed to Git)
+  - `APP_FIREBASE_AUTH_DOMAIN`
+  - `APP_FIREBASE_PROJECT_ID`
+  - `APP_FIREBASE_STORAGE_BUCKET`
+  - `APP_FIREBASE_FUNCTIONS_REGION`
+  - Other non-sensitive configuration
 
-The project uses the following environment files:
+- **Sensitive values** are stored in `.env.[environment].local` files (not committed to Git)
+  - `APP_FIREBASE_API_KEY`
+  - `APP_FIREBASE_MESSAGING_SENDER_ID`
+  - `APP_FIREBASE_APP_ID`
+  - `APP_FIREBASE_MEASUREMENT_ID`
+  - API keys and secrets
 
-- `.env.local.example` - Template file with placeholder values (committed to git)
-- `.env.development` - Development environment configuration (committed to git)
-- `.env.staging` - Staging environment configuration (committed to git)
-- `.env.development.local` - Local development secrets (not committed)
-- `.env.staging.local` - Staging environment secrets (not committed)
-- `.env.production.local` - Production environment secrets (not committed)
-
-### 2. Setting Up Local Development
-
-1. Copy the example file to create your local environment:
-   ```bash
-   cp .env.local.example .env.development.local
-   ```
-
-2. Update `.env.development.local` with your actual values:
-   - Get Firebase configuration from your Firebase Console
-   - Add your Anthropic API key
-   - Keep other values as they are for local development
-
-3. The application will automatically use the correct environment based on:
-   - The hostname (localhost, staging, or production)
-   - The presence of `.env.[environment].local` files
-
-### 3. Environment Variables
-
-Key environment variables:
-
-- `APP_ENVIRONMENT`: Current environment (DEV, STAGING, PRD)
-- `APP_USE_EMULATORS`: Enable/disable Firebase emulators
-- `APP_ENABLE_ANALYTICS`: Enable/disable analytics
-- `APP_API_BASE_URL`: Base URL for API endpoints
-- Firebase configuration variables (API keys, project IDs, etc.)
-- External service API keys
-
-### 4. Security Notes
-
-- Never commit `.env.*.local` files containing real secrets
-- Keep your API keys and secrets secure
-- Use different API keys for development and production
-- The application uses Firebase Functions to securely provide configuration
-
-### 5. Troubleshooting
-
-If you encounter environment-related issues:
-
-1. Check that your `.env.development.local` file exists and has all required variables
-2. Verify that the Firebase emulators are running if using local development
-3. Check the browser console for environment loading errors
-4. Ensure you're using the correct Firebase project configuration
+See `.env.example` and `.env.local.example` for reference templates.
 
 ## License
 

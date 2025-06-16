@@ -3,8 +3,7 @@
  * Manages user settings and preferences using Firebase or local storage
  */
 
-import firebase from 'firebase/app'
-import 'firebase/firestore'
+import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { authService } from '@/services/authService'
 import { localStorageService } from '@/services/localStorageService'
 
@@ -18,13 +17,12 @@ class SettingsService {
       if (authService.isAuthenticated()) {
         // Get from Firebase
         const userId = authService.getCurrentUser().uid
-        const doc = await firebase.firestore()
-          .collection('users')
-          .doc(userId)
-          .get()
+        const db = getFirestore()
+        const docRef = doc(db, 'users', userId)
+        const docSnap = await getDoc(docRef)
 
-        if (doc.exists && doc.data().settings) {
-          return doc.data().settings
+        if (docSnap.exists() && docSnap.data().settings) {
+          return docSnap.data().settings
         }
 
         // If no settings found, return default settings
@@ -56,13 +54,12 @@ class SettingsService {
       if (authService.isAuthenticated()) {
         // Update in Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
-          .collection('users')
-          .doc(userId)
-          .update({
-            settings: updatedSettings,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-          })
+        const db = getFirestore()
+        const docRef = doc(db, 'users', userId)
+        await updateDoc(docRef, {
+          settings: updatedSettings,
+          lastUpdated: serverTimestamp()
+        })
       } else {
         // Update in local storage
         localStorageService.saveSettings(updatedSettings)
@@ -86,13 +83,12 @@ class SettingsService {
       if (authService.isAuthenticated()) {
         // Update in Firebase
         const userId = authService.getCurrentUser().uid
-        await firebase.firestore()
-          .collection('users')
-          .doc(userId)
-          .update({
-            settings: defaultSettings,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-          })
+        const db = getFirestore()
+        const docRef = doc(db, 'users', userId)
+        await updateDoc(docRef, {
+          settings: defaultSettings,
+          lastUpdated: serverTimestamp()
+        })
       } else {
         // Update in local storage
         localStorageService.saveSettings(defaultSettings)

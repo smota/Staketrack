@@ -22,7 +22,9 @@ import {
 import { Stakeholder } from '@/models/Stakeholder'
 import { StakeholderMap } from '@/models/StakeholderMap'
 import { localStorageService } from './localStorageService'
+import { authService } from './authService'
 import { aiService } from './aiService'
+import config from '@/config'
 
 class StakeholderService {
   /**
@@ -31,7 +33,8 @@ class StakeholderService {
    * @returns {boolean}
    */
   _isLocalMode() {
-    return !auth.currentUser || auth.currentUser.isAnonymous
+    const user = authService.getCurrentUser()
+    return !user || user.isAnonymous
   }
 
   /**
@@ -123,7 +126,8 @@ class StakeholderService {
    * @returns {string|null} Current user ID or null if not authenticated
    */
   get currentUserId() {
-    return auth.currentUser?.uid || null
+    const user = authService.getCurrentUser()
+    return user && !user.isAnonymous ? user.uid : null
   }
 
   /**
@@ -163,7 +167,7 @@ class StakeholderService {
 
       // Special case for the emulator: allow access when testing with emulators
       // This makes development easier but won't affect production security
-      if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
+      if (config.features.useEmulators) {
         console.log('Emulator mode: granting access to map for development purposes')
         return true
       }
@@ -173,7 +177,7 @@ class StakeholderService {
       console.error('Error checking map access:', error)
 
       // Special case for the emulator: allow access when testing with emulators
-      if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
+      if (config.features.useEmulators) {
         console.log('Emulator mode with error: granting access to map for development purposes')
         return true
       }
@@ -183,11 +187,30 @@ class StakeholderService {
   }
 
   /**
+   * Temporarily added to support older versions of the app
+   * that may still call this.
+   * @param {string} mapId - The map ID
+   * @returns {Promise<void>}
+   */
+  async migrateMapFromMainCollection(mapId) {
+    // This function is deprecated and now a no-op.
+    // The new data model uses the 'stakeholderMaps' collection directly.
+    console.warn(`migrateMapFromMainCollection is deprecated and was called for mapId: ${mapId}`)
+    return Promise.resolve()
+  }
+
+  /**
    * Create a new stakeholder map
    * @param {Object} mapData - Map data
    * @returns {Promise<StakeholderMap>} Created map
    */
   async createMap(mapData = {}) {
+    if (this._isLocalMode()) {
+      const map = new StakeholderMap(mapData)
+      localStorageService.saveMap(map)
+      return map
+    }
+
     try {
       const userId = this.currentUserId
 
@@ -250,13 +273,12 @@ class StakeholderService {
         }
       }
 
-      // Return the created map with the new ID
-      return new StakeholderMap({
-        ...map.toObject(),
-        id: mapDocRef.id
-      })
+      // Fetch the created map to return a complete object
+      const newMapDoc = await getDoc(mapDocRef)
+      const newMapData = this._prepareDocData(newMapDoc.data(), newMapDoc.id)
+      return new StakeholderMap(newMapData)
     } catch (error) {
-      console.error('Error creating stakeholder map:', error)
+      console.error('Error creating map:', error)
       throw error
     }
   }
@@ -405,7 +427,7 @@ class StakeholderService {
       const mapRef = this.getMapRef(mapId)
 
       // Filter out properties that shouldn't be directly updated
-      const { id, _stakeholders, _createdAt, _createdBy, ...updateData } = updates
+      const { id: _id, mapId: _mapId, _interactions, _createdAt, _createdBy, ...updateData } = updates
 
       // Add updated timestamp
       const dataWithTimestamp = {
@@ -478,144 +500,10 @@ class StakeholderService {
   /**
    * Unarchive a stakeholder map
    * @param {string} mapId - The map ID
-   * @returns {Promise<StakeholderMap>} Updated map
+   * @returns {Promise<StakeholderMap>} The unarchived map
    */
   async unarchiveMap(mapId) {
     return this.updateMap(mapId, { isArchived: false })
-  }
-
-  /**
-   * Migrate a map from the main maps collection to the stakeholderMaps collection
-   * @param {string} mapId - The map ID
-   * @returns {Promise<boolean>} Whether the migration was successful
-   */
-  async migrateMapFromMainCollection(mapId) {
-    try {
-      console.log(`Checking if map ${mapId} needs migration`)
-
-      // Check if the map already exists in the stakeholderMaps collection
-      const mapRef = this.getMapRef(mapId)
-      const mapDoc = await getDoc(mapRef)
-
-      if (mapDoc.exists()) {
-        console.log(`Map ${mapId} already exists in stakeholderMaps collection, no migration needed`)
-        return true
-      }
-
-      console.log(`Map ${mapId} does not exist in stakeholderMaps, checking main collection`)
-
-      // If we're in development with emulators and the map doesn't exist, create a placeholder
-      if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
-        try {
-          console.log(`Emulator mode: creating placeholder stakeholder map for ID ${mapId}`)
-
-          const stakeholderMapData = {
-            name: 'Development Map',
-            description: 'Automatically created for emulator mode',
-            createdBy: this.currentUserId || 'anonymous',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            stakeholderCount: 0,
-            isArchived: false
-          }
-
-          await setDoc(mapRef, stakeholderMapData)
-          console.log(`Successfully created placeholder map ${mapId} in emulator mode`)
-          return true
-        } catch (emulatorError) {
-          console.error('Error creating placeholder map in emulator mode:', emulatorError)
-        }
-      }
-
-      // Check the main maps collection
-      const mainMapRef = doc(collection(db, 'maps'), mapId)
-      const mainMapDoc = await getDoc(mainMapRef)
-
-      if (!mainMapDoc.exists()) {
-        console.warn(`Map ${mapId} not found in main collection, cannot migrate`)
-
-        // In emulator mode, create a placeholder map to improve development experience
-        if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
-          console.log(`Emulator mode: creating placeholder stakeholder map for ID ${mapId}`)
-
-          const stakeholderMapData = {
-            name: 'Development Map',
-            description: 'Automatically created for emulator mode',
-            createdBy: this.currentUserId || 'anonymous',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            stakeholderCount: 0,
-            isArchived: false
-          }
-
-          const mapDocRef = doc(this.mapsCollection, mapId)
-          await setDoc(mapDocRef, stakeholderMapData)
-          return true
-        }
-
-        return false
-      }
-
-      const mainMapData = mainMapDoc.data()
-
-      // Ensure the user is the owner
-      if (mainMapData.userId !== this.currentUserId) {
-        console.warn(`User ${this.currentUserId} is not the owner of map ${mapId}, cannot migrate`)
-
-        // In emulator mode, proceed anyway to improve development experience
-        if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
-          console.log('Emulator mode: bypassing ownership check for development')
-        } else {
-          return false
-        }
-      }
-
-      // Create a new document in the stakeholderMaps collection
-      const stakeholderMapData = {
-        name: mainMapData.name || 'Migrated Map',
-        description: mainMapData.description || '',
-        createdBy: this.currentUserId,
-        createdAt: mainMapData.createdAt || serverTimestamp(),
-        updatedAt: mainMapData.updatedAt || serverTimestamp(),
-        stakeholderCount: mainMapData.stakeholderCount || 0,
-        isArchived: false
-      }
-
-      // If the map ID is a randomly generated UUID, keep it; otherwise, generate a new one
-      const mapDocRef = doc(this.mapsCollection, mapId)
-      await setDoc(mapDocRef, stakeholderMapData)
-
-      console.log(`Successfully migrated map ${mapId} to stakeholderMaps collection`)
-      return true
-    } catch (error) {
-      console.error('Error migrating map:', error)
-
-      // Special case for the emulator: create a stub map for development
-      if (process.env.NODE_ENV === 'development' && process.env.APP_USE_EMULATORS === 'true') {
-        try {
-          console.log(`Emulator mode: creating placeholder stakeholder map after error for ID ${mapId}`)
-
-          const stakeholderMapData = {
-            name: 'Development Map (Error Recovery)',
-            description: 'Automatically created for emulator mode after error',
-            createdBy: this.currentUserId || 'anonymous',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            stakeholderCount: 0,
-            isArchived: false
-          }
-
-          const mapDocRef = doc(this.mapsCollection, mapId)
-          await setDoc(mapDocRef, stakeholderMapData)
-          return true
-        } catch (fallbackError) {
-          console.error('Failed even in error recovery mode:', fallbackError)
-          return false
-        }
-      }
-
-      return false
-    }
   }
 
   /**
@@ -625,9 +513,6 @@ class StakeholderService {
    */
   async getStakeholders(mapId) {
     try {
-      // Try to migrate the map if needed
-      await this.migrateMapFromMainCollection(mapId)
-
       if (this._isLocalMode()) {
         console.log('Using localStorage for stakeholder retrieval (anonymous mode)')
         const stakeholders = localStorageService.getStakeholders(mapId) || []
@@ -704,6 +589,14 @@ class StakeholderService {
         stakeholders.push(stakeholder)
         localStorageService.saveStakeholders(mapId, stakeholders)
         return stakeholder
+      }
+
+      // Check if the map exists after potential migration
+      const mapRef = this.getMapRef(mapId)
+      const mapDoc = await getDoc(mapRef)
+
+      if (!mapDoc.exists()) {
+        throw new Error(`Map with ID ${mapId} does not exist`)
       }
 
       // Create stakeholder instance for Firebase
@@ -847,7 +740,7 @@ class StakeholderService {
       const stakeholderRef = this.getStakeholderRef(mapId, stakeholderId)
 
       // Filter out properties that shouldn't be directly updated
-      const { id, mapId: _, _interactions, _createdAt, _createdBy, ...updateData } = updates
+      const { id: _id, mapId: _mapId, _interactions, _createdAt, _createdBy, ...updateData } = updates
 
       // Add updated timestamp
       const dataWithTimestamp = {

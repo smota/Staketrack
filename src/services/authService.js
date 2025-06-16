@@ -1,8 +1,11 @@
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth'
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection } from 'firebase/firestore'
 import { auth } from '@/firebase'
 import { db } from '@/firebase'
 import { analytics } from '@/firebase'
+import { localStorageService } from './localStorageService'
+import { StakeholderMap } from '@/models/StakeholderMap'
+import { Stakeholder } from '@/models/Stakeholder'
 
 /**
  * Authentication Service - Handles user authentication operations
@@ -10,6 +13,7 @@ import { analytics } from '@/firebase'
 class AuthService {
   constructor() {
     this.currentUser = null
+    this.isLocalAnonymous = false
     this.initialized = false
     this.initializationError = null
 
@@ -22,9 +26,17 @@ class AuthService {
    * @private
    */
   _initAuth() {
+    if (localStorageService.isAnonymousSessionActive()) {
+      this.isLocalAnonymous = true
+    }
+
     try {
       onAuthStateChanged(auth, user => {
         this.currentUser = user
+        if (user) {
+          this.isLocalAnonymous = false
+          localStorageService.setAnonymousSession(false)
+        }
         this.initialized = true
 
         if (user && analytics) {
@@ -48,6 +60,9 @@ class AuthService {
    * @returns {Object|null} - Firebase user object or null if not authenticated
    */
   getCurrentUser() {
+    if (this.isLocalAnonymous) {
+      return { uid: 'anonymous', isAnonymous: true }
+    }
     return this.currentUser
   }
 
@@ -56,7 +71,27 @@ class AuthService {
    * @returns {boolean} - True if user is authenticated, false otherwise
    */
   isAuthenticated() {
-    return !!this.currentUser
+    return !!this.currentUser || this.isLocalAnonymous
+  }
+
+  /**
+   * Start a local anonymous session.
+   */
+  startLocalAnonymousSession() {
+    if (this.currentUser) {
+      console.warn('Cannot start local anonymous session when a user is logged in.')
+      return
+    }
+    this.isLocalAnonymous = true
+    localStorageService.setAnonymousSession(true)
+  }
+
+  /**
+   * End a local anonymous session.
+   */
+  endLocalAnonymousSession() {
+    this.isLocalAnonymous = false
+    localStorageService.setAnonymousSession(false)
   }
 
   /**
@@ -124,6 +159,7 @@ class AuthService {
    */
   async signOut() {
     try {
+      this.endLocalAnonymousSession()
       return await signOut(auth)
     } catch (error) {
       console.error('Sign out error:', error)
@@ -210,6 +246,70 @@ class AuthService {
       console.error('Error linking anonymous account:', error)
       throw error
     }
+  }
+
+  /**
+   * Migrates data from local storage to Firestore after a user logs in.
+   * This is intended to move data created during an anonymous session to the permanent user account.
+   */
+  async migrateLocalDataToFirestore() {
+    if (!this.currentUser || this.currentUser.isAnonymous) {
+      console.log('Migration skipped: User not logged in or is anonymous.')
+      return
+    }
+
+    const userId = this.currentUser.uid
+    console.log(`Starting data migration for user ${userId}`)
+
+    const localMapsData = localStorageService.getMaps()
+    if (!localMapsData || localMapsData.length === 0) {
+      console.log('No local maps to migrate.')
+      return
+    }
+
+    const localMaps = localMapsData.map(data => new StakeholderMap(data))
+    console.log(`Found ${localMaps.length} local maps to migrate.`)
+
+    for (const localMap of localMaps) {
+      try {
+        const mapId = localMap.id
+        console.log(`Migrating map ${mapId}`)
+
+        const mapDocRef = doc(db, 'stakeholderMaps', mapId)
+        const mapData = {
+          ...localMap.toFirestore(),
+          createdBy: userId,
+          updatedAt: serverTimestamp()
+        }
+
+        await setDoc(mapDocRef, mapData)
+
+        const localStakeholdersData = localStorageService.getStakeholders(mapId)
+        if (localStakeholdersData && localStakeholdersData.length > 0) {
+          const localStakeholders = localStakeholdersData.map(data => new Stakeholder(data))
+          console.log(`Migrating ${localStakeholders.length} stakeholders for map ${mapId}`)
+          const stakeholdersCollectionRef = collection(mapDocRef, 'stakeholders')
+
+          for (const localStakeholder of localStakeholders) {
+            const stakeholderId = localStakeholder.id
+            const stakeholderDocRef = doc(stakeholdersCollectionRef, stakeholderId)
+            const stakeholderData = {
+              ...localStakeholder.toFirestore(),
+              updatedAt: serverTimestamp()
+            }
+            await setDoc(stakeholderDocRef, stakeholderData)
+          }
+        }
+
+        // If migration is successful, remove from local storage
+        localStorageService.deleteMap(mapId)
+        localStorageService.deleteStakeholders(mapId)
+        console.log(`Successfully migrated and removed local map ${mapId}`)
+      } catch (error) {
+        console.error(`Failed to migrate map ${localMap.id}:`, error)
+      }
+    }
+    console.log('Data migration finished.')
   }
 }
 

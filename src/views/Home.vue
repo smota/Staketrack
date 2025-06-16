@@ -13,12 +13,7 @@
 
             <v-card-text>
               <div class="text-center mb-4">
-                <v-img
-                  src="@/assets/logo.png"
-                  alt="StakeTrack Logo"
-                  max-width="200"
-                  class="mx-auto"
-                />
+                <v-img src="@/assets/logo.png" alt="StakeTrack Logo" max-width="200" class="mx-auto" />
               </div>
 
               <p class="text-body-1">
@@ -75,20 +70,10 @@
               </v-row>
 
               <div class="text-center mt-8">
-                <v-btn
-                  v-if="!isLoggedIn"
-                  color="primary"
-                  x-large
-                  to="/login"
-                >
+                <v-btn v-if="!isLoggedIn" color="primary" x-large to="/login" data-testid="get-started-btn">
                   Get Started
                 </v-btn>
-                <v-btn
-                  v-else
-                  color="primary"
-                  x-large
-                  to="/dashboard"
-                >
+                <v-btn v-else color="primary" x-large to="/dashboard">
                   Go to Dashboard
                 </v-btn>
               </div>
@@ -102,7 +87,8 @@
 
 <script>
 import { ref, onMounted } from 'vue'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/firebase'
 
 export default {
   name: 'HomeView',
@@ -110,9 +96,8 @@ export default {
     const isLoggedIn = ref(false)
 
     onMounted(() => {
-      const auth = getAuth()
       onAuthStateChanged(auth, (user) => {
-        isLoggedIn.value = !!user
+        isLoggedIn.value = !!user && !user.isAnonymous
       })
     })
 

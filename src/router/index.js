@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { getAuth } from 'firebase/auth'
 import { getDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { authService } from '@/services/authService'
 
 // View components
 const Home = () => import('../views/Home.vue')
@@ -79,7 +80,7 @@ router.beforeEach(async (to, from, next) => {
   const auth = getAuth()
   const currentUser = auth.currentUser
 
-  if (requiresAuth && !currentUser) {
+  if (requiresAuth && !authService.isAuthenticated()) {
     next('/login')
   } else if (requiresAdmin) {
     // Check if user is admin
