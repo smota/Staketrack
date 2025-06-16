@@ -2,6 +2,7 @@
  * Application configuration
  * Contains environment-specific settings, validation rules, and defaults
  */
+import { parseArrayValue, parseBooleanFlag } from './helpers'
 
 // Check for required Firebase config and log warnings if missing
 const requiredFirebaseKeys = [
@@ -33,18 +34,6 @@ if (shouldValidateConfig && process.env.VUE_APP_USE_EMULATORS !== 'true' && proc
     authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN ? 'Set' : 'Not set',
     projectId: process.env.VUE_APP_FIREBASE_PROJECT_ID ? 'Set' : 'Not set'
   })
-}
-
-// Helper to parse comma-separated values to array
-const parseArrayValue = (value, defaultValue = []) => {
-  if (!value) return defaultValue
-  return value.split(',').map(item => item.trim()).filter(Boolean)
-}
-
-// Helper to parse boolean flags
-const parseBooleanFlag = (value, defaultValue = false) => {
-  if (value === undefined || value === null) return defaultValue
-  return value === 'true' || value === true || value === '1' || value === 1
 }
 
 const config = {

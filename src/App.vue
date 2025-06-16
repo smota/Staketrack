@@ -1,11 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar
-      v-if="isLoggedIn || $route.meta.showNavbar !== false"
-      app
-      color="primary"
-      dark
-    >
+    <v-app-bar v-if="isLoggedIn || $route.meta.showNavbar !== false" app color="primary" dark>
       <v-app-bar-nav-icon @click="drawer = !drawer" />
       <v-toolbar-title>StakeTrack</v-toolbar-title>
       <v-spacer />
@@ -17,12 +12,7 @@
       </v-btn>
     </v-app-bar>
 
-    <v-navigation-drawer
-      v-if="isLoggedIn || $route.meta.showNavbar !== false"
-      v-model="drawer"
-      app
-      temporary
-    >
+    <v-navigation-drawer v-if="isLoggedIn || $route.meta.showNavbar !== false" v-model="drawer" app temporary>
       <v-list>
         <v-list-item to="/" link>
           <template #prepend>
@@ -57,18 +47,18 @@
     <v-main>
       <v-container fluid>
         <!-- Configuration status component -->
-        <ConfigurationStatus
-          display-mode="auto"
-          class="mb-4"
-          @dismissed="onConfigStatusDismissed"
-        />
+        <ConfigurationStatus display-mode="auto" class="mb-4" @dismissed="onConfigStatusDismissed" />
         <router-view />
       </v-container>
     </v-main>
 
     <v-footer app>
       <div class="text-caption text-center w-100">
-        StakeTrack v{{ appVersion }} &copy; {{ new Date().getFullYear() }}
+        StakeTrack v{{ appVersion }}
+        <span v-if="!isProduction" data-testid="environment-display">
+          | Env: {{ envName }}
+        </span>
+        &copy; {{ new Date().getFullYear() }}
       </div>
     </v-footer>
   </v-app>
@@ -91,6 +81,8 @@ export default {
     const isDarkMode = ref(false)
     const isLoggedIn = ref(false)
     const appVersion = ref(config.version)
+    const isProduction = ref(config.env.isProduction)
+    const envName = ref(config.env.name)
     const router = useRouter()
 
     onMounted(() => {
@@ -133,6 +125,8 @@ export default {
       isDarkMode,
       isLoggedIn,
       appVersion,
+      isProduction,
+      envName,
       toggleDarkMode,
       logout,
       onConfigStatusDismissed
