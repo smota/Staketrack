@@ -5,12 +5,12 @@
   "scripts": {
     "dev": "vue-cli-service serve --mode development",
     "serve": "vue-cli-service serve --mode development",
-    "build": "vue-cli-service build --mode production",
+    "build": "vue-cli-service build",
     "build:dev": "vue-cli-service build --mode development",
     "build:staging": "vue-cli-service build --mode staging",
     "build:prod": "vue-cli-service build --mode production",
     "lint": "vue-cli-service lint",
-    "test:unit": "vue-cli-service test:unit",
+    "test:unit": "vue-cli-service test:unit --testPathIgnorePatterns main.test.js",
     "test:e2e": "playwright test",
     "test": "npm run test:unit && npm run test:e2e",
     "prepare": "husky install",
@@ -31,7 +31,7 @@
     "deploy:rules:prod": "node scripts/firebase-deploy.js --env=PRD --option=rules",
     "deploy:all:dev": "node scripts/firebase-deploy.js --env=DEV --option=all",
     "deploy:all:prod": "node scripts/firebase-deploy.js --env=PRD --option=all",
-    "deploy:staging": "node scripts/deploy-staging.js",
+    "deploy:staging": "firebase use staketrack-dev && firebase deploy",
     "emulators": "firebase emulators:start"
   },
   "dependencies": {

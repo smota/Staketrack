@@ -869,17 +869,9 @@ class StakeholderService {
    * @returns {Promise<Object>} AI recommendations
    */
   async getStakeholderRecommendations(mapId, options = {}) {
-    try {
-      // Get the map with all stakeholders
-      const map = await this.getMap(mapId)
-
-      // Get recommendations from AI service
-      return aiService.getStakeholderRecommendations(map, options)
-    } catch (error) {
-      console.error('Error getting stakeholder recommendations:', error)
-      throw error
-    }
+    return aiService.getRecommendations(mapId, options)
   }
 }
 
-export default new StakeholderService()
+const stakeholderService = new StakeholderService()
+export { stakeholderService, StakeholderService }

@@ -130,7 +130,7 @@ class LocalStorageService {
    */
   _getMaps() {
     try {
-      const data = localStorage.getItem(this.mapsKey)
+      const data = this._getItem(this.mapsKey)
       this._debugLog('DEBUG: Raw data from localStorage:', data, 'using key:', this.mapsKey)
       if (!data) return []
 
@@ -152,7 +152,7 @@ class LocalStorageService {
       this._debugLog('DEBUG: Saving maps array to localStorage:', maps, 'using key:', this.mapsKey)
       const data = maps.map(map => map.toJSON ? map.toJSON() : map)
       this._debugLog('DEBUG: Serialized maps data:', data)
-      localStorage.setItem(this.mapsKey, JSON.stringify(data))
+      this._setItem(this.mapsKey, data)
 
       // Verify storage
       const verification = localStorage.getItem(this.mapsKey)
@@ -338,10 +338,12 @@ class LocalStorageService {
 
   /**
    * Get settings from local storage
-   * @returns {Object} - Settings object or empty object if not found
+   * @returns {Object} - Settings object or null if not found
    */
   getSettings() {
-    return this._getItem(this.settingsKey) || {}
+    this._debugLog('Getting settings')
+    const settings = this._getItem(this.settingsKey)
+    return settings || null
   }
 
   /**
@@ -370,21 +372,23 @@ class LocalStorageService {
    * @returns {boolean} - True if successful, false otherwise
    */
   clearAll() {
+    this._debugLog('Clearing all staketrack data from local storage')
     if (!this._isAvailable()) return false
 
     try {
-      const keys = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key.startsWith(this.prefix)) {
-          keys.push(key)
-        }
+      // Clear all known keys
+      for (const key of Object.values(STORAGE_KEYS)) {
+        this._removeItem(key)
+        this._debugLog(`Removed: ${key}`)
       }
-
-      keys.forEach(key => localStorage.removeItem(key))
+      // Also clear any stakeholder data, which is dynamically keyed
+      const stakeholderKeys = Object.keys(localStorage).filter(key =>
+        key.startsWith(`${this.prefix}stakeholders_`)
+      )
+      stakeholderKeys.forEach(key => this._removeItem(key))
       return true
-    } catch (e) {
-      console.error('Error clearing local storage:', e)
+    } catch (error) {
+      console.error('Error clearing all data from local storage:', error)
       return false
     }
   }
@@ -472,11 +476,8 @@ class LocalStorageService {
    * @param {boolean} isActive
    */
   setAnonymousSession(isActive) {
-    if (isActive) {
-      this._setItem(this.anonymousSessionKey, { active: true, version: CURRENT_VERSION })
-    } else {
-      this._removeItem(this.anonymousSessionKey)
-    }
+    this._debugLog(`Setting anonymous session active status to: ${isActive}`)
+    return this._setItem(this.anonymousSessionKey, !!isActive)
   }
 
   /**
@@ -484,8 +485,9 @@ class LocalStorageService {
    * @returns {boolean}
    */
   isAnonymousSessionActive() {
+    this._debugLog('Checking anonymous session active status')
     const session = this._getItem(this.anonymousSessionKey)
-    return session && session.active === true
+    return session === true
   }
 }
 
